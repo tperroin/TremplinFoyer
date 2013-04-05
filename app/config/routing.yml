@@ -1,0 +1,4 @@
+tperroin_tremplin_foyer:
+    resource: "@TperroinTremplinFoyerBundle/Resources/config/routing.yml"
+    prefix:   /
+
