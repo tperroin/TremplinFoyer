@@ -1,9 +1,9182 @@
 <?php 
+namespace Symfony\Component\HttpKernel\Controller
+{
+use Symfony\Component\HttpFoundation\Request;
+interface ControllerResolverInterface
+{
+public function getController(Request $request);
+public function getArguments(Request $request, $controller);
+}
+}
+namespace Symfony\Component\HttpKernel\Controller
+{
+use Psr\Log\LoggerInterface;
+use Symfony\Component\HttpFoundation\Request;
+class ControllerResolver implements ControllerResolverInterface
+{
+private $logger;
+public function __construct(LoggerInterface $logger = null)
+{
+$this->logger = $logger;
+}
+public function getController(Request $request)
+{
+if (!$controller = $request->attributes->get('_controller')) {
+if (null !== $this->logger) {
+$this->logger->warning('Unable to look for the controller as the "_controller" parameter is missing');
+}
+return false;
+}
+if (is_array($controller) || (is_object($controller) && method_exists($controller,'__invoke'))) {
+return $controller;
+}
+if (false === strpos($controller,':')) {
+if (method_exists($controller,'__invoke')) {
+return new $controller;
+} elseif (function_exists($controller)) {
+return $controller;
+}
+}
+list($controller, $method) = $this->createController($controller);
+if (!method_exists($controller, $method)) {
+throw new \InvalidArgumentException(sprintf('Method "%s::%s" does not exist.', get_class($controller), $method));
+}
+return array($controller, $method);
+}
+public function getArguments(Request $request, $controller)
+{
+if (is_array($controller)) {
+$r = new \ReflectionMethod($controller[0], $controller[1]);
+} elseif (is_object($controller) && !$controller instanceof \Closure) {
+$r = new \ReflectionObject($controller);
+$r = $r->getMethod('__invoke');
+} else {
+$r = new \ReflectionFunction($controller);
+}
+return $this->doGetArguments($request, $controller, $r->getParameters());
+}
+protected function doGetArguments(Request $request, $controller, array $parameters)
+{
+$attributes = $request->attributes->all();
+$arguments = array();
+foreach ($parameters as $param) {
+if (array_key_exists($param->name, $attributes)) {
+$arguments[] = $attributes[$param->name];
+} elseif ($param->getClass() && $param->getClass()->isInstance($request)) {
+$arguments[] = $request;
+} elseif ($param->isDefaultValueAvailable()) {
+$arguments[] = $param->getDefaultValue();
+} else {
+if (is_array($controller)) {
+$repr = sprintf('%s::%s()', get_class($controller[0]), $controller[1]);
+} elseif (is_object($controller)) {
+$repr = get_class($controller);
+} else {
+$repr = $controller;
+}
+throw new \RuntimeException(sprintf('Controller "%s" requires that you provide a value for the "$%s" argument (because there is no default value or because there is a non optional argument after this one).', $repr, $param->name));
+}
+}
+return $arguments;
+}
+protected function createController($controller)
+{
+if (false === strpos($controller,'::')) {
+throw new \InvalidArgumentException(sprintf('Unable to find controller "%s".', $controller));
+}
+list($class, $method) = explode('::', $controller, 2);
+if (!class_exists($class)) {
+throw new \InvalidArgumentException(sprintf('Class "%s" does not exist.', $class));
+}
+return array(new $class(), $method);
+}
+}
+}
+namespace Symfony\Bundle\FrameworkBundle\Controller
+{
+use Psr\Log\LoggerInterface;
+use Symfony\Component\HttpKernel\Controller\ControllerResolver as BaseControllerResolver;
+use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Bundle\FrameworkBundle\Controller\ControllerNameParser;
+use Symfony\Component\DependencyInjection\ContainerAwareInterface;
+class ControllerResolver extends BaseControllerResolver
+{
+protected $container;
+protected $parser;
+public function __construct(ContainerInterface $container, ControllerNameParser $parser, LoggerInterface $logger = null)
+{
+$this->container = $container;
+$this->parser = $parser;
+parent::__construct($logger);
+}
+protected function createController($controller)
+{
+if (false === strpos($controller,'::')) {
+$count = substr_count($controller,':');
+if (2 == $count) {
+$controller = $this->parser->parse($controller);
+} elseif (1 == $count) {
+list($service, $method) = explode(':', $controller, 2);
+return array($this->container->get($service), $method);
+} else {
+throw new \LogicException(sprintf('Unable to parse the controller name "%s".', $controller));
+}
+}
+list($class, $method) = explode('::', $controller, 2);
+if (!class_exists($class)) {
+throw new \InvalidArgumentException(sprintf('Class "%s" does not exist.', $class));
+}
+$controller = new $class();
+if ($controller instanceof ContainerAwareInterface) {
+$controller->setContainer($this->container);
+}
+return array($controller, $method);
+}
+}
+}
+namespace JMS\DiExtraBundle\HttpKernel
+{
+use Metadata\ClassHierarchyMetadata;
+use JMS\DiExtraBundle\Metadata\ClassMetadata;
+use CG\Core\DefaultNamingStrategy;
+use CG\Proxy\Enhancer;
+use JMS\AopBundle\DependencyInjection\Compiler\PointcutMatchingPass;
+use JMS\DiExtraBundle\Generator\DefinitionInjectorGenerator;
+use JMS\DiExtraBundle\Generator\LookupMethodClassGenerator;
+use JMS\DiExtraBundle\DependencyInjection\Dumper\PhpDumper;
+use Metadata\MetadataFactory;
+use Symfony\Component\DependencyInjection\Compiler\InlineServiceDefinitionsPass;
+use Symfony\Component\DependencyInjection\ContainerAwareInterface;
+use Symfony\Component\DependencyInjection\Compiler\ResolveDefinitionTemplatesPass;
+use Symfony\Component\DependencyInjection\Parameter;
+use Symfony\Component\DependencyInjection\Reference;
+use Symfony\Component\DependencyInjection\Definition;
+use Symfony\Component\Config\Resource\FileResource;
+use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\Config\ConfigCache;
+use Symfony\Bundle\FrameworkBundle\Controller\ControllerResolver as BaseControllerResolver;
+class ControllerResolver extends BaseControllerResolver
+{
+protected function createController($controller)
+{
+if (false === $pos = strpos($controller,'::')) {
+$count = substr_count($controller,':');
+if (2 == $count) {
+$controller = $this->parser->parse($controller);
+$pos = strpos($controller,'::');
+} elseif (1 == $count) {
+list($service, $method) = explode(':', $controller);
+return array($this->container->get($service), $method);
+} else {
+throw new \LogicException(sprintf('Unable to parse the controller name "%s".', $controller));
+}
+}
+$class = substr($controller, 0, $pos);
+$method = substr($controller, $pos+2);
+if (!class_exists($class)) {
+throw new \InvalidArgumentException(sprintf('Class "%s" does not exist.', $class));
+}
+$injector = $this->createInjector($class);
+$controller = call_user_func($injector, $this->container);
+if ($controller instanceof ContainerAwareInterface) {
+$controller->setContainer($this->container);
+}
+return array($controller, $method);
+}
+public function createInjector($class)
+{
+$filename = $this->container->getParameter('jms_di_extra.cache_dir').'/controller_injectors/'.str_replace('\\','', $class).'.php';
+$cache = new ConfigCache($filename, $this->container->getParameter('kernel.debug'));
+if (!$cache->isFresh()) {
+$metadata = $this->container->get('jms_di_extra.metadata.metadata_factory')->getMetadataForClass($class);
+if (null === $metadata) {
+$metadata = new ClassHierarchyMetadata();
+$metadata->addClassMetadata(new ClassMetadata($class));
+}
+if (null !== $metadata->getOutsideClassMetadata()->id
+&& 0 !== strpos($metadata->getOutsideClassMetadata()->id,'_jms_di_extra.unnamed.service')) {
+return;
+}
+$this->prepareContainer($cache, $filename, $metadata, $class);
+}
+if ( ! class_exists($class.'__JMSInjector', false)) {
+require $filename;
+}
+return array($class.'__JMSInjector','inject');
+}
+private function prepareContainer($cache, $containerFilename, $metadata, $className)
+{
+$container = new ContainerBuilder();
+$container->setParameter('jms_aop.cache_dir', $this->container->getParameter('jms_di_extra.cache_dir'));
+$def = $container
+->register('jms_aop.interceptor_loader','JMS\AopBundle\Aop\InterceptorLoader')
+->addArgument(new Reference('service_container'))
+->setPublic(false)
+;
+$ref = $metadata->getOutsideClassMetadata()->reflection;
+while ($ref && false !== $filename = $ref->getFilename()) {
+$container->addResource(new FileResource($filename));
+$ref = $ref->getParentClass();
+}
+$definitions = $this->container->get('jms_di_extra.metadata.converter')->convert($metadata);
+$serviceIds = $parameters = array();
+$controllerDef = array_pop($definitions);
+$container->setDefinition('controller', $controllerDef);
+foreach ($definitions as $id => $def) {
+$container->setDefinition($id, $def);
+}
+$this->generateLookupMethods($controllerDef, $metadata);
+$config = $container->getCompilerPassConfig();
+$config->setOptimizationPasses(array());
+$config->setRemovingPasses(array());
+$config->addPass(new ResolveDefinitionTemplatesPass());
+$config->addPass(new PointcutMatchingPass($this->container->get('jms_aop.pointcut_container')->getPointcuts()));
+$config->addPass(new InlineServiceDefinitionsPass());
+$container->compile();
+if (!file_exists($dir = dirname($containerFilename))) {
+if (false === @mkdir($dir, 0777, true)) {
+throw new \RuntimeException(sprintf('Could not create directory "%s".', $dir));
+}
+}
+static $generator;
+if (null === $generator) {
+$generator = new DefinitionInjectorGenerator();
+}
+$cache->write($generator->generate($container->getDefinition('controller'), $className), $container->getResources());
+}
+private function generateLookupMethods($def, $metadata)
+{
+$found = false;
+foreach ($metadata->classMetadata as $cMetadata) {
+if (!empty($cMetadata->lookupMethods)) {
+$found = true;
+break;
+}
+}
+if (!$found) {
+return;
+}
+$generator = new LookupMethodClassGenerator($metadata);
+$outerClass = $metadata->getOutsideClassMetadata()->reflection;
+if ($file = $def->getFile()) {
+$generator->setRequiredFile($file);
+}
+$enhancer = new Enhancer(
+$outerClass,
+array(),
+array(
+$generator,
+)
+);
+$filename = $this->container->getParameter('jms_di_extra.cache_dir').'/lookup_method_classes/'.str_replace('\\','-', $outerClass->name).'.php';
+$enhancer->writeClass($filename);
+$def->setFile($filename);
+$def->setClass($enhancer->getClassName($outerClass));
+$def->addMethodCall('__jmsDiExtra_setContainer', array(new Reference('service_container')));
+}
+}
+}
+namespace Monolog\Formatter
+{
+interface FormatterInterface
+{
+public function format(array $record);
+public function formatBatch(array $records);
+}
+}
+namespace Monolog\Formatter
+{
+class NormalizerFormatter implements FormatterInterface
+{
+const SIMPLE_DATE ="Y-m-d H:i:s";
+protected $dateFormat;
+public function __construct($dateFormat = null)
+{
+$this->dateFormat = $dateFormat ?: static::SIMPLE_DATE;
+}
+public function format(array $record)
+{
+return $this->normalize($record);
+}
+public function formatBatch(array $records)
+{
+foreach ($records as $key => $record) {
+$records[$key] = $this->format($record);
+}
+return $records;
+}
+protected function normalize($data)
+{
+if (null === $data || is_scalar($data)) {
+return $data;
+}
+if (is_array($data) || $data instanceof \Traversable) {
+$normalized = array();
+foreach ($data as $key => $value) {
+$normalized[$key] = $this->normalize($value);
+}
+return $normalized;
+}
+if ($data instanceof \DateTime) {
+return $data->format($this->dateFormat);
+}
+if (is_object($data)) {
+return sprintf("[object] (%s: %s)", get_class($data), $this->toJson($data, true));
+}
+if (is_resource($data)) {
+return'[resource]';
+}
+return'[unknown('.gettype($data).')]';
+}
+protected function toJson($data, $ignoreErrors = false)
+{
+if ($ignoreErrors) {
+if (version_compare(PHP_VERSION,'5.4.0','>=')) {
+return @json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+}
+return @json_encode($data);
+}
+if (version_compare(PHP_VERSION,'5.4.0','>=')) {
+return json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+}
+return json_encode($data);
+}
+}
+}
+namespace Monolog\Formatter
+{
+class LineFormatter extends NormalizerFormatter
+{
+const SIMPLE_FORMAT ="[%datetime%] %channel%.%level_name%: %message% %context% %extra%\n";
+protected $format;
+public function __construct($format = null, $dateFormat = null)
+{
+$this->format = $format ?: static::SIMPLE_FORMAT;
+parent::__construct($dateFormat);
+}
+public function format(array $record)
+{
+$vars = parent::format($record);
+$output = $this->format;
+foreach ($vars['extra'] as $var => $val) {
+if (false !== strpos($output,'%extra.'.$var.'%')) {
+$output = str_replace('%extra.'.$var.'%', $this->convertToString($val), $output);
+unset($vars['extra'][$var]);
+}
+}
+foreach ($vars as $var => $val) {
+$output = str_replace('%'.$var.'%', $this->convertToString($val), $output);
+}
+return $output;
+}
+public function formatBatch(array $records)
+{
+$message ='';
+foreach ($records as $record) {
+$message .= $this->format($record);
+}
+return $message;
+}
+protected function normalize($data)
+{
+if (is_bool($data) || is_null($data)) {
+return var_export($data, true);
+}
+if ($data instanceof \Exception) {
+return'[object] ('.get_class($data).': '.$data->getMessage().' at '.$data->getFile().':'.$data->getLine().')';
+}
+return parent::normalize($data);
+}
+protected function convertToString($data)
+{
+if (null === $data || is_scalar($data)) {
+return (string) $data;
+}
+$data = $this->normalize($data);
+if (version_compare(PHP_VERSION,'5.4.0','>=')) {
+return $this->toJson($data);
+}
+return str_replace('\\/','/', json_encode($data));
+}
+}
+}
+namespace Monolog\Handler
+{
+use Monolog\Formatter\FormatterInterface;
+interface HandlerInterface
+{
+public function isHandling(array $record);
+public function handle(array $record);
+public function handleBatch(array $records);
+public function pushProcessor($callback);
+public function popProcessor();
+public function setFormatter(FormatterInterface $formatter);
+public function getFormatter();
+}
+}
+namespace Monolog\Handler
+{
+use Monolog\Logger;
+use Monolog\Formatter\FormatterInterface;
+use Monolog\Formatter\LineFormatter;
+abstract class AbstractHandler implements HandlerInterface
+{
+protected $level = Logger::DEBUG;
+protected $bubble = false;
+protected $formatter;
+protected $processors = array();
+public function __construct($level = Logger::DEBUG, $bubble = true)
+{
+$this->level = $level;
+$this->bubble = $bubble;
+}
+public function isHandling(array $record)
+{
+return $record['level'] >= $this->level;
+}
+public function handleBatch(array $records)
+{
+foreach ($records as $record) {
+$this->handle($record);
+}
+}
+public function close()
+{
+}
+public function pushProcessor($callback)
+{
+if (!is_callable($callback)) {
+throw new \InvalidArgumentException('Processors must be valid callables (callback or object with an __invoke method), '.var_export($callback, true).' given');
+}
+array_unshift($this->processors, $callback);
+}
+public function popProcessor()
+{
+if (!$this->processors) {
+throw new \LogicException('You tried to pop from an empty processor stack.');
+}
+return array_shift($this->processors);
+}
+public function setFormatter(FormatterInterface $formatter)
+{
+$this->formatter = $formatter;
+}
+public function getFormatter()
+{
+if (!$this->formatter) {
+$this->formatter = $this->getDefaultFormatter();
+}
+return $this->formatter;
+}
+public function setLevel($level)
+{
+$this->level = $level;
+}
+public function getLevel()
+{
+return $this->level;
+}
+public function setBubble($bubble)
+{
+$this->bubble = $bubble;
+}
+public function getBubble()
+{
+return $this->bubble;
+}
+public function __destruct()
+{
+try {
+$this->close();
+} catch (\Exception $e) {
+}
+}
+protected function getDefaultFormatter()
+{
+return new LineFormatter();
+}
+}
+}
+namespace Monolog\Handler
+{
+abstract class AbstractProcessingHandler extends AbstractHandler
+{
+public function handle(array $record)
+{
+if ($record['level'] < $this->level) {
+return false;
+}
+$record = $this->processRecord($record);
+$record['formatted'] = $this->getFormatter()->format($record);
+$this->write($record);
+return false === $this->bubble;
+}
+abstract protected function write(array $record);
+protected function processRecord(array $record)
+{
+if ($this->processors) {
+foreach ($this->processors as $processor) {
+$record = call_user_func($processor, $record);
+}
+}
+return $record;
+}
+}
+}
+namespace Monolog\Handler
+{
+use Monolog\Handler\FingersCrossed\ErrorLevelActivationStrategy;
+use Monolog\Handler\FingersCrossed\ActivationStrategyInterface;
+use Monolog\Logger;
+class FingersCrossedHandler extends AbstractHandler
+{
+protected $handler;
+protected $activationStrategy;
+protected $buffering = true;
+protected $bufferSize;
+protected $buffer = array();
+protected $stopBuffering;
+public function __construct($handler, $activationStrategy = null, $bufferSize = 0, $bubble = true, $stopBuffering = true)
+{
+if (null === $activationStrategy) {
+$activationStrategy = new ErrorLevelActivationStrategy(Logger::WARNING);
+}
+if (!$activationStrategy instanceof ActivationStrategyInterface) {
+$activationStrategy = new ErrorLevelActivationStrategy($activationStrategy);
+}
+$this->handler = $handler;
+$this->activationStrategy = $activationStrategy;
+$this->bufferSize = $bufferSize;
+$this->bubble = $bubble;
+$this->stopBuffering = $stopBuffering;
+}
+public function isHandling(array $record)
+{
+return true;
+}
+public function handle(array $record)
+{
+if ($this->processors) {
+foreach ($this->processors as $processor) {
+$record = call_user_func($processor, $record);
+}
+}
+if ($this->buffering) {
+$this->buffer[] = $record;
+if ($this->bufferSize > 0 && count($this->buffer) > $this->bufferSize) {
+array_shift($this->buffer);
+}
+if ($this->activationStrategy->isHandlerActivated($record)) {
+if ($this->stopBuffering) {
+$this->buffering = false;
+}
+if (!$this->handler instanceof HandlerInterface) {
+if (!is_callable($this->handler)) {
+throw new \RuntimeException("The given handler (".json_encode($this->handler).") is not a callable nor a Monolog\Handler\HandlerInterface object");
+}
+$this->handler = call_user_func($this->handler, $record, $this);
+if (!$this->handler instanceof HandlerInterface) {
+throw new \RuntimeException("The factory callable should return a HandlerInterface");
+}
+}
+$this->handler->handleBatch($this->buffer);
+$this->buffer = array();
+}
+} else {
+$this->handler->handle($record);
+}
+return false === $this->bubble;
+}
+public function reset()
+{
+$this->buffering = true;
+}
+}
+}
+namespace Monolog\Handler\FingersCrossed
+{
+interface ActivationStrategyInterface
+{
+public function isHandlerActivated(array $record);
+}
+}
+namespace Monolog\Handler\FingersCrossed
+{
+class ErrorLevelActivationStrategy implements ActivationStrategyInterface
+{
+private $actionLevel;
+public function __construct($actionLevel)
+{
+$this->actionLevel = $actionLevel;
+}
+public function isHandlerActivated(array $record)
+{
+return $record['level'] >= $this->actionLevel;
+}
+}
+}
+namespace Monolog\Handler
+{
+use Monolog\Logger;
+class StreamHandler extends AbstractProcessingHandler
+{
+protected $stream;
+protected $url;
+public function __construct($stream, $level = Logger::DEBUG, $bubble = true)
+{
+parent::__construct($level, $bubble);
+if (is_resource($stream)) {
+$this->stream = $stream;
+} else {
+$this->url = $stream;
+}
+}
+public function close()
+{
+if (is_resource($this->stream)) {
+fclose($this->stream);
+}
+$this->stream = null;
+}
+protected function write(array $record)
+{
+if (null === $this->stream) {
+if (!$this->url) {
+throw new \LogicException('Missing stream url, the stream can not be opened. This may be caused by a premature call to close().');
+}
+$errorMessage = null;
+set_error_handler(function ($code, $msg) use (&$errorMessage) {
+$errorMessage = preg_replace('{^fopen\(.*?\): }','', $msg);
+});
+$this->stream = fopen($this->url,'a');
+restore_error_handler();
+if (!is_resource($this->stream)) {
+$this->stream = null;
+throw new \UnexpectedValueException(sprintf('The stream or file "%s" could not be opened: '.$errorMessage, $this->url));
+}
+}
+fwrite($this->stream, (string) $record['formatted']);
+}
+}
+}
+namespace Monolog\Handler
+{
+use Monolog\Logger;
+class TestHandler extends AbstractProcessingHandler
+{
+protected $records = array();
+protected $recordsByLevel = array();
+public function getRecords()
+{
+return $this->records;
+}
+public function hasEmergency($record)
+{
+return $this->hasRecord($record, Logger::EMERGENCY);
+}
+public function hasAlert($record)
+{
+return $this->hasRecord($record, Logger::ALERT);
+}
+public function hasCritical($record)
+{
+return $this->hasRecord($record, Logger::CRITICAL);
+}
+public function hasError($record)
+{
+return $this->hasRecord($record, Logger::ERROR);
+}
+public function hasWarning($record)
+{
+return $this->hasRecord($record, Logger::WARNING);
+}
+public function hasNotice($record)
+{
+return $this->hasRecord($record, Logger::NOTICE);
+}
+public function hasInfo($record)
+{
+return $this->hasRecord($record, Logger::INFO);
+}
+public function hasDebug($record)
+{
+return $this->hasRecord($record, Logger::DEBUG);
+}
+public function hasEmergencyRecords()
+{
+return isset($this->recordsByLevel[Logger::EMERGENCY]);
+}
+public function hasAlertRecords()
+{
+return isset($this->recordsByLevel[Logger::ALERT]);
+}
+public function hasCriticalRecords()
+{
+return isset($this->recordsByLevel[Logger::CRITICAL]);
+}
+public function hasErrorRecords()
+{
+return isset($this->recordsByLevel[Logger::ERROR]);
+}
+public function hasWarningRecords()
+{
+return isset($this->recordsByLevel[Logger::WARNING]);
+}
+public function hasNoticeRecords()
+{
+return isset($this->recordsByLevel[Logger::NOTICE]);
+}
+public function hasInfoRecords()
+{
+return isset($this->recordsByLevel[Logger::INFO]);
+}
+public function hasDebugRecords()
+{
+return isset($this->recordsByLevel[Logger::DEBUG]);
+}
+protected function hasRecord($record, $level)
+{
+if (!isset($this->recordsByLevel[$level])) {
+return false;
+}
+if (is_array($record)) {
+$record = $record['message'];
+}
+foreach ($this->recordsByLevel[$level] as $rec) {
+if ($rec['message'] === $record) {
+return true;
+}
+}
+return false;
+}
+protected function write(array $record)
+{
+$this->recordsByLevel[$record['level']][] = $record;
+$this->records[] = $record;
+}
+}
+}
+namespace Psr\Log
+{
+interface LoggerInterface
+{
+public function emergency($message, array $context = array());
+public function alert($message, array $context = array());
+public function critical($message, array $context = array());
+public function error($message, array $context = array());
+public function warning($message, array $context = array());
+public function notice($message, array $context = array());
+public function info($message, array $context = array());
+public function debug($message, array $context = array());
+public function log($level, $message, array $context = array());
+}
+}
+namespace Monolog
+{
+use Monolog\Handler\HandlerInterface;
+use Monolog\Handler\StreamHandler;
+use Psr\Log\LoggerInterface;
+use Psr\Log\InvalidArgumentException;
+class Logger implements LoggerInterface
+{
+const DEBUG = 100;
+const INFO = 200;
+const NOTICE = 250;
+const WARNING = 300;
+const ERROR = 400;
+const CRITICAL = 500;
+const ALERT = 550;
+const EMERGENCY = 600;
+protected static $levels = array(
+100 =>'DEBUG',
+200 =>'INFO',
+250 =>'NOTICE',
+300 =>'WARNING',
+400 =>'ERROR',
+500 =>'CRITICAL',
+550 =>'ALERT',
+600 =>'EMERGENCY',
+);
+protected static $timezone;
+protected $name;
+protected $handlers;
+protected $processors;
+public function __construct($name, array $handlers = array(), array $processors = array())
+{
+$this->name = $name;
+$this->handlers = $handlers;
+$this->processors = $processors;
+}
+public function getName()
+{
+return $this->name;
+}
+public function pushHandler(HandlerInterface $handler)
+{
+array_unshift($this->handlers, $handler);
+}
+public function popHandler()
+{
+if (!$this->handlers) {
+throw new \LogicException('You tried to pop from an empty handler stack.');
+}
+return array_shift($this->handlers);
+}
+public function pushProcessor($callback)
+{
+if (!is_callable($callback)) {
+throw new \InvalidArgumentException('Processors must be valid callables (callback or object with an __invoke method), '.var_export($callback, true).' given');
+}
+array_unshift($this->processors, $callback);
+}
+public function popProcessor()
+{
+if (!$this->processors) {
+throw new \LogicException('You tried to pop from an empty processor stack.');
+}
+return array_shift($this->processors);
+}
+public function addRecord($level, $message, array $context = array())
+{
+if (!$this->handlers) {
+$this->pushHandler(new StreamHandler('php://stderr', static::DEBUG));
+}
+if (!static::$timezone) {
+static::$timezone = new \DateTimeZone(date_default_timezone_get() ?:'UTC');
+}
+$record = array('message'=> (string) $message,'context'=> $context,'level'=> $level,'level_name'=> static::getLevelName($level),'channel'=> $this->name,'datetime'=> \DateTime::createFromFormat('U.u', sprintf('%.6F', microtime(true)), static::$timezone)->setTimezone(static::$timezone),'extra'=> array(),
+);
+$handlerKey = null;
+foreach ($this->handlers as $key => $handler) {
+if ($handler->isHandling($record)) {
+$handlerKey = $key;
+break;
+}
+}
+if (null === $handlerKey) {
+return false;
+}
+foreach ($this->processors as $processor) {
+$record = call_user_func($processor, $record);
+}
+while (isset($this->handlers[$handlerKey]) &&
+false === $this->handlers[$handlerKey]->handle($record)) {
+$handlerKey++;
+}
+return true;
+}
+public function addDebug($message, array $context = array())
+{
+return $this->addRecord(static::DEBUG, $message, $context);
+}
+public function addInfo($message, array $context = array())
+{
+return $this->addRecord(static::INFO, $message, $context);
+}
+public function addNotice($message, array $context = array())
+{
+return $this->addRecord(static::NOTICE, $message, $context);
+}
+public function addWarning($message, array $context = array())
+{
+return $this->addRecord(static::WARNING, $message, $context);
+}
+public function addError($message, array $context = array())
+{
+return $this->addRecord(static::ERROR, $message, $context);
+}
+public function addCritical($message, array $context = array())
+{
+return $this->addRecord(static::CRITICAL, $message, $context);
+}
+public function addAlert($message, array $context = array())
+{
+return $this->addRecord(static::ALERT, $message, $context);
+}
+public function addEmergency($message, array $context = array())
+{
+return $this->addRecord(static::EMERGENCY, $message, $context);
+}
+public static function getLevelName($level)
+{
+if (!isset(static::$levels[$level])) {
+throw new InvalidArgumentException('Level "'.$level.'" is not defined, use one of: '.implode(', ', array_keys(static::$levels)));
+}
+return static::$levels[$level];
+}
+public function isHandling($level)
+{
+$record = array('level'=> $level,
+);
+foreach ($this->handlers as $key => $handler) {
+if ($handler->isHandling($record)) {
+return true;
+}
+}
+return false;
+}
+public function log($level, $message, array $context = array())
+{
+if (is_string($level) && defined(__CLASS__.'::'.strtoupper($level))) {
+$level = constant(__CLASS__.'::'.strtoupper($level));
+}
+return $this->addRecord($level, $message, $context);
+}
+public function debug($message, array $context = array())
+{
+return $this->addRecord(static::DEBUG, $message, $context);
+}
+public function info($message, array $context = array())
+{
+return $this->addRecord(static::INFO, $message, $context);
+}
+public function notice($message, array $context = array())
+{
+return $this->addRecord(static::NOTICE, $message, $context);
+}
+public function warn($message, array $context = array())
+{
+return $this->addRecord(static::WARNING, $message, $context);
+}
+public function warning($message, array $context = array())
+{
+return $this->addRecord(static::WARNING, $message, $context);
+}
+public function err($message, array $context = array())
+{
+return $this->addRecord(static::ERROR, $message, $context);
+}
+public function error($message, array $context = array())
+{
+return $this->addRecord(static::ERROR, $message, $context);
+}
+public function crit($message, array $context = array())
+{
+return $this->addRecord(static::CRITICAL, $message, $context);
+}
+public function critical($message, array $context = array())
+{
+return $this->addRecord(static::CRITICAL, $message, $context);
+}
+public function alert($message, array $context = array())
+{
+return $this->addRecord(static::ALERT, $message, $context);
+}
+public function emerg($message, array $context = array())
+{
+return $this->addRecord(static::EMERGENCY, $message, $context);
+}
+public function emergency($message, array $context = array())
+{
+return $this->addRecord(static::EMERGENCY, $message, $context);
+}
+}
+}
+namespace Sensio\Bundle\FrameworkExtraBundle\Configuration
+{
+interface ConfigurationInterface
+{
+function getAliasName();
+function allowArray();
+}
+}
+namespace Sensio\Bundle\FrameworkExtraBundle\Configuration
+{
+abstract class ConfigurationAnnotation implements ConfigurationInterface
+{
+public function __construct(array $values)
+{
+foreach ($values as $k => $v) {
+if (!method_exists($this, $name ='set'.$k)) {
+throw new \RuntimeException(sprintf('Unknown key "%s" for annotation "@%s".', $k, get_class($this)));
+}
+$this->$name($v);
+}
+}
+}
+}
+namespace Sensio\Bundle\FrameworkExtraBundle\EventListener
+{
+use Symfony\Component\HttpKernel\Event\FilterResponseEvent;
+use Symfony\Component\HttpFoundation\Response;
+class CacheListener
+{
+public function onKernelResponse(FilterResponseEvent $event)
+{
+if (!$configuration = $event->getRequest()->attributes->get('_cache')) {
+return;
+}
+$response = $event->getResponse();
+if (!$response->isSuccessful()) {
+return;
+}
+if (null !== $configuration->getSMaxAge()) {
+$response->setSharedMaxAge($configuration->getSMaxAge());
+}
+if (null !== $configuration->getMaxAge()) {
+$response->setMaxAge($configuration->getMaxAge());
+}
+if (null !== $configuration->getExpires()) {
+$date = \DateTime::createFromFormat('U', strtotime($configuration->getExpires()), new \DateTimeZone('UTC'));
+$response->setExpires($date);
+}
+if (null !== $configuration->getVary()) {
+$response->setVary($configuration->getVary());
+}
+if ($configuration->isPublic()) {
+$response->setPublic();
+}
+$event->setResponse($response);
+}
+}
+}
+namespace Sensio\Bundle\FrameworkExtraBundle\EventListener
+{
+use Doctrine\Common\Annotations\Reader;
+use Symfony\Component\HttpKernel\Event\FilterControllerEvent;
+use Sensio\Bundle\FrameworkExtraBundle\Configuration\ConfigurationInterface;
+use Doctrine\Common\Util\ClassUtils;
+class ControllerListener
+{
+protected $reader;
+public function __construct(Reader $reader)
+{
+$this->reader = $reader;
+}
+public function onKernelController(FilterControllerEvent $event)
+{
+if (!is_array($controller = $event->getController())) {
+return;
+}
+$className = class_exists('Doctrine\Common\Util\ClassUtils') ? ClassUtils::getClass($controller[0]) : get_class($controller[0]);
+$object = new \ReflectionClass($className);
+$method = $object->getMethod($controller[1]);
+$classConfigurations = $this->getConfigurations($this->reader->getClassAnnotations($object));
+$methodConfigurations = $this->getConfigurations($this->reader->getMethodAnnotations($method));
+$configurations = array();
+foreach (array_merge(array_keys($classConfigurations), array_keys($methodConfigurations)) as $key) {
+if (!array_key_exists($key, $classConfigurations)) {
+$configurations[$key] = $methodConfigurations[$key];
+} elseif (!array_key_exists($key, $methodConfigurations)) {
+$configurations[$key] = $classConfigurations[$key];
+} else {
+if (is_array($classConfigurations[$key])) {
+if (!is_array($methodConfigurations[$key])) {
+throw new \UnexpectedValueException('Configurations should both be an array or both not be an array');
+}
+$configurations[$key] = array_merge($classConfigurations[$key], $methodConfigurations[$key]);
+} else {
+$configurations[$key] = $methodConfigurations[$key];
+}
+}
+}
+$request = $event->getRequest();
+foreach ($configurations as $key => $attributes) {
+$request->attributes->set($key, $attributes);
+}
+}
+protected function getConfigurations(array $annotations)
+{
+$configurations = array();
+foreach ($annotations as $configuration) {
+if ($configuration instanceof ConfigurationInterface) {
+if ($configuration->allowArray()) {
+$configurations['_'.$configuration->getAliasName()][] = $configuration;
+} else {
+$configurations['_'.$configuration->getAliasName()] = $configuration;
+}
+}
+}
+return $configurations;
+}
+}
+}
+namespace Sensio\Bundle\FrameworkExtraBundle\EventListener
+{
+use Sensio\Bundle\FrameworkExtraBundle\Configuration\ParamConverter;
+use Sensio\Bundle\FrameworkExtraBundle\Request\ParamConverter\ParamConverterManager;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpKernel\Event\FilterControllerEvent;
+class ParamConverterListener
+{
+protected $manager;
+public function __construct(ParamConverterManager $manager)
+{
+$this->manager = $manager;
+}
+public function onKernelController(FilterControllerEvent $event)
+{
+$controller = $event->getController();
+$request = $event->getRequest();
+$configurations = array();
+if ($configuration = $request->attributes->get('_converters')) {
+foreach (is_array($configuration) ? $configuration : array($configuration) as $configuration) {
+$configurations[$configuration->getName()] = $configuration;
+}
+}
+if (is_array($controller)) {
+$r = new \ReflectionMethod($controller[0], $controller[1]);
+} else {
+$r = new \ReflectionFunction($controller);
+}
+foreach ($r->getParameters() as $param) {
+if (!$param->getClass() || $param->getClass()->isInstance($request)) {
+continue;
+}
+$name = $param->getName();
+if (!isset($configurations[$name])) {
+$configuration = new ParamConverter(array());
+$configuration->setName($name);
+$configuration->setClass($param->getClass()->getName());
+$configurations[$name] = $configuration;
+} elseif (null === $configurations[$name]->getClass()) {
+$configurations[$name]->setClass($param->getClass()->getName());
+}
+$configurations[$name]->setIsOptional($param->isOptional());
+}
+$this->manager->apply($request, $configurations);
+}
+}
+}
+namespace Sensio\Bundle\FrameworkExtraBundle\EventListener
+{
+use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\HttpKernel\Event\FilterControllerEvent;
+use Symfony\Component\HttpKernel\Event\GetResponseForControllerResultEvent;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+use Sensio\Bundle\FrameworkExtraBundle\Configuration\Template;
+class TemplateListener
+{
+protected $container;
+public function __construct(ContainerInterface $container)
+{
+$this->container = $container;
+}
+public function onKernelController(FilterControllerEvent $event)
+{
+if (!is_array($controller = $event->getController())) {
+return;
+}
+$request = $event->getRequest();
+if (!$configuration = $request->attributes->get('_template')) {
+return;
+}
+if (!$configuration->getTemplate()) {
+$guesser = $this->container->get('sensio_framework_extra.view.guesser');
+$configuration->setTemplate($guesser->guessTemplateName($controller, $request, $configuration->getEngine()));
+}
+$request->attributes->set('_template', $configuration->getTemplate());
+$request->attributes->set('_template_vars', $configuration->getVars());
+$request->attributes->set('_template_streamable', $configuration->isStreamable());
+if (!$configuration->getVars()) {
+$r = new \ReflectionObject($controller[0]);
+$vars = array();
+foreach ($r->getMethod($controller[1])->getParameters() as $param) {
+$vars[] = $param->getName();
+}
+$request->attributes->set('_template_default_vars', $vars);
+}
+}
+public function onKernelView(GetResponseForControllerResultEvent $event)
+{
+$request = $event->getRequest();
+$parameters = $event->getControllerResult();
+$templating = $this->container->get('templating');
+if (null === $parameters) {
+if (!$vars = $request->attributes->get('_template_vars')) {
+if (!$vars = $request->attributes->get('_template_default_vars')) {
+return;
+}
+}
+$parameters = array();
+foreach ($vars as $var) {
+$parameters[$var] = $request->attributes->get($var);
+}
+}
+if (!is_array($parameters)) {
+return $parameters;
+}
+if (!$template = $request->attributes->get('_template')) {
+return $parameters;
+}
+if (!$request->attributes->get('_template_streamable')) {
+$event->setResponse($templating->renderResponse($template, $parameters));
+} else {
+$callback = function () use ($templating, $template, $parameters) {
+return $templating->stream($template, $parameters);
+};
+$event->setResponse(new StreamedResponse($callback));
+}
+}
+}
+}
+namespace Sensio\Bundle\FrameworkExtraBundle\Request\ParamConverter
+{
+use Sensio\Bundle\FrameworkExtraBundle\Configuration\ConfigurationInterface;
+use Symfony\Component\HttpFoundation\Request;
+interface ParamConverterInterface
+{
+function apply(Request $request, ConfigurationInterface $configuration);
+function supports(ConfigurationInterface $configuration);
+}
+}
+namespace Sensio\Bundle\FrameworkExtraBundle\Request\ParamConverter
+{
+use Sensio\Bundle\FrameworkExtraBundle\Configuration\ConfigurationInterface;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use DateTime;
+class DateTimeParamConverter implements ParamConverterInterface
+{
+public function apply(Request $request, ConfigurationInterface $configuration)
+{
+$param = $configuration->getName();
+if (!$request->attributes->has($param)) {
+return false;
+}
+$options = $configuration->getOptions();
+$value = $request->attributes->get($param);
+$date = isset($options['format'])
+? DateTime::createFromFormat($options['format'], $value)
+: new DateTime($value);
+if (!$date) {
+throw new NotFoundHttpException('Invalid date given.');
+}
+$request->attributes->set($param, $date);
+return true;
+}
+public function supports(ConfigurationInterface $configuration)
+{
+if (null === $configuration->getClass()) {
+return false;
+}
+return"DateTime"=== $configuration->getClass();
+}
+}
+}
+namespace Sensio\Bundle\FrameworkExtraBundle\Request\ParamConverter
+{
+use Sensio\Bundle\FrameworkExtraBundle\Configuration\ConfigurationInterface;
+use Sensio\Bundle\FrameworkExtraBundle\Configuration\ParamConverter;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\HttpFoundation\Request;
+use Doctrine\Common\Persistence\ManagerRegistry;
+class DoctrineParamConverter implements ParamConverterInterface
+{
+protected $registry;
+public function __construct(ManagerRegistry $registry = null)
+{
+$this->registry = $registry;
+}
+public function apply(Request $request, ConfigurationInterface $configuration)
+{
+$name = $configuration->getName();
+$class = $configuration->getClass();
+$options = $this->getOptions($configuration);
+if (null === $request->attributes->get($name, false)) {
+$configuration->setIsOptional(true);
+}
+if (false === $object = $this->find($class, $request, $options, $name)) {
+if (false === $object = $this->findOneBy($class, $request, $options)) {
+if ($configuration->isOptional()) {
+$object = null;
+} else {
+throw new \LogicException('Unable to guess how to get a Doctrine instance from the request information.');
+}
+}
+}
+if (null === $object && false === $configuration->isOptional()) {
+throw new NotFoundHttpException(sprintf('%s object not found.', $class));
+}
+$request->attributes->set($name, $object);
+return true;
+}
+protected function find($class, Request $request, $options, $name)
+{
+if ($options['mapping'] || $options['exclude']) {
+return false;
+}
+$id = $this->getIdentifier($request, $options, $name);
+if (false === $id || null === $id) {
+return false;
+}
+if (isset($options['repository_method'])) {
+$method = $options['repository_method'];
+} else {
+$method ='find';
+}
+return $this->getManager($options['entity_manager'], $class)->getRepository($class)->$method($id);
+}
+protected function getIdentifier(Request $request, $options, $name)
+{
+if (isset($options['id'])) {
+if (!is_array($options['id'])) {
+$name = $options['id'];
+} elseif (is_array($options['id'])) {
+$id = array();
+foreach ($options['id'] as $field) {
+$id[$field] = $request->attributes->get($field);
+}
+return $id;
+}
+}
+if ($request->attributes->has($name)) {
+return $request->attributes->get($name);
+}
+if ($request->attributes->has('id')) {
+return $request->attributes->get('id');
+}
+return false;
+}
+protected function findOneBy($class, Request $request, $options)
+{
+if (!$options['mapping']) {
+$keys = $request->attributes->keys();
+$options['mapping'] = $keys ? array_combine($keys, $keys) : array();
+}
+foreach ($options['exclude'] as $exclude) {
+unset($options['mapping'][$exclude]);
+}
+if (!$options['mapping']) {
+return false;
+}
+$criteria = array();
+$em = $this->getManager($options['entity_manager'], $class);
+$metadata = $em->getClassMetadata($class);
+foreach ($options['mapping'] as $attribute => $field) {
+if ($metadata->hasField($field) || ($metadata->hasAssociation($field) && $metadata->isSingleValuedAssociation($field))) {
+$criteria[$field] = $request->attributes->get($attribute);
+}
+}
+if (!$criteria) {
+return false;
+}
+if (isset($options['repository_method'])) {
+$method = $options['repository_method'];
+} else {
+$method ='findOneBy';
+}
+return $em->getRepository($class)->$method($criteria);
+}
+public function supports(ConfigurationInterface $configuration)
+{
+if (!$configuration instanceof ParamConverter) {
+return false;
+}
+if (null === $this->registry || !count($this->registry->getManagers())) {
+return false;
+}
+if (null === $configuration->getClass()) {
+return false;
+}
+$options = $this->getOptions($configuration);
+$em = $this->getManager($options['entity_manager'], $configuration->getClass());
+if (null === $em) {
+return false;
+}
+return ! $em->getMetadataFactory()->isTransient($configuration->getClass());
+}
+protected function getOptions(ConfigurationInterface $configuration)
+{
+return array_replace(array('entity_manager'=> null,'exclude'=> array(),'mapping'=> array(),
+), $configuration->getOptions());
+}
+private function getManager($name, $class)
+{
+if (null === $name) {
+return $this->registry->getManagerForClass($class);
+}
+return $this->registry->getManager($name);
+}
+}
+}
+namespace Sensio\Bundle\FrameworkExtraBundle\Request\ParamConverter
+{
+use Symfony\Component\HttpFoundation\Request;
+class ParamConverterManager
+{
+protected $converters = array();
+protected $namedConverters = array();
+public function apply(Request $request, $configurations)
+{
+if (is_object($configurations)) {
+$configurations = array($configurations);
+}
+foreach ($configurations as $configuration) {
+$this->applyConverter($request, $configuration);
+}
+}
+protected function applyConverter(Request $request, $configuration)
+{
+$value = $request->attributes->get($configuration->getName());
+$className = $configuration->getClass();
+if (is_object($value) && $value instanceof $className) {
+return;
+}
+if ($converterName = $configuration->getConverter()) {
+if (!isset($this->namedConverters[$converterName])) {
+throw new \RuntimeException(sprintf("No converter named '%s' found for conversion of parameter '%s'.",
+$converterName, $configuration->getName()
+));
+}
+$converter = $this->namedConverters[$converterName];
+if (!$converter->supports($configuration)) {
+throw new \RuntimeException(sprintf("Converter '%s' does not support conversion of parameter '%s'.",
+$converterName, $configuration->getName()
+));
+}
+$converter->apply($request, $configuration);
+return;
+}
+foreach ($this->all() as $converter) {
+if ($converter->supports($configuration)) {
+if ($converter->apply($request, $configuration)) {
+return;
+}
+}
+}
+}
+public function add(ParamConverterInterface $converter, $priority = 0, $name = null)
+{
+if ($priority !== null) {
+if (!isset($this->converters[$priority])) {
+$this->converters[$priority] = array();
+}
+$this->converters[$priority][] = $converter;
+}
+if (null !== $name) {
+$this->namedConverters[$name] = $converter;
+}
+}
+public function all()
+{
+krsort($this->converters);
+$converters = array();
+foreach ($this->converters as $all) {
+$converters = array_merge($converters, $all);
+}
+return $converters;
+}
+}
+}
+namespace Sonata\AdminBundle\Admin
+{
+use Sonata\AdminBundle\Admin\Pool;
+use Sonata\AdminBundle\Admin\FieldDescriptionInterface;
+use Sonata\AdminBundle\Builder\FormContractorInterface;
+use Sonata\AdminBundle\Builder\ListBuilderInterface;
+use Sonata\AdminBundle\Builder\DatagridBuilderInterface;
+use Sonata\AdminBundle\Security\Handler\SecurityHandlerInterface;
+use Sonata\AdminBundle\Builder\RouteBuilderInterface;
+use Sonata\AdminBundle\Translator\LabelTranslatorStrategyInterface;
+use Sonata\AdminBundle\Validator\ErrorElement;
+use Sonata\AdminBundle\Route\RouteGeneratorInterface;
+use Knp\Menu\FactoryInterface as MenuFactoryInterface;
+use Symfony\Component\Validator\ValidatorInterface;
+use Symfony\Component\Translation\TranslatorInterface;
+use Symfony\Component\HttpFoundation\Request;
+interface AdminInterface
+{
+public function setFormContractor(FormContractorInterface $formContractor);
+public function setListBuilder(ListBuilderInterface $listBuilder);
+public function setDatagridBuilder(DatagridBuilderInterface $datagridBuilder);
+public function setTranslator(TranslatorInterface $translator);
+public function setRequest(Request $request);
+public function setConfigurationPool(Pool $pool);
+public function setRouteGenerator(RouteGeneratorInterface $routeGenerator);
+public function getClass();
+public function attachAdminClass(FieldDescriptionInterface $fieldDescription);
+public function getDatagrid();
+public function generateUrl($name, array $parameters = array(), $absolute = false);
+public function getModelManager();
+public function getManagerType();
+public function createQuery($context ='list');
+public function getFormBuilder();
+public function getFormFieldDescription($name);
+public function getRequest();
+public function getCode();
+public function getSecurityInformation();
+public function setParentFieldDescription(FieldDescriptionInterface $parentFieldDescription);
+public function trans($id, array $parameters = array(), $domain = null, $locale = null);
+public function getRouterIdParameter();
+public function addShowFieldDescription($name, FieldDescriptionInterface $fieldDescription);
+public function addListFieldDescription($name, FieldDescriptionInterface $fieldDescription);
+public function addFilterFieldDescription($name, FieldDescriptionInterface $fieldDescription);
+public function getList();
+public function setSecurityHandler(SecurityHandlerInterface $securityHandler);
+public function getSecurityHandler();
+public function isGranted($name, $object = null);
+public function getUrlsafeIdentifier($entity);
+public function getNormalizedIdentifier($entity);
+public function id($entity);
+public function setValidator(ValidatorInterface $validator);
+public function getValidator();
+public function getShow();
+public function setFormTheme(array $formTheme);
+public function getFormTheme();
+public function setFilterTheme(array $filterTheme);
+public function getFilterTheme();
+public function addExtension(AdminExtensionInterface $extension);
+public function getExtensions();
+public function setMenuFactory(MenuFactoryInterface $menuFactory);
+public function getMenuFactory();
+public function setRouteBuilder(RouteBuilderInterface $routeBuilder);
+public function getRouteBuilder();
+public function toString($object);
+public function setLabelTranslatorStrategy(LabelTranslatorStrategyInterface $labelTranslatorStrategy);
+public function getLabelTranslatorStrategy();
+public function addChild(AdminInterface $child);
+public function hasChild($code);
+public function getChildren();
+public function getChild($code);
+public function getNewInstance();
+public function setUniqid($uniqId);
+public function getObject($id);
+public function setSubject($subject);
+public function getSubject();
+public function getListFieldDescription($name);
+public function configure();
+public function update($object);
+public function create($object);
+public function delete($object);
+public function preUpdate($object);
+public function postUpdate($object);
+public function prePersist($object);
+public function postPersist($object);
+public function preRemove($object);
+public function postRemove($object);
+public function hasSubject();
+public function validate(ErrorElement $errorElement, $object);
+public function showIn($context);
+public function createObjectSecurity($object);
+public function getRoute($name);
+public function getParent();
+public function setParent(AdminInterface $admin);
+public function getTemplate($name);
+}
+}
+namespace Symfony\Component\Security\Acl\Model
+{
+interface DomainObjectInterface
+{
+public function getObjectIdentifier();
+}
+}
+namespace Sonata\AdminBundle\Admin
+{
+use Symfony\Component\Form\Form;
+use Symfony\Component\Form\FormBuilder;
+use Symfony\Component\PropertyAccess\PropertyPath;
+use Symfony\Component\PropertyAccess\PropertyAccess;
+use Symfony\Component\Validator\ValidatorInterface;
+use Symfony\Component\Translation\TranslatorInterface;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Security\Acl\Model\DomainObjectInterface;
+use Sonata\AdminBundle\Form\FormMapper;
+use Sonata\AdminBundle\Datagrid\ListMapper;
+use Sonata\AdminBundle\Datagrid\DatagridMapper;
+use Sonata\AdminBundle\Show\ShowMapper;
+use Sonata\AdminBundle\Admin\Pool;
+use Sonata\AdminBundle\Validator\ErrorElement;
+use Sonata\AdminBundle\Validator\Constraints\InlineConstraint;
+use Sonata\AdminBundle\Translator\LabelTranslatorStrategyInterface;
+use Sonata\AdminBundle\Builder\FormContractorInterface;
+use Sonata\AdminBundle\Builder\ListBuilderInterface;
+use Sonata\AdminBundle\Builder\DatagridBuilderInterface;
+use Sonata\AdminBundle\Builder\ShowBuilderInterface;
+use Sonata\AdminBundle\Builder\RouteBuilderInterface;
+use Sonata\AdminBundle\Route\RouteGeneratorInterface;
+use Sonata\AdminBundle\Security\Handler\SecurityHandlerInterface;
+use Sonata\AdminBundle\Route\RouteCollection;
+use Sonata\AdminBundle\Model\ModelManagerInterface;
+use Knp\Menu\FactoryInterface as MenuFactoryInterface;
+use Knp\Menu\ItemInterface as MenuItemInterface;
+abstract class Admin implements AdminInterface, DomainObjectInterface
+{
+const CONTEXT_MENU ='menu';
+const CONTEXT_DASHBOARD ='dashboard';
+private $class;
+private $subClasses = array();
+private $list;
+protected $listFieldDescriptions = array();
+private $show;
+protected $showFieldDescriptions = array();
+private $form;
+protected $formFieldDescriptions = array();
+private $filter;
+protected $filterFieldDescriptions = array();
+protected $maxPerPage = 25;
+protected $maxPageLinks = 25;
+protected $baseRouteName;
+protected $baseRoutePattern;
+protected $baseControllerName;
+private $formGroups = false;
+private $showGroups = false;
+protected $classnameLabel;
+protected $translationDomain ='messages';
+protected $formOptions = array();
+protected $datagridValues = array('_page'=> 1,'_per_page'=> 25,
+);
+protected $perPageOptions = array(15, 25, 50, 100, 150, 200);
+protected $code;
+protected $label;
+protected $persistFilters = false;
+protected $routes;
+protected $subject;
+protected $children = array();
+protected $parent = null;
+protected $baseCodeRoute ='';
+protected $parentAssociationMapping = null;
+protected $parentFieldDescription;
+protected $currentChild = false;
+protected $uniqid;
+protected $modelManager;
+private $managerType;
+protected $request;
+protected $translator;
+protected $formContractor;
+protected $listBuilder;
+protected $showBuilder;
+protected $datagridBuilder;
+protected $routeBuilder;
+protected $datagrid;
+protected $routeGenerator;
+protected $breadcrumbs = array();
+protected $securityHandler = null;
+protected $validator = null;
+protected $configurationPool;
+protected $menu;
+protected $menuFactory;
+protected $loaded = array('view_fields'=> false,'view_groups'=> false,'routes'=> false,'side_menu'=> false,
+);
+protected $formTheme = array();
+protected $filterTheme = array();
+protected $templates = array();
+protected $extensions = array();
+protected $labelTranslatorStrategy;
+protected $supportsPreviewMode = false;
+protected $securityInformation = array();
+protected function configureFormFields(FormMapper $form)
+{
+}
+protected function configureListFields(ListMapper $list)
+{
+}
+protected function configureDatagridFilters(DatagridMapper $filter)
+{
+}
+protected function configureShowField(ShowMapper $show)
+{
+}
+protected function configureShowFields(ShowMapper $filter)
+{
+}
+protected function configureRoutes(RouteCollection $collection)
+{
+}
+protected function configureSideMenu(MenuItemInterface $menu, $action, AdminInterface $childAdmin = null)
+{
+}
+public function getExportFormats()
+{
+return array('json','xml','csv','xls');
+}
+public function getExportFields()
+{
+return $this->getModelManager()->getExportFields($this->getClass());
+}
+public function getDataSourceIterator()
+{
+$datagrid = $this->getDatagrid();
+$datagrid->buildPager();
+return $this->getModelManager()->getDataSourceIterator($datagrid, $this->getExportFields());
+}
+public function validate(ErrorElement $errorElement, $object)
+{
+}
+public function __construct($code, $class, $baseControllerName)
+{
+$this->code = $code;
+$this->class = $class;
+$this->baseControllerName = $baseControllerName;
+$this->predefinePerPageOptions();
+$this->datagridValues['_per_page'] = $this->maxPerPage;
+}
+public function initialize()
+{
+$this->uniqid ="s".uniqid();
+if (!$this->classnameLabel) {
+$this->classnameLabel = substr($this->getClass(), strrpos($this->getClass(),'\\') + 1);
+}
+$this->baseCodeRoute = $this->getCode();
+$this->configure();
+}
+public function configure()
+{
+}
+public function update($object)
+{
+$this->preUpdate($object);
+$this->getModelManager()->update($object);
+$this->postUpdate($object);
+}
+public function create($object)
+{
+$this->prePersist($object);
+$this->getModelManager()->create($object);
+$this->postPersist($object);
+$this->createObjectSecurity($object);
+}
+public function delete($object)
+{
+$this->preRemove($object);
+$this->getSecurityHandler()->deleteObjectSecurity($this, $object);
+$this->getModelManager()->delete($object);
+$this->postRemove($object);
+}
+public function preUpdate($object)
+{
+}
+public function postUpdate($object)
+{
+}
+public function prePersist($object)
+{
+}
+public function postPersist($object)
+{
+}
+public function preRemove($object)
+{
+}
+public function postRemove($object)
+{
+}
+protected function buildShow()
+{
+if ($this->show) {
+return;
+}
+$this->show = new FieldDescriptionCollection();
+$mapper = new ShowMapper($this->showBuilder, $this->show, $this);
+$this->configureShowField($mapper); $this->configureShowFields($mapper);
+foreach ($this->getExtensions() as $extension) {
+$extension->configureShowFields($mapper);
+}
+}
+protected function buildList()
+{
+if ($this->list) {
+return;
+}
+$this->list = $this->getListBuilder()->getBaseList();
+$mapper = new ListMapper($this->getListBuilder(), $this->list, $this);
+if (count($this->getBatchActions()) > 0) {
+$fieldDescription = $this->getModelManager()->getNewFieldDescriptionInstance($this->getClass(),'batch', array('label'=>'batch','code'=>'_batch','sortable'=> false
+));
+$fieldDescription->setAdmin($this);
+$fieldDescription->setTemplate($this->getTemplate('batch'));
+$mapper->add($fieldDescription,'batch');
+}
+$this->configureListFields($mapper);
+foreach ($this->getExtensions() as $extension) {
+$extension->configureListFields($mapper);
+}
+}
+public function getFilterParameters()
+{
+$parameters = array();
+if ($this->hasRequest()) {
+$filters = $this->request->query->get('filter', array());
+if ($this->persistFilters) {
+if ($filters == array() && $this->request->query->get('filters') !='reset') {
+$filters = $this->request->getSession()->get($this->getCode().'.filter.parameters', array());
+} else {
+$this->request->getSession()->set($this->getCode().'.filter.parameters', $filters);
+}
+}
+$parameters = array_merge(
+$this->getModelManager()->getDefaultSortValues($this->getClass()),
+$this->datagridValues,
+$filters
+);
+if (!$this->determinedPerPageValue($parameters['_per_page'])) {
+$parameters['_per_page'] = $this->maxPerPage;
+}
+if ($this->isChild() && $this->getParentAssociationMapping()) {
+$parameters[$this->getParentAssociationMapping()] = array('value'=> $this->request->get($this->getParent()->getIdParameter()));
+}
+}
+return $parameters;
+}
+public function buildDatagrid()
+{
+if ($this->datagrid) {
+return;
+}
+$filterParameters = $this->getFilterParameters();
+if (isset($filterParameters['_sort_by']) && is_string($filterParameters['_sort_by'])) {
+if ($this->hasListFieldDescription($filterParameters['_sort_by'])) {
+$filterParameters['_sort_by'] = $this->getListFieldDescription($filterParameters['_sort_by']);
+} else {
+$filterParameters['_sort_by'] = $this->getModelManager()->getNewFieldDescriptionInstance(
+$this->getClass(),
+$filterParameters['_sort_by'],
+array()
+);
+$this->getListBuilder()->buildField(null, $filterParameters['_sort_by'], $this);
+}
+}
+$this->datagrid = $this->getDatagridBuilder()->getBaseDatagrid($this, $filterParameters);
+$this->datagrid->getPager()->setMaxPageLinks($this->maxPageLinks);
+$mapper = new DatagridMapper($this->getDatagridBuilder(), $this->datagrid, $this);
+$this->configureDatagridFilters($mapper);
+if ($this->isChild() && $this->getParentAssociationMapping() && !$mapper->has($this->getParentAssociationMapping())) {
+$mapper->add($this->getParentAssociationMapping(), null, array('field_type'=>'sonata_type_model_reference','field_options'=> array('model_manager'=> $this->getModelManager()
+),'operator_type'=>'hidden'));
+}
+foreach ($this->getExtensions() as $extension) {
+$extension->configureDatagridFilters($mapper);
+}
+}
+public function getParentAssociationMapping()
+{
+return $this->parentAssociationMapping;
+}
+protected function buildForm()
+{
+if ($this->form) {
+return;
+}
+if ($this->isChild() && $this->getParentAssociationMapping()) {
+$parent = $this->getParent()->getObject($this->request->get($this->getParent()->getIdParameter()));
+$propertyAccessor = PropertyAccess::getPropertyAccessor();
+$propertyPath = new PropertyPath($this->getParentAssociationMapping());
+$object = $this->getSubject();
+$propertyAccessor->setValue($object, $propertyPath, $parent);
+}
+$this->form = $this->getFormBuilder()->getForm();
+}
+public function getBaseRoutePattern()
+{
+if (!$this->baseRoutePattern) {
+preg_match('@([A-Za-z0-9]*)\\\([A-Za-z0-9]*)Bundle\\\(Entity|Document|Model)\\\(.*)@', $this->getClass(), $matches);
+if (!$matches) {
+throw new \RuntimeException(sprintf('Please define a default `baseRoutePattern` value for the admin class `%s`', get_class($this)));
+}
+if ($this->isChild()) { $this->baseRoutePattern = sprintf('%s/{id}/%s',
+$this->getParent()->getBaseRoutePattern(),
+$this->urlize($matches[4],'-')
+);
+} else {
+$this->baseRoutePattern = sprintf('/%s/%s/%s',
+$this->urlize($matches[1],'-'),
+$this->urlize($matches[2],'-'),
+$this->urlize($matches[4],'-')
+);
+}
+}
+return $this->baseRoutePattern;
+}
+public function getBaseRouteName()
+{
+if (!$this->baseRouteName) {
+preg_match('@([A-Za-z0-9]*)\\\([A-Za-z0-9]*)Bundle\\\(Entity|Document|Model)\\\(.*)@', $this->getClass(), $matches);
+if (!$matches) {
+throw new \RuntimeException(sprintf('Please define a default `baseRouteName` value for the admin class `%s`', get_class($this)));
+}
+if ($this->isChild()) { $this->baseRouteName = sprintf('%s_%s',
+$this->getParent()->getBaseRouteName(),
+$this->urlize($matches[4])
+);
+} else {
+$this->baseRouteName = sprintf('admin_%s_%s_%s',
+$this->urlize($matches[1]),
+$this->urlize($matches[2]),
+$this->urlize($matches[4])
+);
+}
+}
+return $this->baseRouteName;
+}
+public function urlize($word, $sep ='_')
+{
+return strtolower(preg_replace('/[^a-z0-9_]/i', $sep.'$1', $word));
+}
+public function getClass()
+{
+return $this->class;
+}
+public function getSubClasses()
+{
+return $this->subClasses;
+}
+public function setSubClasses(array $subClasses)
+{
+$this->subClasses = $subClasses;
+}
+protected function getSubClass($name)
+{
+if ($this->hasSubClass($name)) {
+return $this->subClasses[$name];
+}
+return null;
+}
+public function hasSubClass($name)
+{
+return isset($this->subClasses[$name]);
+}
+public function hasActiveSubClass()
+{
+if ($this->request) {
+return null !== $this->getRequest()->get('subclass');
+}
+return false;
+}
+public function getActiveSubClass()
+{
+if (!$this->hasActiveSubClass()) {
+return null;
+}
+$subClass = $this->getRequest()->get('subclass');
+return $this->getSubClass($subClass);
+}
+public function getBatchActions()
+{
+$actions = array();
+if ($this->hasRoute('delete') && $this->isGranted('DELETE')) {
+$actions['delete'] = array('label'=> $this->trans('action_delete', array(),'SonataAdminBundle'),'ask_confirmation'=> true, );
+}
+return $actions;
+}
+public function getRoutes()
+{
+$this->buildRoutes();
+return $this->routes;
+}
+public function getRouterIdParameter()
+{
+return $this->isChild() ?'{childId}':'{id}';
+}
+public function getIdParameter()
+{
+return $this->isChild() ?'childId':'id';
+}
+public function buildRoutes()
+{
+if ($this->loaded['routes']) {
+return;
+}
+$this->loaded['routes'] = true;
+$this->routes = new RouteCollection(
+$this->getBaseCodeRoute(),
+$this->getBaseRouteName(),
+$this->getBaseRoutePattern(),
+$this->getBaseControllerName()
+);
+$this->routeBuilder->build($this, $this->routes);
+$this->configureRoutes($this->routes);
+foreach ($this->getExtensions() as $extension) {
+$extension->configureRoutes($this, $this->routes);
+}
+}
+public function getRoute($name)
+{
+$this->buildRoutes();
+if (!$this->routes->has($name)) {
+return false;
+}
+return $this->routes->get($name);
+}
+public function hasRoute($name)
+{
+$this->buildRoutes();
+if (
+! $this->isChild()
+&& strpos($name,'.') !== false
+&& strpos($name, $this->getBaseCodeRoute() .'|') !== 0
+&& strpos($name, $this->getBaseCodeRoute() .'.') !== 0
+) {
+$name = $this->getCode() .'|'. $name;
+}
+return $this->routes->has($name);
+}
+public function generateObjectUrl($name, $object, array $parameters = array(), $absolute = false)
+{
+$parameters['id'] = $this->getUrlsafeIdentifier($object);
+return $this->generateUrl($name, $parameters, $absolute);
+}
+public function generateUrl($name, array $parameters = array(), $absolute = false)
+{
+return $this->routeGenerator->generateUrl($this, $name, $parameters, $absolute);
+}
+public function setTemplates(array $templates)
+{
+$this->templates = $templates;
+}
+public function setTemplate($name, $template)
+{
+$this->templates[$name] = $template;
+}
+public function getTemplates()
+{
+return $this->templates;
+}
+public function getTemplate($name)
+{
+if (isset($this->templates[$name])) {
+return $this->templates[$name];
+}
+return null;
+}
+public function getNewInstance()
+{
+return $this->getModelManager()->getModelInstance($this->getActiveSubClass() ?: $this->getClass());
+}
+public function getFormBuilder()
+{
+$this->formOptions['data_class'] = $this->getActiveSubClass() ?: $this->getClass();
+$formBuilder = $this->getFormContractor()->getFormBuilder(
+$this->getUniqid(),
+$this->formOptions
+);
+$this->defineFormBuilder($formBuilder);
+return $formBuilder;
+}
+public function defineFormBuilder(FormBuilder $formBuilder)
+{
+$mapper = new FormMapper($this->getFormContractor(), $formBuilder, $this);
+$this->configureFormFields($mapper);
+foreach ($this->getExtensions() as $extension) {
+$extension->configureFormFields($mapper);
+}
+$this->attachInlineValidator();
+}
+protected function attachInlineValidator()
+{
+$admin = $this;
+$metadata = $this->validator->getMetadataFactory()->getMetadataFor($this->getClass());
+$metadata->addConstraint(new InlineConstraint(array('service'=> $this,'method'=> function(ErrorElement $errorElement, $object) use ($admin) {
+if ($admin->hasSubject() && spl_object_hash($object) !== spl_object_hash($admin->getSubject())) {
+return;
+}
+$admin->validate($errorElement, $object);
+foreach ($admin->getExtensions() as $extension) {
+$extension->validate($admin, $errorElement, $object);
+}
+}
+)));
+}
+public function attachAdminClass(FieldDescriptionInterface $fieldDescription)
+{
+$pool = $this->getConfigurationPool();
+$adminCode = $fieldDescription->getOption('admin_code');
+if ($adminCode !== null) {
+$admin = $pool->getAdminByAdminCode($adminCode);
+} else {
+$admin = $pool->getAdminByClass($fieldDescription->getTargetEntity());
+}
+if (!$admin) {
+return;
+}
+if ($this->hasRequest()) {
+$admin->setRequest($this->getRequest());
+}
+$fieldDescription->setAssociationAdmin($admin);
+}
+public function getObject($id)
+{
+return $this->getModelManager()->find($this->getClass(), $id);
+}
+public function getForm()
+{
+$this->buildForm();
+return $this->form;
+}
+public function getList()
+{
+$this->buildList();
+return $this->list;
+}
+public function createQuery($context ='list')
+{
+$query = $this->getModelManager()->createQuery($this->class);
+foreach ($this->extensions as $extension) {
+$extension->configureQuery($this, $query, $context);
+}
+return $query;
+}
+public function getDatagrid()
+{
+$this->buildDatagrid();
+return $this->datagrid;
+}
+public function buildSideMenu($action, AdminInterface $childAdmin = null)
+{
+if ($this->loaded['side_menu']) {
+return;
+}
+$this->loaded['side_menu'] = true;
+$menu = $this->menuFactory->createItem('root');
+$menu->setChildrenAttribute('class','nav nav-list');
+$menu->setCurrentUri($this->getRequest()->getBaseUrl().$this->getRequest()->getPathInfo());
+$this->configureSideMenu($menu, $action, $childAdmin);
+foreach ($this->getExtensions() as $extension) {
+$extension->configureSideMenu($this, $menu, $action, $childAdmin);
+}
+$this->menu = $menu;
+}
+public function getSideMenu($action, AdminInterface $childAdmin = null)
+{
+if ($this->isChild()) {
+return $this->getParent()->getSideMenu($action, $this);
+}
+$this->buildSideMenu($action, $childAdmin);
+return $this->menu;
+}
+public function getRootCode()
+{
+return $this->getRoot()->getCode();
+}
+public function getRoot()
+{
+$parentFieldDescription = $this->getParentFieldDescription();
+if (!$parentFieldDescription) {
+return $this;
+}
+return $parentFieldDescription->getAdmin()->getRoot();
+}
+public function setBaseControllerName($baseControllerName)
+{
+$this->baseControllerName = $baseControllerName;
+}
+public function getBaseControllerName()
+{
+return $this->baseControllerName;
+}
+public function setLabel($label)
+{
+$this->label = $label;
+}
+public function getLabel()
+{
+return $this->label;
+}
+public function setPersistFilters($persist)
+{
+$this->persistFilters = $persist;
+}
+public function setMaxPerPage($maxPerPage)
+{
+$this->maxPerPage = $maxPerPage;
+}
+public function getMaxPerPage()
+{
+return $this->maxPerPage;
+}
+public function setMaxPageLinks($maxPageLinks)
+{
+$this->maxPageLinks = $maxPageLinks;
+}
+public function getMaxPageLinks()
+{
+return $this->maxPageLinks;
+}
+public function getFormGroups()
+{
+return $this->formGroups;
+}
+public function setFormGroups(array $formGroups)
+{
+$this->formGroups = $formGroups;
+}
+public function reorderFormGroup($group, array $keys)
+{
+$formGroups = $this->getFormGroups();
+$formGroups[$group]['fields'] = array_merge(array_flip($keys), $formGroups[$group]['fields']);
+$this->setFormGroups($formGroups);
+}
+public function getShowGroups()
+{
+return $this->showGroups;
+}
+public function setShowGroups(array $showGroups)
+{
+$this->showGroups = $showGroups;
+}
+public function reorderShowGroup($group, array $keys)
+{
+$showGroups = $this->getShowGroups();
+$showGroups[$group]['fields'] = array_merge(array_flip($keys), $showGroups[$group]['fields']);
+$this->setShowGroups($showGroups);
+}
+public function setParentFieldDescription(FieldDescriptionInterface $parentFieldDescription)
+{
+$this->parentFieldDescription = $parentFieldDescription;
+}
+public function getParentFieldDescription()
+{
+return $this->parentFieldDescription;
+}
+public function hasParentFieldDescription()
+{
+return $this->parentFieldDescription instanceof FieldDescriptionInterface;
+}
+public function setSubject($subject)
+{
+$this->subject = $subject;
+}
+public function getSubject()
+{
+if ($this->subject === null && $this->request) {
+$id = $this->request->get($this->getIdParameter());
+if (!preg_match('#^[0-9A-Fa-f]+$#', $id)) {
+$this->subject = false;
+} else {
+$this->subject = $this->getModelManager()->find($this->getClass(), $id);
+}
+}
+return $this->subject;
+}
+public function hasSubject()
+{
+return $this->subject != null;
+}
+public function getFormFieldDescriptions()
+{
+$this->buildForm();
+return $this->formFieldDescriptions;
+}
+public function getFormFieldDescription($name)
+{
+return $this->hasFormFieldDescription($name) ? $this->formFieldDescriptions[$name] : null;
+}
+public function hasFormFieldDescription($name)
+{
+return array_key_exists($name, $this->formFieldDescriptions) ? true : false;
+}
+public function addFormFieldDescription($name, FieldDescriptionInterface $fieldDescription)
+{
+$this->formFieldDescriptions[$name] = $fieldDescription;
+}
+public function removeFormFieldDescription($name)
+{
+unset($this->formFieldDescriptions[$name]);
+}
+public function getShowFieldDescriptions()
+{
+$this->buildShow();
+return $this->showFieldDescriptions;
+}
+public function getShowFieldDescription($name)
+{
+$this->buildShow();
+return $this->hasShowFieldDescription($name) ? $this->showFieldDescriptions[$name] : null;
+}
+public function hasShowFieldDescription($name)
+{
+return array_key_exists($name, $this->showFieldDescriptions);
+}
+public function addShowFieldDescription($name, FieldDescriptionInterface $fieldDescription)
+{
+$this->showFieldDescriptions[$name] = $fieldDescription;
+}
+public function removeShowFieldDescription($name)
+{
+unset($this->showFieldDescriptions[$name]);
+}
+public function getListFieldDescriptions()
+{
+$this->buildList();
+return $this->listFieldDescriptions;
+}
+public function getListFieldDescription($name)
+{
+return $this->hasListFieldDescription($name) ? $this->listFieldDescriptions[$name] : null;
+}
+public function hasListFieldDescription($name)
+{
+$this->buildList();
+return array_key_exists($name, $this->listFieldDescriptions) ? true : false;
+}
+public function addListFieldDescription($name, FieldDescriptionInterface $fieldDescription)
+{
+$this->listFieldDescriptions[$name] = $fieldDescription;
+}
+public function removeListFieldDescription($name)
+{
+unset($this->listFieldDescriptions[$name]);
+}
+public function getFilterFieldDescription($name)
+{
+return $this->hasFilterFieldDescription($name) ? $this->filterFieldDescriptions[$name] : null;
+}
+public function hasFilterFieldDescription($name)
+{
+return array_key_exists($name, $this->filterFieldDescriptions) ? true : false;
+}
+public function addFilterFieldDescription($name, FieldDescriptionInterface $fieldDescription)
+{
+$this->filterFieldDescriptions[$name] = $fieldDescription;
+}
+public function removeFilterFieldDescription($name)
+{
+unset($this->filterFieldDescriptions[$name]);
+}
+public function getFilterFieldDescriptions()
+{
+$this->buildDatagrid();
+return $this->filterFieldDescriptions;
+}
+public function addChild(AdminInterface $child)
+{
+$this->children[$child->getCode()] = $child;
+$child->setBaseCodeRoute($this->getCode().'|'.$child->getCode());
+$child->setParent($this);
+}
+public function hasChild($code)
+{
+return isset($this->children[$code]);
+}
+public function getChildren()
+{
+return $this->children;
+}
+public function getChild($code)
+{
+return $this->hasChild($code) ? $this->children[$code] : null;
+}
+public function setParent(AdminInterface $parent)
+{
+$this->parent = $parent;
+}
+public function getParent()
+{
+return $this->parent;
+}
+public function isChild()
+{
+return $this->parent instanceof AdminInterface;
+}
+public function hasChildren()
+{
+return count($this->children) > 0;
+}
+public function setUniqid($uniqid)
+{
+$this->uniqid = $uniqid;
+}
+public function getUniqid()
+{
+return $this->uniqid;
+}
+public function getClassnameLabel()
+{
+return $this->classnameLabel;
+}
+public function getPersistentParameters()
+{
+return array();
+}
+public function getPersistentParameter($name)
+{
+$parameters = $this->getPersistentParameters();
+return isset($parameters[$name]) ? $parameters[$name] : null;
+}
+public function getBreadcrumbs($action)
+{
+if ($this->isChild()) {
+return $this->getParent()->getBreadcrumbs($action);
+}
+$menu = $this->buildBreadcrumbs($action);
+do {
+$breadcrumbs[] = $menu;
+} while ($menu = $menu->getParent());
+$breadcrumbs = array_reverse($breadcrumbs);
+array_shift($breadcrumbs);
+return $breadcrumbs;
+}
+public function buildBreadcrumbs($action, MenuItemInterface $menu = null)
+{
+if (isset($this->breadcrumbs[$action])) {
+return $this->breadcrumbs[$action];
+}
+if (!$menu) {
+$menu = $this->menuFactory->createItem('root');
+$menu = $menu->addChild(
+$this->trans($this->getLabelTranslatorStrategy()->getLabel('dashboard','breadcrumb','link'), array(),'SonataAdminBundle'),
+array('uri'=> $this->routeGenerator->generate('sonata_admin_dashboard'))
+);
+}
+$menu = $menu->addChild(
+$this->trans($this->getLabelTranslatorStrategy()->getLabel(sprintf('%s_list', $this->getClassnameLabel()),'breadcrumb','link')),
+array('uri'=> $this->hasRoute('list') && $this->isGranted('LIST') ? $this->generateUrl('list') : null)
+);
+$childAdmin = $this->getCurrentChildAdmin();
+if ($childAdmin) {
+$id = $this->request->get($this->getIdParameter());
+$menu = $menu->addChild(
+$this->toString($this->getSubject()),
+array('uri'=> $this->hasRoute('edit') && $this->isGranted('EDIT') ? $this->generateUrl('edit', array('id'=> $id)) : null)
+);
+return $childAdmin->buildBreadcrumbs($action, $menu);
+} elseif ($this->isChild()) {
+if ($action =='list') {
+$menu->setUri(false);
+} elseif ($action !='create'&& $this->hasSubject()) {
+$menu = $menu->addChild($this->toString($this->getSubject()));
+} else {
+$menu = $menu->addChild(
+$this->trans($this->getLabelTranslatorStrategy()->getLabel(sprintf('%s_%s', $this->getClassnameLabel(), $action),'breadcrumb','link'))
+);
+}
+} elseif ($action !='list'&& $this->hasSubject()) {
+$menu = $menu->addChild($this->toString($this->getSubject()));
+} elseif ($action !='list') {
+$menu = $menu->addChild(
+$this->toString($this->getSubject())
+);
+} else {
+$menu->getBreadcrumbsArray();
+}
+return $this->breadcrumbs[$action] = $menu;
+}
+public function setCurrentChild($currentChild)
+{
+$this->currentChild = $currentChild;
+}
+public function getCurrentChild()
+{
+return $this->currentChild;
+}
+public function getCurrentChildAdmin()
+{
+foreach ($this->children as $children) {
+if ($children->getCurrentChild()) {
+return $children;
+}
+}
+return null;
+}
+public function trans($id, array $parameters = array(), $domain = null, $locale = null)
+{
+$domain = $domain ?: $this->translationDomain;
+if (!$this->translator) {
+return $id;
+}
+return $this->translator->trans($id, $parameters, $domain, $locale);
+}
+public function transChoice($id, $count, array $parameters = array(), $domain = null, $locale = null)
+{
+$domain = $domain ?: $this->translationDomain;
+if (!$this->translator) {
+return $id;
+}
+return $this->translator->transChoice($id, $count, $parameters, $domain, $locale);
+}
+public function setTranslationDomain($translationDomain)
+{
+$this->translationDomain = $translationDomain;
+}
+public function getTranslationDomain()
+{
+return $this->translationDomain;
+}
+public function setTranslator(TranslatorInterface $translator)
+{
+$this->translator = $translator;
+}
+public function getTranslator()
+{
+return $this->translator;
+}
+public function setRequest(Request $request)
+{
+$this->request = $request;
+foreach ($this->getChildren() as $children) {
+$children->setRequest($request);
+}
+}
+public function getRequest()
+{
+if (!$this->request) {
+throw new \RuntimeException('The Request object has not been set');
+}
+return $this->request;
+}
+public function hasRequest()
+{
+return $this->request !== null;
+}
+public function setFormContractor(FormContractorInterface $formBuilder)
+{
+$this->formContractor = $formBuilder;
+}
+public function getFormContractor()
+{
+return $this->formContractor;
+}
+public function setDatagridBuilder(DatagridBuilderInterface $datagridBuilder)
+{
+$this->datagridBuilder = $datagridBuilder;
+}
+public function getDatagridBuilder()
+{
+return $this->datagridBuilder;
+}
+public function setListBuilder(ListBuilderInterface $listBuilder)
+{
+$this->listBuilder = $listBuilder;
+}
+public function getListBuilder()
+{
+return $this->listBuilder;
+}
+public function setShowBuilder(ShowBuilderInterface $showBuilder)
+{
+$this->showBuilder = $showBuilder;
+}
+public function getShowBuilder()
+{
+return $this->showBuilder;
+}
+public function setConfigurationPool(Pool $configurationPool)
+{
+$this->configurationPool = $configurationPool;
+}
+public function getConfigurationPool()
+{
+return $this->configurationPool;
+}
+public function setRouteGenerator(RouteGeneratorInterface $routeGenerator)
+{
+$this->routeGenerator = $routeGenerator;
+}
+public function getRouteGenerator()
+{
+return $this->routeGenerator;
+}
+public function getCode()
+{
+return $this->code;
+}
+public function setBaseCodeRoute($baseCodeRoute)
+{
+$this->baseCodeRoute = $baseCodeRoute;
+}
+public function getBaseCodeRoute()
+{
+return $this->baseCodeRoute;
+}
+public function getModelManager()
+{
+return $this->modelManager;
+}
+public function setModelManager(ModelManagerInterface $modelManager)
+{
+$this->modelManager = $modelManager;
+}
+public function getManagerType()
+{
+return $this->managerType;
+}
+public function setManagerType($type)
+{
+$this->managerType = $type;
+}
+public function getObjectIdentifier()
+{
+return $this->getCode();
+}
+public function setSecurityInformation(array $information)
+{
+$this->securityInformation = $information;
+}
+public function getSecurityInformation()
+{
+return $this->securityInformation;
+}
+public function getPermissionsShow($context)
+{
+switch ($context) {
+case self::CONTEXT_DASHBOARD:
+case self::CONTEXT_MENU:
+default:
+return array('LIST');
+}
+}
+public function showIn($context)
+{
+switch ($context) {
+case self::CONTEXT_DASHBOARD:
+case self::CONTEXT_MENU:
+default:
+return $this->isGranted($this->getPermissionsShow($context));
+}
+}
+public function createObjectSecurity($object)
+{
+$this->getSecurityHandler()->createObjectSecurity($this, $object);
+}
+public function setSecurityHandler(SecurityHandlerInterface $securityHandler)
+{
+$this->securityHandler = $securityHandler;
+}
+public function getSecurityHandler()
+{
+return $this->securityHandler;
+}
+public function isGranted($name, $object = null)
+{
+return $this->securityHandler->isGranted($this, $name, $object ?: $this);
+}
+public function getUrlsafeIdentifier($entity)
+{
+return $this->getModelManager()->getUrlsafeIdentifier($entity);
+}
+public function getNormalizedIdentifier($entity)
+{
+return $this->getModelManager()->getNormalizedIdentifier($entity);
+}
+public function id($entity)
+{
+return $this->getNormalizedIdentifier($entity);
+}
+public function setValidator(ValidatorInterface $validator)
+{
+$this->validator = $validator;
+}
+public function getValidator()
+{
+return $this->validator;
+}
+public function getShow()
+{
+$this->buildShow();
+return $this->show;
+}
+public function setFormTheme(array $formTheme)
+{
+$this->formTheme = $formTheme;
+}
+public function getFormTheme()
+{
+return $this->formTheme;
+}
+public function setFilterTheme(array $filterTheme)
+{
+$this->filterTheme = $filterTheme;
+}
+public function getFilterTheme()
+{
+return $this->filterTheme;
+}
+public function addExtension(AdminExtensionInterface $extension)
+{
+$this->extensions[] = $extension;
+}
+public function getExtensions()
+{
+return $this->extensions;
+}
+public function setMenuFactory(MenuFactoryInterface $menuFactory)
+{
+$this->menuFactory = $menuFactory;
+}
+public function getMenuFactory()
+{
+return $this->menuFactory;
+}
+public function setRouteBuilder(RouteBuilderInterface $routeBuilder)
+{
+$this->routeBuilder = $routeBuilder;
+}
+public function getRouteBuilder()
+{
+return $this->routeBuilder;
+}
+public function toString($object)
+{
+if (!is_object($object)) {
+return'';
+}
+if (method_exists($object,'__toString')) {
+return (string) $object;
+}
+return sprintf("%s:%s", get_class($object), spl_object_hash($object));
+}
+public function setLabelTranslatorStrategy(LabelTranslatorStrategyInterface $labelTranslatorStrategy)
+{
+$this->labelTranslatorStrategy = $labelTranslatorStrategy;
+}
+public function getLabelTranslatorStrategy()
+{
+return $this->labelTranslatorStrategy;
+}
+public function supportsPreviewMode()
+{
+return $this->supportsPreviewMode;
+}
+public function setPerPageOptions($options)
+{
+$this->perPageOptions = $options;
+}
+public function getPerPageOptions()
+{
+return $this->perPageOptions;
+}
+public function determinedPerPageValue($per_page)
+{
+return in_array($per_page, $this->perPageOptions);
+}
+protected function predefinePerPageOptions()
+{
+array_unshift($this->perPageOptions, $this->maxPerPage);
+$this->perPageOptions = array_unique($this->perPageOptions);
+sort($this->perPageOptions);
+}
+}
+}
+namespace Sonata\AdminBundle\Admin
+{
+use Sonata\AdminBundle\Form\FormMapper;
+use Sonata\AdminBundle\Datagrid\ListMapper;
+use Sonata\AdminBundle\Datagrid\DatagridMapper;
+use Sonata\AdminBundle\Show\ShowMapper;
+use Sonata\AdminBundle\Route\RouteCollection;
+use Sonata\AdminBundle\Validator\ErrorElement;
+use Sonata\AdminBundle\Admin\AdminInterface;
+use Sonata\AdminBundle\Datagrid\ProxyQueryInterface;
+use Knp\Menu\ItemInterface as MenuItemInterface;
+interface AdminExtensionInterface
+{
+public function configureFormFields(FormMapper $form);
+public function configureListFields(ListMapper $list);
+public function configureDatagridFilters(DatagridMapper $filter);
+public function configureShowFields(ShowMapper $filter);
+public function configureRoutes(AdminInterface $admin, RouteCollection $collection);
+public function configureSideMenu(AdminInterface $admin, MenuItemInterface $menu, $action, AdminInterface $childAdmin = null);
+public function validate(AdminInterface $admin, ErrorElement $errorElement, $object);
+public function configureQuery(AdminInterface $admin, ProxyQueryInterface $query, $context ='list');
+}
+}
+namespace Sonata\AdminBundle\Admin
+{
+use Sonata\AdminBundle\Form\FormMapper;
+use Sonata\AdminBundle\Datagrid\ListMapper;
+use Sonata\AdminBundle\Datagrid\DatagridMapper;
+use Sonata\AdminBundle\Show\ShowMapper;
+use Sonata\AdminBundle\Route\RouteCollection;
+use Sonata\AdminBundle\Validator\ErrorElement;
+use Sonata\AdminBundle\Admin\AdminInterface;
+use Sonata\AdminBundle\Datagrid\ProxyQueryInterface;
+use Knp\Menu\ItemInterface as MenuItemInterface;
+abstract class AdminExtension implements AdminExtensionInterface
+{
+public function configureFormFields(FormMapper $form)
+{}
+public function configureListFields(ListMapper $list)
+{}
+public function configureDatagridFilters(DatagridMapper $filter)
+{}
+public function configureShowFields(ShowMapper $filter)
+{}
+public function configureRoutes(AdminInterface $admin, RouteCollection $collection)
+{}
+public function configureSideMenu(AdminInterface $admin, MenuItemInterface $menu, $action, AdminInterface $childAdmin = null)
+{}
+public function validate(AdminInterface $admin, ErrorElement $errorElement, $object)
+{}
+public function configureQuery(AdminInterface $admin, ProxyQueryInterface $query, $context ='list')
+{}
+}
+}
+namespace Sonata\AdminBundle\Admin
+{
+use Symfony\Component\Form\FormBuilder;
+use Symfony\Component\Form\FormView;
+use Sonata\AdminBundle\Exception\NoValueException;
+use Sonata\AdminBundle\Util\FormViewIterator;
+use Sonata\AdminBundle\Util\FormBuilderIterator;
+class AdminHelper
+{
+protected $pool;
+public function __construct(Pool $pool)
+{
+$this->pool = $pool;
+}
+public function getChildFormBuilder(FormBuilder $formBuilder, $elementId)
+{
+foreach (new FormBuilderIterator($formBuilder) as $name => $formBuilder) {
+if ($name == $elementId) {
+return $formBuilder;
+}
+}
+return null;
+}
+public function getChildFormView(FormView $formView, $elementId)
+{
+foreach (new \RecursiveIteratorIterator(new FormViewIterator($formView), \RecursiveIteratorIterator::SELF_FIRST) as $name => $formView) {
+if ($name === $elementId) {
+return $formView;
+}
+}
+return null;
+}
+public function getAdmin($code)
+{
+return $this->pool->getInstance($code);
+}
+public function appendFormFieldElement(AdminInterface $admin, $subject, $elementId)
+{
+$formBuilder = $admin->getFormBuilder();
+$form = $formBuilder->getForm();
+$form->setData($subject);
+$form->bind($admin->getRequest());
+$childFormBuilder = $this->getChildFormBuilder($formBuilder, $elementId);
+$fieldDescription = $admin->getFormFieldDescription($childFormBuilder->getName());
+try {
+$value = $fieldDescription->getValue($form->getData());
+} catch (NoValueException $e) {
+$value = null;
+}
+$data = $admin->getRequest()->get($formBuilder->getName());
+if (!isset($data[$childFormBuilder->getName()])) {
+$data[$childFormBuilder->getName()] = array();
+}
+$objectCount = count($value);
+$postCount = count($data[$childFormBuilder->getName()]);
+$fields = array_keys($fieldDescription->getAssociationAdmin()->getFormFieldDescriptions());
+$value = array();
+foreach ($fields as $name) {
+$value[$name] ='';
+}
+while ($objectCount < $postCount) {
+$this->addNewInstance($form->getData(), $fieldDescription);
+$objectCount++;
+}
+$this->addNewInstance($form->getData(), $fieldDescription);
+$data[$childFormBuilder->getName()][] = $value;
+$finalForm = $admin->getFormBuilder()->getForm();
+$finalForm->setData($subject);
+$finalForm->setData($form->getData());
+return array($fieldDescription, $finalForm);
+}
+public function addNewInstance($object, FieldDescriptionInterface $fieldDescription)
+{
+$instance = $fieldDescription->getAssociationAdmin()->getNewInstance();
+$mapping = $fieldDescription->getAssociationMapping();
+$method = sprintf('add%s', $this->camelize($mapping['fieldName']));
+if (!method_exists($object, $method)) {
+$method = rtrim($method,'s');
+if (!method_exists($object, $method)) {
+throw new \RuntimeException(sprintf('Please add a method %s in the %s class!', $method, get_class($object)));
+}
+}
+$object->$method($instance);
+}
+public function camelize($property)
+{
+return preg_replace(array('/(^|_| )+(.)/e','/\.(.)/e'), array("strtoupper('\\2')","'_'.strtoupper('\\1')"), $property);
+}
+}
+}
+namespace Sonata\AdminBundle\Admin
+{
+use Sonata\AdminBundle\Admin\AdminInterface;
+interface FieldDescriptionInterface
+{
+public function setFieldName($fieldName);
+public function getFieldName();
+public function setName($name);
+public function getName();
+public function getOption($name, $default = null);
+public function setOption($name, $value);
+public function setOptions(array $options);
+public function getOptions();
+public function setTemplate($template);
+public function getTemplate();
+public function setType($type);
+public function getType();
+public function setParent(AdminInterface $parent);
+public function getParent();
+public function setAssociationMapping($associationMapping);
+public function getAssociationMapping();
+public function getTargetEntity();
+public function setFieldMapping($fieldMapping);
+public function getFieldMapping();
+public function setParentAssociationMappings(array $parentAssociationMappings);
+public function getParentAssociationMappings();
+public function setAssociationAdmin(AdminInterface $associationAdmin);
+public function getAssociationAdmin();
+public function isIdentifier();
+public function getValue($object);
+public function setAdmin(AdminInterface $admin);
+public function getAdmin();
+public function mergeOption($name, array $options = array());
+public function mergeOptions(array $options = array());
+public function setMappingType($mappingType);
+public function getMappingType();
+public function getLabel();
+public function isSortable();
+public function getSortFieldMapping();
+public function getSortParentAssociationMapping();
+public function getFieldValue($object, $fieldName);
+}
+}
+namespace Sonata\AdminBundle\Admin
+{
+use Sonata\AdminBundle\Admin\AdminInterface;
+use Sonata\AdminBundle\Exception\NoValueException;
+abstract class BaseFieldDescription implements FieldDescriptionInterface
+{
+protected $name;
+protected $type;
+protected $mappingType;
+protected $fieldName;
+protected $associationMapping;
+protected $fieldMapping;
+protected $parentAssociationMappings;
+protected $template;
+protected $options = array();
+protected $parent = null;
+protected $admin;
+protected $associationAdmin;
+protected $help;
+public function setFieldName($fieldName)
+{
+$this->fieldName = $fieldName;
+}
+public function getFieldName()
+{
+return $this->fieldName;
+}
+public function setName($name)
+{
+$this->name = $name;
+if (!$this->getFieldName()) {
+$this->setFieldName(substr(strrchr('.'. $name,'.'), 1));
+}
+}
+public function getName()
+{
+return $this->name;
+}
+public function getOption($name, $default = null)
+{
+return isset($this->options[$name]) ? $this->options[$name] : $default;
+}
+public function setOption($name, $value)
+{
+$this->options[$name] = $value;
+}
+public function setOptions(array $options)
+{
+if (isset($options['type'])) {
+$this->setType($options['type']);
+unset($options['type']);
+}
+if (isset($options['template'])) {
+$this->setTemplate($options['template']);
+unset($options['template']);
+}
+if (isset($options['help'])) {
+$this->setHelp($options['help']);
+unset($options['help']);
+}
+$this->options = $options;
+}
+public function getOptions()
+{
+return $this->options;
+}
+public function setTemplate($template)
+{
+$this->template = $template;
+}
+public function getTemplate()
+{
+return $this->template;
+}
+public function setType($type)
+{
+$this->type = $type;
+}
+public function getType()
+{
+return $this->type;
+}
+public function setParent(AdminInterface $parent)
+{
+$this->parent = $parent;
+}
+public function getParent()
+{
+return $this->parent;
+}
+public function getAssociationMapping()
+{
+return $this->associationMapping;
+}
+public function getFieldMapping()
+{
+return $this->fieldMapping;
+}
+public function getParentAssociationMappings()
+{
+return $this->parentAssociationMappings;
+}
+public function setAssociationAdmin(AdminInterface $associationAdmin)
+{
+$this->associationAdmin = $associationAdmin;
+$this->associationAdmin->setParentFieldDescription($this);
+}
+public function getAssociationAdmin()
+{
+return $this->associationAdmin;
+}
+public function hasAssociationAdmin()
+{
+return $this->associationAdmin !== null;
+}
+public function getFieldValue($object, $fieldName)
+{
+$camelizedFieldName = self::camelize($fieldName);
+$getters = array();
+if ($this->getOption('code')) {
+$getters[] = $this->getOption('code');
+}
+$getters[] ='get'. $camelizedFieldName;
+$getters[] ='is'. $camelizedFieldName;
+foreach ($getters as $getter) {
+if (method_exists($object, $getter)) {
+return call_user_func(array($object, $getter));
+}
+}
+if (isset($object->{$fieldName})) {
+return $object->{$fieldName};
+}
+throw new NoValueException(sprintf('Unable to retrieve the value of `%s`', $this->getName()));
+}
+public function setAdmin(AdminInterface $admin)
+{
+$this->admin = $admin;
+}
+public function getAdmin()
+{
+return $this->admin;
+}
+public function mergeOption($name, array $options = array())
+{
+if (!isset($this->options[$name])) {
+$this->options[$name] = array();
+}
+if (!is_array($this->options[$name])) {
+throw new \RuntimeException(sprintf('The key `%s` does not point to an array value', $name));
+}
+$this->options[$name] = array_merge($this->options[$name], $options);
+}
+public function mergeOptions(array $options = array())
+{
+$this->setOptions(array_merge_recursive($this->options, $options));
+}
+public function setMappingType($mappingType)
+{
+$this->mappingType = $mappingType;
+}
+public function getMappingType()
+{
+return $this->mappingType;
+}
+public static function camelize($property)
+{
+return preg_replace(array('/(^|_| )+(.)/e','/\.(.)/e'), array("strtoupper('\\2')","'_'.strtoupper('\\1')"), $property);
+}
+public function setHelp($help)
+{
+$this->help = $help;
+}
+public function getHelp()
+{
+return $this->help;
+}
+public function getLabel()
+{
+return $this->getOption('label');
+}
+public function isSortable()
+{
+return $this->getOption('sortable', false);
+}
+public function getSortFieldMapping()
+{
+return $this->getOption('sort_field_mapping');
+}
+public function getSortParentAssociationMapping()
+{
+return $this->getOption('sort_parent_association_mappings');
+}
+}
+}
+namespace Sonata\AdminBundle\Admin
+{
+use Sonata\AdminBundle\Admin\FieldDescriptionInterface;
+class FieldDescriptionCollection implements \ArrayAccess, \Countable
+{
+protected $elements = array();
+public function add(FieldDescriptionInterface $fieldDescription)
+{
+$this->elements[$fieldDescription->getName()] = $fieldDescription;
+}
+public function getElements()
+{
+return $this->elements;
+}
+public function has($name)
+{
+return array_key_exists($name, $this->elements);
+}
+public function get($name)
+{
+if ($this->has($name)) {
+return $this->elements[$name];
+}
+throw new \InvalidArgumentException(sprintf('Element "%s" does not exist.', $name));
+}
+public function remove($name)
+{
+if ($this->has($name)) {
+unset($this->elements[$name]);
+}
+}
+public function offsetExists($offset)
+{
+return $this->has($offset);
+}
+public function offsetGet($offset)
+{
+return $this->get($offset);
+}
+public function offsetSet($offset, $value)
+{
+throw new \RunTimeException('Cannot set value, use add');
+}
+public function offsetUnset($offset)
+{
+$this->remove($offset);
+}
+public function count()
+{
+return count($this->elements);
+}
+public function reorder(array $keys)
+{
+if ($this->has('batch')) {
+array_unshift($keys,'batch');
+}
+$this->elements = array_merge(array_flip($keys), $this->elements);
+}
+}
+}
+namespace Sonata\AdminBundle\Admin
+{
+use Symfony\Component\DependencyInjection\ContainerInterface;
+class Pool
+{
+protected $container = null;
+protected $adminServiceIds = array();
+protected $adminGroups = array();
+protected $adminClasses = array();
+protected $templates = array();
+protected $title;
+protected $titleLogo;
+public function __construct(ContainerInterface $container, $title, $logoTitle)
+{
+$this->container = $container;
+$this->title = $title;
+$this->titleLogo = $logoTitle;
+}
+public function getGroups()
+{
+$groups = $this->adminGroups;
+foreach ($this->adminGroups as $name => $adminGroup) {
+foreach ($adminGroup as $id => $options) {
+$groups[$name][$id] = $this->getInstance($id);
+}
+}
+return $groups;
+}
+public function getDashboardGroups()
+{
+$groups = $this->adminGroups;
+foreach ($this->adminGroups as $name => $adminGroup) {
+if (isset($adminGroup['items'])) {
+foreach ($adminGroup['items'] as $key => $id) {
+$admin = $this->getInstance($id);
+if ($admin->showIn(Admin::CONTEXT_DASHBOARD)) {
+$groups[$name]['items'][$key] = $admin;
+} else {
+unset($groups[$name]['items'][$key]);
+}
+}
+}
+if (empty($groups[$name]['items'])) {
+unset($groups[$name]);
+}
+}
+return $groups;
+}
+public function getAdminByClass($class)
+{
+if (!$this->hasAdminByClass($class)) {
+return null;
+}
+return $this->getInstance($this->adminClasses[$class]);
+}
+public function hasAdminByClass($class)
+{
+return isset($this->adminClasses[$class]);
+}
+public function getAdminByAdminCode($adminCode)
+{
+$codes = explode('|', $adminCode);
+$admin = false;
+foreach ($codes as $code) {
+if ($admin == false) {
+$admin = $this->getInstance($code);
+} elseif ($admin->hasChild($code)) {
+$admin = $admin->getChild($code);
+}
+}
+return $admin;
+}
+public function getInstance($id)
+{
+return $this->container->get($id);
+}
+public function getContainer()
+{
+return $this->container;
+}
+public function setAdminGroups(array $adminGroups)
+{
+$this->adminGroups = $adminGroups;
+}
+public function getAdminGroups()
+{
+return $this->adminGroups;
+}
+public function setAdminServiceIds(array $adminServiceIds)
+{
+$this->adminServiceIds = $adminServiceIds;
+}
+public function getAdminServiceIds()
+{
+return $this->adminServiceIds;
+}
+public function setAdminClasses(array $adminClasses)
+{
+$this->adminClasses = $adminClasses;
+}
+public function getAdminClasses()
+{
+return $this->adminClasses;
+}
+public function setTemplates(array $templates)
+{
+$this->templates = $templates;
+}
+public function getTemplates()
+{
+return $this->templates;
+}
+public function getTemplate($name)
+{
+if (isset($this->templates[$name])) {
+return $this->templates[$name];
+}
+return null;
+}
+public function getTitleLogo()
+{
+return $this->titleLogo;
+}
+public function getTitle()
+{
+return $this->title;
+}
+}
+}
+namespace Sonata\BlockBundle\Block
+{
+use Sonata\AdminBundle\Form\FormMapper;
+use Sonata\BlockBundle\Model\BlockInterface;
+use Sonata\AdminBundle\Validator\ErrorElement;
+use Symfony\Component\HttpFoundation\Response;
+interface BlockServiceInterface
+{
+public function buildEditForm(FormMapper $form, BlockInterface $block);
+public function buildCreateForm(FormMapper $form, BlockInterface $block);
+public function execute(BlockInterface $block, Response $response = null);
+public function validateBlock(ErrorElement $errorElement, BlockInterface $block);
+public function getName();
+public function getDefaultSettings();
+public function load(BlockInterface $block);
+public function getJavascripts($media);
+public function getStylesheets($media);
+public function getCacheKeys(BlockInterface $block);
+}
+}
+namespace Sonata\BlockBundle\Block
+{
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Bundle\FrameworkBundle\Templating\EngineInterface;
+use Sonata\BlockBundle\Model\BlockInterface;
+use Sonata\AdminBundle\Form\FormMapper;
+abstract class BaseBlockService implements BlockServiceInterface
+{
+protected $name;
+protected $templating;
+public function __construct($name, EngineInterface $templating)
+{
+$this->name = $name;
+$this->templating = $templating;
+}
+public function renderResponse($view, array $parameters = array(), Response $response = null)
+{
+return $this->getTemplating()->renderResponse($view, $parameters, $response);
+}
+public function getName()
+{
+return $this->name;
+}
+public function getTemplating()
+{
+return $this->templating;
+}
+public function buildCreateForm(FormMapper $formMapper, BlockInterface $block)
+{
+$this->buildEditForm($formMapper, $block);
+}
+public function getCacheKeys(BlockInterface $block)
+{
+return array('block_id'=> $block->getId(),'updated_at'=> $block->getUpdatedAt()->format('U'),
+);
+}
+public function prePersist(BlockInterface $block)
+{
+}
+public function postPersist(BlockInterface $block)
+{
+}
+public function preUpdate(BlockInterface $block)
+{
+}
+public function postUpdate(BlockInterface $block)
+{
+}
+public function preDelete(BlockInterface $block)
+{
+}
+public function postDelete(BlockInterface $block)
+{
+}
+public function load(BlockInterface $block)
+{
+}
+public function getJavascripts($media)
+{
+return array();
+}
+public function getStylesheets($media)
+{
+return array();
+}
+public function getDefaultSettings()
+{
+return array();
+}
+}
+}
+namespace Sonata\AdminBundle\Block
+{
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Bundle\FrameworkBundle\Templating\EngineInterface;
+use Sonata\AdminBundle\Form\FormMapper;
+use Sonata\AdminBundle\Validator\ErrorElement;
+use Sonata\AdminBundle\Admin\Pool;
+use Sonata\BlockBundle\Model\BlockInterface;
+use Sonata\BlockBundle\Block\BaseBlockService;
+class AdminListBlockService extends BaseBlockService
+{
+protected $pool;
+public function __construct($name, EngineInterface $templating, Pool $pool)
+{
+parent::__construct($name, $templating);
+$this->pool = $pool;
+}
+public function execute(BlockInterface $block, Response $response = null)
+{
+$settings = array_merge($this->getDefaultSettings(), $block->getSettings());
+$dashboardGroups = $this->pool->getDashboardGroups();
+$visibleGroups = array();
+foreach ($dashboardGroups as $name => $dashboardGroup) {
+if (!$settings['groups'] || in_array($name, $settings['groups'])) {
+$visibleGroups[] = $dashboardGroup;
+}
+}
+return $this->renderResponse($this->pool->getTemplate('list_block'), array('block'=> $block,'settings'=> $settings,'admin_pool'=> $this->pool,'groups'=> $visibleGroups
+), $response);
+}
+public function validateBlock(ErrorElement $errorElement, BlockInterface $block)
+{
+}
+public function buildEditForm(FormMapper $formMapper, BlockInterface $block)
+{
+}
+public function getName()
+{
+return'Admin List';
+}
+public function getDefaultSettings()
+{
+return array('groups'=> false
+);
+}
+}
+}
+namespace Sonata\AdminBundle\Builder
+{
+use Sonata\AdminBundle\Admin\FieldDescriptionInterface;
+use Sonata\AdminBundle\Admin\AdminInterface;
+use Sonata\AdminBundle\Datagrid\DatagridInterface;
+interface DatagridBuilderInterface
+{
+public function fixFieldDescription(AdminInterface $admin, FieldDescriptionInterface $fieldDescription);
+public function addFilter(DatagridInterface $datagrid, $type = null, FieldDescriptionInterface $fieldDescription, AdminInterface $admin);
+public function getBaseDatagrid(AdminInterface $admin, array $values = array());
+}
+}
+namespace Sonata\AdminBundle\Builder
+{
+use Sonata\AdminBundle\Admin\FieldDescriptionInterface;
+use Sonata\AdminBundle\Admin\AdminInterface;
+use Symfony\Component\Form\FormBuilder;
+use Symfony\Component\Form\FormFactoryInterface;
+interface FormContractorInterface
+{
+public function __construct(FormFactoryInterface $formFactory);
+public function fixFieldDescription(AdminInterface $admin, FieldDescriptionInterface $fieldDescription);
+public function getFormBuilder($name, array $options = array());
+public function getDefaultOptions($type, FieldDescriptionInterface $fieldDescription);
+}
+}
+namespace Sonata\AdminBundle\Builder
+{
+use Sonata\AdminBundle\Admin\FieldDescriptionInterface;
+use Sonata\AdminBundle\Admin\AdminInterface;
+use Sonata\AdminBundle\Admin\FieldDescriptionCollection;
+interface ListBuilderInterface
+{
+public function getBaseList(array $options = array());
+public function buildField($type = null, FieldDescriptionInterface $fieldDescription, AdminInterface $admin);
+public function addField(FieldDescriptionCollection $list, $type = null, FieldDescriptionInterface $fieldDescription, AdminInterface $admin);
+public function fixFieldDescription(AdminInterface $admin, FieldDescriptionInterface $fieldDescription);
+}
+}
+namespace Sonata\AdminBundle\Builder
+{
+use Sonata\AdminBundle\Admin\AdminInterface;
+use Sonata\AdminBundle\Route\RouteCollection;
+interface RouteBuilderInterface
+{
+public function build(AdminInterface $admin, RouteCollection $collection);
+}
+}
+namespace Sonata\AdminBundle\Builder
+{
+use Sonata\AdminBundle\Admin\FieldDescriptionInterface;
+use Sonata\AdminBundle\Admin\AdminInterface;
+use Sonata\AdminBundle\Admin\FieldDescriptionCollection;
+interface ShowBuilderInterface
+{
+public function getBaseList(array $options = array());
+public function addField(FieldDescriptionCollection $list, $type = null, FieldDescriptionInterface $fieldDescription, AdminInterface $admin);
+public function fixFieldDescription(AdminInterface $admin, FieldDescriptionInterface $fieldDescription);
+}
+}
+namespace Sonata\AdminBundle\Datagrid
+{
+use Sonata\AdminBundle\Filter\FilterInterface;
+interface DatagridInterface
+{
+public function getPager();
+public function getQuery();
+public function getResults();
+public function buildPager();
+public function addFilter(FilterInterface $filter);
+public function getFilters();
+public function getValues();
+public function getColumns();
+public function setValue($name, $operator, $value);
+public function getForm();
+public function getFilter($name);
+public function hasFilter($name);
+public function removeFilter($name);
+public function hasActiveFilters();
+}
+}
+namespace Sonata\AdminBundle\Datagrid
+{
+use Sonata\AdminBundle\Datagrid\PagerInterface;
+use Sonata\AdminBundle\Datagrid\ProxyQueryInterface;
+use Sonata\AdminBundle\Filter\FilterInterface;
+use Sonata\AdminBundle\Admin\FieldDescriptionCollection;
+use Sonata\AdminBundle\Admin\FieldDescriptionInterface;
+use Symfony\Component\Form\FormBuilder;
+use Symfony\Component\Form\Exception\UnexpectedTypeException;
+use Symfony\Component\Form\CallbackTransformer;
+class Datagrid implements DatagridInterface
+{
+protected $filters = array();
+protected $values;
+protected $columns;
+protected $pager;
+protected $bound = false;
+protected $query;
+protected $formBuilder;
+protected $form;
+protected $results;
+public function __construct(ProxyQueryInterface $query, FieldDescriptionCollection $columns, PagerInterface $pager, FormBuilder $formBuilder, array $values = array())
+{
+$this->pager = $pager;
+$this->query = $query;
+$this->values = $values;
+$this->columns = $columns;
+$this->formBuilder = $formBuilder;
+}
+public function getPager()
+{
+return $this->pager;
+}
+public function getResults()
+{
+$this->buildPager();
+if (!$this->results) {
+$this->results = $this->pager->getResults();
+}
+return $this->results;
+}
+public function buildPager()
+{
+if ($this->bound) {
+return;
+}
+foreach ($this->getFilters() as $name => $filter) {
+list($type, $options) = $filter->getRenderSettings();
+$this->formBuilder->add($filter->getFormName(), $type, $options);
+}
+$this->formBuilder->add('_sort_by','hidden');
+$this->formBuilder->get('_sort_by')->addViewTransformer(new CallbackTransformer(
+function($value) { return $value; },
+function($value) { return $value instanceof FieldDescriptionInterface ? $value->getName() : $value; }
+));
+$this->formBuilder->add('_sort_order','hidden');
+$this->formBuilder->add('_page','hidden');
+$this->formBuilder->add('_per_page','hidden');
+$this->form = $this->formBuilder->getForm();
+$this->form->bind($this->values);
+$data = $this->form->getData();
+foreach ($this->getFilters() as $name => $filter) {
+$this->values[$name] = isset($this->values[$name]) ? $this->values[$name] : null;
+$filter->apply($this->query, $data[$filter->getFormName()]);
+}
+if (isset($this->values['_sort_by'])) {
+if (!$this->values['_sort_by'] instanceof FieldDescriptionInterface) {
+throw new UnexpectedTypeException($this->values['_sort_by'],'FieldDescriptionInterface');
+}
+if ($this->values['_sort_by']->isSortable()) {
+$this->query->setSortBy($this->values['_sort_by']->getSortParentAssociationMapping(), $this->values['_sort_by']->getSortFieldMapping());
+$this->query->setSortOrder(isset($this->values['_sort_order']) ? $this->values['_sort_order'] : null);
+}
+}
+$this->pager->setMaxPerPage(isset($this->values['_per_page']) ? $this->values['_per_page'] : 25);
+$this->pager->setPage(isset($this->values['_page']) ? $this->values['_page'] : 1);
+$this->pager->setQuery($this->query);
+$this->pager->init();
+$this->bound = true;
+}
+public function addFilter(FilterInterface $filter)
+{
+$this->filters[$filter->getName()] = $filter;
+}
+public function hasFilter($name)
+{
+return isset($this->filters[$name]);
+}
+public function removeFilter($name)
+{
+unset($this->filters[$name]);
+}
+public function getFilter($name)
+{
+return $this->hasFilter($name) ? $this->filters[$name] : null;
+}
+public function getFilters()
+{
+return $this->filters;
+}
+public function reorderFilters(array $keys)
+{
+$this->filters = array_merge(array_flip($keys), $this->filters);
+}
+public function getValues()
+{
+return $this->values;
+}
+public function setValue($name, $operator, $value)
+{
+$this->values[$name] = array('type'=> $operator,'value'=> $value
+);
+}
+public function hasActiveFilters()
+{
+foreach ($this->filters as $name => $filter) {
+if ($filter->isActive()) {
+return true;
+}
+}
+return false;
+}
+public function getColumns()
+{
+return $this->columns;
+}
+public function getQuery()
+{
+return $this->query;
+}
+public function getForm()
+{
+$this->buildPager();
+return $this->form;
+}
+}
+}
+namespace Sonata\AdminBundle\Datagrid
+{
+use Sonata\AdminBundle\Admin\AdminInterface;
+use Sonata\AdminBundle\Admin\FieldDescriptionInterface;
+use Sonata\AdminBundle\Datagrid\DatagridInterface;
+use Sonata\AdminBundle\Builder\DatagridBuilderInterface;
+class DatagridMapper
+{
+protected $datagridBuilder;
+protected $datagrid;
+protected $admin;
+public function __construct(DatagridBuilderInterface $datagridBuilder, DatagridInterface $datagrid, AdminInterface $admin)
+{
+$this->datagridBuilder = $datagridBuilder;
+$this->datagrid = $datagrid;
+$this->admin = $admin;
+}
+public function add($name, $type = null, array $filterOptions = array(), $fieldType = null, $fieldOptions = null)
+{
+if (is_array($fieldOptions)) {
+$filterOptions['field_options'] = $fieldOptions;
+}
+if ($fieldType) {
+$filterOptions['field_type'] = $fieldType;
+}
+$filterOptions['field_name'] = isset($filterOptions['field_name']) ? $filterOptions['field_name'] : substr(strrchr('.'.$name,'.'), 1);
+if ($name instanceof FieldDescriptionInterface) {
+$fieldDescription = $name;
+$fieldDescription->mergeOptions($filterOptions);
+} elseif (is_string($name) && !$this->admin->hasFilterFieldDescription($name)) {
+$fieldDescription = $this->admin->getModelManager()->getNewFieldDescriptionInstance(
+$this->admin->getClass(),
+$name,
+$filterOptions
+);
+} else {
+throw new \RuntimeException('invalid state');
+}
+$this->datagridBuilder->addFilter($this->datagrid, $type, $fieldDescription, $this->admin);
+return $this;
+}
+public function get($name)
+{
+return $this->datagrid->getFilter($name);
+}
+public function has($key)
+{
+return $this->datagrid->hasFilter($key);
+}
+public function remove($key)
+{
+$this->admin->removeFilterFieldDescription($key);
+$this->datagrid->removeFilter($key);
+return $this;
+}
+public function reorder(array $keys)
+{
+$this->datagrid->reorderFilters($keys);
+return $this;
+}
+}
+}
+namespace Sonata\AdminBundle\Datagrid
+{
+use Sonata\AdminBundle\Admin\AdminInterface;
+use Sonata\AdminBundle\Admin\FieldDescriptionInterface;
+use Sonata\AdminBundle\Admin\FieldDescriptionCollection;
+use Sonata\AdminBundle\Builder\ListBuilderInterface;
+class ListMapper
+{
+protected $listBuilder;
+protected $list;
+protected $admin;
+public function __construct(ListBuilderInterface $listBuilder, FieldDescriptionCollection $list, AdminInterface $admin)
+{
+$this->listBuilder = $listBuilder;
+$this->list = $list;
+$this->admin = $admin;
+}
+public function addIdentifier($name, $type = null, array $fieldDescriptionOptions = array())
+{
+$fieldDescriptionOptions['identifier'] = true;
+if (!isset($fieldDescriptionOptions['route']['name'])) {
+$fieldDescriptionOptions['route']['name'] ='edit';
+}
+if (!isset($fieldDescriptionOptions['route']['parameters'])) {
+$fieldDescriptionOptions['route']['parameters'] = array();
+}
+return $this->add($name, $type, $fieldDescriptionOptions);
+}
+public function add($name, $type = null, array $fieldDescriptionOptions = array())
+{
+if ($name instanceof FieldDescriptionInterface) {
+$fieldDescription = $name;
+$fieldDescription->mergeOptions($fieldDescriptionOptions);
+} elseif (is_string($name) && !$this->admin->hasListFieldDescription($name)) {
+$fieldDescription = $this->admin->getModelManager()->getNewFieldDescriptionInstance(
+$this->admin->getClass(),
+$name,
+$fieldDescriptionOptions
+);
+} else {
+throw new \RuntimeException('Unknown or duplicate field name in list mapper. Field name should be either of FieldDescriptionInterface interface or string. Names should be unique.');
+}
+if (!$fieldDescription->getLabel()) {
+$fieldDescription->setOption('label', $this->admin->getLabelTranslatorStrategy()->getLabel($fieldDescription->getName(),'list','label'));
+}
+$this->listBuilder->addField($this->list, $type, $fieldDescription, $this->admin);
+return $this;
+}
+public function get($name)
+{
+return $this->list->get($name);
+}
+public function has($key)
+{
+return $this->list->has($key);
+}
+public function remove($key)
+{
+$this->admin->removeListFieldDescription($key);
+$this->list->remove($key);
+return $this;
+}
+public function reorder(array $keys)
+{
+$this->list->reorder($keys);
+return $this;
+}
+}
+}
+namespace Sonata\AdminBundle\Datagrid
+{
+interface PagerInterface
+{
+public function init();
+}
+}
+namespace Sonata\AdminBundle\Datagrid
+{
+abstract class Pager implements \Iterator, \Countable, \Serializable, PagerInterface
+{
+protected $page = 1;
+protected $maxPerPage = 0;
+protected $lastPage = 1;
+protected $nbResults = 0;
+protected $cursor = 1;
+protected $parameters = array();
+protected $currentMaxLink = 1;
+protected $maxRecordLimit = false;
+protected $maxPageLinks = 0;
+protected $results = null;
+protected $resultsCounter = 0;
+protected $query = null;
+protected $countColumn = array('id');
+public function __construct($maxPerPage = 10)
+{
+$this->setMaxPerPage($maxPerPage);
+}
+abstract public function getResults();
+public function getCurrentMaxLink()
+{
+return $this->currentMaxLink;
+}
+public function getMaxRecordLimit()
+{
+return $this->maxRecordLimit;
+}
+public function setMaxRecordLimit($limit)
+{
+$this->maxRecordLimit = $limit;
+}
+public function getLinks($nb_links = null)
+{
+if ($nb_links == null) {
+$nb_links = $this->getMaxPageLinks();
+}
+$links = array();
+$tmp = $this->page - floor($nb_links / 2);
+$check = $this->lastPage - $nb_links + 1;
+$limit = $check > 0 ? $check : 1;
+$begin = $tmp > 0 ? ($tmp > $limit ? $limit : $tmp) : 1;
+$i = (int) $begin;
+while ($i < $begin + $nb_links && $i <= $this->lastPage) {
+$links[] = $i++;
+}
+$this->currentMaxLink = count($links) ? $links[count($links) - 1] : 1;
+return $links;
+}
+public function haveToPaginate()
+{
+return $this->getMaxPerPage() && $this->getNbResults() > $this->getMaxPerPage();
+}
+public function getCursor()
+{
+return $this->cursor;
+}
+public function setCursor($pos)
+{
+if ($pos < 1) {
+$this->cursor = 1;
+} else {
+if ($pos > $this->nbResults) {
+$this->cursor = $this->nbResults;
+} else {
+$this->cursor = $pos;
+}
+}
+}
+public function getObjectByCursor($pos)
+{
+$this->setCursor($pos);
+return $this->getCurrent();
+}
+public function getCurrent()
+{
+return $this->retrieveObject($this->cursor);
+}
+public function getNext()
+{
+if ($this->cursor + 1 > $this->nbResults) {
+return null;
+} else {
+return $this->retrieveObject($this->cursor + 1);
+}
+}
+public function getPrevious()
+{
+if ($this->cursor - 1 < 1) {
+return null;
+} else {
+return $this->retrieveObject($this->cursor - 1);
+}
+}
+public function getFirstIndice()
+{
+if ($this->page == 0) {
+return 1;
+} else {
+return ($this->page - 1) * $this->maxPerPage + 1;
+}
+}
+public function getLastIndice()
+{
+if ($this->page == 0) {
+return $this->nbResults;
+} else {
+if ($this->page * $this->maxPerPage >= $this->nbResults) {
+return $this->nbResults;
+} else {
+return $this->page * $this->maxPerPage;
+}
+}
+}
+public function getNbResults()
+{
+return $this->nbResults;
+}
+protected function setNbResults($nb)
+{
+$this->nbResults = $nb;
+}
+public function getFirstPage()
+{
+return 1;
+}
+public function getLastPage()
+{
+return $this->lastPage;
+}
+protected function setLastPage($page)
+{
+$this->lastPage = $page;
+if ($this->getPage() > $page) {
+$this->setPage($page);
+}
+}
+public function getPage()
+{
+return $this->page;
+}
+public function getNextPage()
+{
+return min($this->getPage() + 1, $this->getLastPage());
+}
+public function getPreviousPage()
+{
+return max($this->getPage() - 1, $this->getFirstPage());
+}
+public function setPage($page)
+{
+$this->page = intval($page);
+if ($this->page <= 0) {
+$this->page = $this->getMaxPerPage() ? 1 : 0;
+}
+}
+public function getMaxPerPage()
+{
+return $this->maxPerPage;
+}
+public function setMaxPerPage($max)
+{
+if ($max > 0) {
+$this->maxPerPage = $max;
+if ($this->page == 0) {
+$this->page = 1;
+}
+} else {
+if ($max == 0) {
+$this->maxPerPage = 0;
+$this->page = 0;
+} else {
+$this->maxPerPage = 1;
+if ($this->page == 0) {
+$this->page = 1;
+}
+}
+}
+}
+public function getMaxPageLinks()
+{
+return $this->maxPageLinks;
+}
+public function setMaxPageLinks($maxPageLinks)
+{
+$this->maxPageLinks = $maxPageLinks;
+}
+public function isFirstPage()
+{
+return 1 == $this->page;
+}
+public function isLastPage()
+{
+return $this->page == $this->lastPage;
+}
+public function getParameters()
+{
+return $this->parameters;
+}
+public function getParameter($name, $default = null)
+{
+return isset($this->parameters[$name]) ? $this->parameters[$name] : $default;
+}
+public function hasParameter($name)
+{
+return isset($this->parameters[$name]);
+}
+public function setParameter($name, $value)
+{
+$this->parameters[$name] = $value;
+}
+protected function isIteratorInitialized()
+{
+return null !== $this->results;
+}
+protected function initializeIterator()
+{
+$this->results = $this->getResults();
+$this->resultsCounter = count($this->results);
+}
+protected function resetIterator()
+{
+$this->results = null;
+$this->resultsCounter = 0;
+}
+public function current()
+{
+if (!$this->isIteratorInitialized()) {
+$this->initializeIterator();
+}
+return current($this->results);
+}
+public function key()
+{
+if (!$this->isIteratorInitialized()) {
+$this->initializeIterator();
+}
+return key($this->results);
+}
+public function next()
+{
+if (!$this->isIteratorInitialized()) {
+$this->initializeIterator();
+}
+--$this->resultsCounter;
+return next($this->results);
+}
+public function rewind()
+{
+if (!$this->isIteratorInitialized()) {
+$this->initializeIterator();
+}
+$this->resultsCounter = count($this->results);
+return reset($this->results);
+}
+public function valid()
+{
+if (!$this->isIteratorInitialized()) {
+$this->initializeIterator();
+}
+return $this->resultsCounter > 0;
+}
+public function count()
+{
+return $this->getNbResults();
+}
+public function serialize()
+{
+$vars = get_object_vars($this);
+unset($vars['query']);
+return serialize($vars);
+}
+public function unserialize($serialized)
+{
+$array = unserialize($serialized);
+foreach ($array as $name => $values) {
+$this->$name = $values;
+}
+}
+public function getCountColumn()
+{
+return $this->countColumn;
+}
+public function setCountColumn(array $countColumn)
+{
+return $this->countColumn = $countColumn;
+}
+protected function retrieveObject($offset)
+{
+$queryForRetrieve = clone $this->getQuery();
+$queryForRetrieve
+->setFirstResult($offset - 1)
+->setMaxResults(1);
+$results = $queryForRetrieve->execute();
+return $results[0];
+}
+public function setQuery($query)
+{
+$this->query = $query;
+}
+public function getQuery()
+{
+return $this->query;
+}
+}
+}
+namespace Sonata\AdminBundle\Datagrid
+{
+interface ProxyQueryInterface
+{
+public function execute(array $params = array(), $hydrationMode = null);
+public function __call($name, $args);
+public function setSortBy($parentAssociationMappings, $fieldMapping);
+public function getSortBy();
+public function setSortOrder($sortOrder);
+public function getSortOrder();
+public function getSingleScalarResult();
+public function setFirstResult($firstResult);
+public function getFirstResult();
+public function setMaxResults($maxResults);
+public function getMaxResults();
+public function getUniqueParameterId();
+public function entityJoin(array $associationMappings);
+}
+}
+namespace Sonata\AdminBundle\Exception
+{
+class ModelManagerException extends \Exception
+{
+}
+}
+namespace Sonata\AdminBundle\Exception
+{
+class NoValueException extends \Exception
+{
+}
+}
+namespace Sonata\AdminBundle\Export
+{
+use Exporter\Source\SourceIteratorInterface;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+use Exporter\Writer\XlsWriter;
+use Exporter\Writer\XmlWriter;
+use Exporter\Writer\JsonWriter;
+use Exporter\Writer\CsvWriter;
+class Exporter
+{
+public function getResponse($format, $filename, SourceIteratorInterface $source)
+{
+switch ($format) {
+case'xls':
+$writer = new XlsWriter('php://output');
+$contentType ='application/vnd.ms-excel';
+break;
+case'xml':
+$writer = new XmlWriter('php://output');
+$contentType ='text/xml';
+break;
+case'json':
+$writer = new JsonWriter('php://output');
+$contentType ='application/json';
+break;
+case'csv':
+$writer = new CsvWriter('php://output',',','"',"", true, true);
+$contentType ='text/csv';
+break;
+default:
+throw new \RuntimeException('Invalid format');
+}
+$callback = function() use ($source, $writer) {
+$handler = \Exporter\Handler::create($source, $writer);
+$handler->export();
+};
+return new StreamedResponse($callback, 200, array('Content-Type'=> $contentType,'Content-Disposition'=> sprintf('attachment; filename=%s', $filename)
+));
+}
+}
+}
+namespace Sonata\AdminBundle\Filter
+{
+use Sonata\AdminBundle\Datagrid\ProxyQueryInterface;
+interface FilterInterface
+{
+public function filter(ProxyQueryInterface $queryBuilder, $alias, $field, $value);
+public function apply($query, $value);
+public function getName();
+public function getFormName();
+public function getLabel();
+public function setLabel($label);
+public function getDefaultOptions();
+public function getOption($name, $default = null);
+public function setOption($name, $value);
+public function initialize($name, array $options = array());
+public function getFieldName();
+public function getParentAssociationMappings();
+public function getFieldMapping();
+public function getAssociationMapping();
+public function getFieldOptions();
+public function getFieldType();
+public function getRenderSettings();
+}
+}
+namespace Sonata\AdminBundle\Filter
+{
+use Sonata\AdminBundle\Filter\FilterInterface;
+abstract class Filter implements FilterInterface
+{
+protected $name = null;
+protected $value = null;
+protected $options = array();
+protected $condition;
+const CONDITION_OR ='OR';
+const CONDITION_AND ='AND';
+public function initialize($name, array $options = array())
+{
+$this->name = $name;
+$this->setOptions($options);
+}
+public function getName()
+{
+return $this->name;
+}
+public function getFormName()
+{
+return str_replace('.','__', $this->name);
+}
+public function getOption($name, $default = null)
+{
+if (array_key_exists($name, $this->options)) {
+return $this->options[$name];
+}
+return $default;
+}
+public function setOption($name, $value)
+{
+$this->options[$name] = $value;
+}
+public function getFieldType()
+{
+return $this->getOption('field_type','text');
+}
+public function getFieldOptions()
+{
+return $this->getOption('field_options', array('required'=> false));
+}
+public function getLabel()
+{
+return $this->getOption('label');
+}
+public function setLabel($label)
+{
+$this->setOption('label', $label);
+}
+public function getFieldName()
+{
+$fieldName = $this->getOption('field_name');
+if (!$fieldName) {
+throw new \RunTimeException(sprintf('The option `field_name` must be set for field : `%s`', $this->getName()));
+}
+return $fieldName;
+}
+public function getParentAssociationMappings()
+{
+return $this->getOption('parent_association_mappings', array());
+}
+public function getFieldMapping()
+{
+$fieldMapping = $this->getOption('field_mapping');
+if (!$fieldMapping) {
+throw new \RunTimeException(sprintf('The option `field_mapping` must be set for field : `%s`', $this->getName()));
+}
+return $fieldMapping;
+}
+public function getAssociationMapping()
+{
+$associationMapping = $this->getOption('association_mapping');
+if (!$associationMapping) {
+throw new \RunTimeException(sprintf('The option `association_mapping` must be set for field : `%s`', $this->getName()));
+}
+return $associationMapping;
+}
+public function setOptions(array $options)
+{
+$this->options = array_merge($this->getDefaultOptions(), $options);
+}
+public function getOptions()
+{
+return $this->options;
+}
+public function setValue($value)
+{
+$this->value = $value;
+}
+public function getValue()
+{
+return $this->value;
+}
+public function isActive()
+{
+$values = $this->getValue();
+return !empty($values['value']);
+}
+public function setCondition($condition)
+{
+$this->condition = $condition;
+}
+public function getCondition()
+{
+return $this->condition;
+}
+}
+}
+namespace Sonata\AdminBundle\Filter
+{
+interface FilterFactoryInterface
+{
+public function create($name, $type, array $options = array());
+}
+}
+namespace Sonata\AdminBundle\Filter
+{
+use Symfony\Component\DependencyInjection\ContainerInterface;
+class FilterFactory implements FilterFactoryInterface
+{
+protected $container;
+protected $types;
+public function __construct(ContainerInterface $container, array $types = array())
+{
+$this->container = $container;
+$this->types = $types;
+}
+public function create($name, $type, array $options = array())
+{
+if (!$type) {
+throw new \RunTimeException('The type must be defined');
+}
+$id = isset($this->types[$type]) ? $this->types[$type] : false;
+if (!$id) {
+throw new \RunTimeException(sprintf('No attached service to type named `%s`', $type));
+}
+$filter = $this->container->get($id);
+if (!$filter instanceof FilterInterface) {
+throw new \RunTimeException(sprintf('The service `%s` must implement `FilterInterface`', $id));
+}
+$filter->initialize($name, $options);
+return $filter;
+}
+}
+}
+namespace Symfony\Component\Form\Extension\Core\ChoiceList
+{
+interface ChoiceListInterface
+{
+public function getChoices();
+public function getValues();
+public function getPreferredViews();
+public function getRemainingViews();
+public function getChoicesForValues(array $values);
+public function getValuesForChoices(array $choices);
+public function getIndicesForChoices(array $choices);
+public function getIndicesForValues(array $values);
+}
+}
+namespace Symfony\Component\Form\Extension\Core\ChoiceList
+{
+use Symfony\Component\Form\FormConfigBuilder;
+use Symfony\Component\Form\Exception\UnexpectedTypeException;
+use Symfony\Component\Form\Exception\InvalidConfigurationException;
+use Symfony\Component\Form\Extension\Core\View\ChoiceView;
+class ChoiceList implements ChoiceListInterface
+{
+private $choices = array();
+private $values = array();
+private $preferredViews = array();
+private $remainingViews = array();
+public function __construct($choices, array $labels, array $preferredChoices = array())
+{
+if (!is_array($choices) && !$choices instanceof \Traversable) {
+throw new UnexpectedTypeException($choices,'array or \Traversable');
+}
+$this->initialize($choices, $labels, $preferredChoices);
+}
+protected function initialize($choices, array $labels, array $preferredChoices)
+{
+$this->choices = array();
+$this->values = array();
+$this->preferredViews = array();
+$this->remainingViews = array();
+$this->addChoices(
+$this->preferredViews,
+$this->remainingViews,
+$choices,
+$labels,
+$preferredChoices
+);
+}
+public function getChoices()
+{
+return $this->choices;
+}
+public function getValues()
+{
+return $this->values;
+}
+public function getPreferredViews()
+{
+return $this->preferredViews;
+}
+public function getRemainingViews()
+{
+return $this->remainingViews;
+}
+public function getChoicesForValues(array $values)
+{
+$values = $this->fixValues($values);
+$choices = array();
+foreach ($values as $j => $givenValue) {
+foreach ($this->values as $i => $value) {
+if ($value === $givenValue) {
+$choices[] = $this->choices[$i];
+unset($values[$j]);
+if (0 === count($values)) {
+break 2;
+}
+}
+}
+}
+return $choices;
+}
+public function getValuesForChoices(array $choices)
+{
+$choices = $this->fixChoices($choices);
+$values = array();
+foreach ($this->choices as $i => $choice) {
+foreach ($choices as $j => $givenChoice) {
+if ($choice === $givenChoice) {
+$values[] = $this->values[$i];
+unset($choices[$j]);
+if (0 === count($choices)) {
+break 2;
+}
+}
+}
+}
+return $values;
+}
+public function getIndicesForChoices(array $choices)
+{
+$choices = $this->fixChoices($choices);
+$indices = array();
+foreach ($this->choices as $i => $choice) {
+foreach ($choices as $j => $givenChoice) {
+if ($choice === $givenChoice) {
+$indices[] = $i;
+unset($choices[$j]);
+if (0 === count($choices)) {
+break 2;
+}
+}
+}
+}
+return $indices;
+}
+public function getIndicesForValues(array $values)
+{
+$values = $this->fixValues($values);
+$indices = array();
+foreach ($this->values as $i => $value) {
+foreach ($values as $j => $givenValue) {
+if ($value === $givenValue) {
+$indices[] = $i;
+unset($values[$j]);
+if (0 === count($values)) {
+break 2;
+}
+}
+}
+}
+return $indices;
+}
+protected function addChoices(array &$bucketForPreferred, array &$bucketForRemaining, $choices, array $labels, array $preferredChoices)
+{
+foreach ($choices as $group => $choice) {
+if (!array_key_exists($group, $labels)) {
+throw new \InvalidArgumentException('The structures of the choices and labels array do not match.');
+}
+if (is_array($choice)) {
+if (count($choice) > 0) {
+$this->addChoiceGroup(
+$group,
+$bucketForPreferred,
+$bucketForRemaining,
+$choice,
+$labels[$group],
+$preferredChoices
+);
+}
+} else {
+$this->addChoice(
+$bucketForPreferred,
+$bucketForRemaining,
+$choice,
+$labels[$group],
+$preferredChoices
+);
+}
+}
+}
+protected function addChoiceGroup($group, array &$bucketForPreferred, array &$bucketForRemaining, array $choices, array $labels, array $preferredChoices)
+{
+$bucketForPreferred[$group] = array();
+$bucketForRemaining[$group] = array();
+$this->addChoices(
+$bucketForPreferred[$group],
+$bucketForRemaining[$group],
+$choices,
+$labels,
+$preferredChoices
+);
+if (empty($bucketForPreferred[$group])) {
+unset($bucketForPreferred[$group]);
+}
+if (empty($bucketForRemaining[$group])) {
+unset($bucketForRemaining[$group]);
+}
+}
+protected function addChoice(array &$bucketForPreferred, array &$bucketForRemaining, $choice, $label, array $preferredChoices)
+{
+$index = $this->createIndex($choice);
+if (''=== $index || null === $index || !FormConfigBuilder::isValidName((string) $index)) {
+throw new InvalidConfigurationException('The index "'. $index .'" created by the choice list is invalid. It should be a valid, non-empty Form name.');
+}
+$value = $this->createValue($choice);
+if (!is_string($value)) {
+throw new InvalidConfigurationException('The value created by the choice list is of type "'. gettype($value) .'", but should be a string.');
+}
+$view = new ChoiceView($choice, $value, $label);
+$this->choices[$index] = $this->fixChoice($choice);
+$this->values[$index] = $value;
+if ($this->isPreferred($choice, $preferredChoices)) {
+$bucketForPreferred[$index] = $view;
+} else {
+$bucketForRemaining[$index] = $view;
+}
+}
+protected function isPreferred($choice, array $preferredChoices)
+{
+return false !== array_search($choice, $preferredChoices, true);
+}
+protected function createIndex($choice)
+{
+return count($this->choices);
+}
+protected function createValue($choice)
+{
+return (string) count($this->values);
+}
+protected function fixValue($value)
+{
+return (string) $value;
+}
+protected function fixValues(array $values)
+{
+foreach ($values as $i => $value) {
+$values[$i] = $this->fixValue($value);
+}
+return $values;
+}
+protected function fixIndex($index)
+{
+if (is_bool($index) || (string) (int) $index === (string) $index) {
+return (int) $index;
+}
+return (string) $index;
+}
+protected function fixIndices(array $indices)
+{
+foreach ($indices as $i => $index) {
+$indices[$i] = $this->fixIndex($index);
+}
+return $indices;
+}
+protected function fixChoice($choice)
+{
+return $choice;
+}
+protected function fixChoices(array $choices)
+{
+return $choices;
+}
+}
+}
+namespace Symfony\Component\Form\Extension\Core\ChoiceList
+{
+class SimpleChoiceList extends ChoiceList
+{
+public function __construct(array $choices, array $preferredChoices = array())
+{
+parent::__construct($choices, $choices, array_flip($preferredChoices));
+}
+public function getChoicesForValues(array $values)
+{
+$values = $this->fixValues($values);
+return $this->fixChoices(array_intersect($values, $this->getValues()));
+}
+public function getValuesForChoices(array $choices)
+{
+$choices = $this->fixChoices($choices);
+return $this->fixValues(array_intersect($choices, $this->getValues()));
+}
+protected function addChoices(array &$bucketForPreferred, array &$bucketForRemaining, $choices, array $labels, array $preferredChoices)
+{
+foreach ($choices as $choice => $label) {
+if (is_array($label)) {
+if (count($label) > 0) {
+$this->addChoiceGroup(
+$choice,
+$bucketForPreferred,
+$bucketForRemaining,
+$label,
+$label,
+$preferredChoices
+);
+}
+} else {
+$this->addChoice(
+$bucketForPreferred,
+$bucketForRemaining,
+$choice,
+$label,
+$preferredChoices
+);
+}
+}
+}
+protected function isPreferred($choice, array $preferredChoices)
+{
+return isset($preferredChoices[$choice]);
+}
+protected function fixChoice($choice)
+{
+return $this->fixIndex($choice);
+}
+protected function fixChoices(array $choices)
+{
+return $this->fixIndices($choices);
+}
+protected function createValue($choice)
+{
+return (string) $choice;
+}
+}
+}
+namespace Sonata\AdminBundle\Form\ChoiceList
+{
+use Symfony\Component\PropertyAccess\PropertyAccess;
+use Symfony\Component\PropertyAccess\PropertyPath;
+use Symfony\Component\Form\Exception\FormException;
+use Symfony\Component\Form\Extension\Core\ChoiceList\SimpleChoiceList;
+use Sonata\AdminBundle\Model\ModelManagerInterface;
+class ModelChoiceList extends SimpleChoiceList
+{
+private $modelManager;
+private $class;
+private $entities = array();
+private $query;
+private $identifier = array();
+private $reflProperties = array();
+private $propertyPath;
+public function __construct(ModelManagerInterface $modelManager, $class, $property = null, $query = null, $choices = array())
+{
+$this->modelManager = $modelManager;
+$this->class = $class;
+$this->query = $query;
+$this->identifier = $this->modelManager->getIdentifierFieldNames($this->class);
+if ($property) {
+$this->propertyPath = new PropertyPath($property);
+}
+parent::__construct($this->load($choices));
+}
+protected function load($choices)
+{
+if (is_array($choices)) {
+$entities = $choices;
+} elseif ($this->query) {
+$entities = $this->modelManager->executeQuery($this->query);
+} else {
+$entities = $this->modelManager->findBy($this->class);
+}
+$choices = array();
+$this->entities = array();
+foreach ($entities as $key => $entity) {
+if ($this->propertyPath) {
+$propertyAccessor = PropertyAccess::getPropertyAccessor();
+$value = $propertyAccessor->getValue($entity, $this->propertyPath);
+} else {
+$value = (string) $entity;
+}
+if (count($this->identifier) > 1) {
+$choices[$key] = $value;
+$this->entities[$key] = $entity;
+} else {
+$id = current($this->getIdentifierValues($entity));
+$choices[$id] = $value;
+$this->entities[$id] = $entity;
+}
+}
+return $choices;
+}
+public function getIdentifier()
+{
+return $this->identifier;
+}
+public function getEntities()
+{
+return $this->entities;
+}
+public function getEntity($key)
+{
+if (count($this->identifier) > 1) {
+$entities = $this->getEntities();
+return isset($entities[$key]) ? $entities[$key] : null;
+} elseif ($this->entities) {
+return isset($this->entities[$key]) ? $this->entities[$key] : null;
+}
+return $this->modelManager->find($this->class, $key);
+}
+private function getReflProperty($property)
+{
+if (!isset($this->reflProperties[$property])) {
+$this->reflProperties[$property] = new \ReflectionProperty($this->class, $property);
+$this->reflProperties[$property]->setAccessible(true);
+}
+return $this->reflProperties[$property];
+}
+public function getIdentifierValues($entity)
+{
+return $this->modelManager->getIdentifierValues($entity);
+}
+public function getModelManager()
+{
+return $this->modelManager;
+}
+public function getClass()
+{
+return $this->class;
+}
+}
+}
+namespace Symfony\Component\Form
+{
+interface DataTransformerInterface
+{
+public function transform($value);
+public function reverseTransform($value);
+}
+}
+namespace Sonata\AdminBundle\Form\DataTransformer
+{
+use Symfony\Component\Form\DataTransformerInterface;
+use Sonata\AdminBundle\Model\ModelManagerInterface;
+class ArrayToModelTransformer implements DataTransformerInterface
+{
+protected $modelManager;
+protected $className;
+public function __construct(ModelManagerInterface $modelManager, $className)
+{
+$this->modelManager = $modelManager;
+$this->className = $className;
+}
+public function reverseTransform($array)
+{
+if ($array instanceof $this->className) {
+return $array;
+}
+$instance = new $this->className;
+if (!is_array($array)) {
+return $instance;
+}
+return $this->modelManager->modelReverseTransform($this->className, $array);
+}
+public function transform($value)
+{
+return $value;
+}
+}
+}
+namespace Sonata\AdminBundle\Form\DataTransformer
+{
+use Symfony\Component\Form\DataTransformerInterface;
+use Sonata\AdminBundle\Model\ModelManagerInterface;
+class ModelToIdTransformer implements DataTransformerInterface
+{
+protected $modelManager;
+protected $className;
+public function __construct(ModelManagerInterface $modelManager, $className)
+{
+$this->modelManager = $modelManager;
+$this->className = $className;
+}
+public function reverseTransform($newId)
+{
+if (empty($newId)) {
+return null;
+}
+return $this->modelManager->find($this->className, $newId);
+}
+public function transform($entity)
+{
+if (empty($entity)) {
+return null;
+}
+return current($this->modelManager->getIdentifierValues($entity));
+}
+}
+}
+namespace Sonata\AdminBundle\Form\DataTransformer
+{
+use Symfony\Component\Form\Exception\UnexpectedTypeException;
+use Symfony\Component\Form\Exception\TransformationFailedException;
+use Symfony\Component\Form\DataTransformerInterface;
+use Sonata\AdminBundle\Form\ChoiceList\ModelChoiceList;
+class ModelsToArrayTransformer implements DataTransformerInterface
+{
+protected $choiceList;
+public function __construct(ModelChoiceList $choiceList)
+{
+$this->choiceList = $choiceList;
+}
+public function transform($collection)
+{
+if (null === $collection) {
+return array();
+}
+$array = array();
+if (count($this->choiceList->getIdentifier()) > 1) {
+$availableEntities = $this->choiceList->getEntities();
+foreach ($collection as $entity) {
+$key = array_search($entity, $availableEntities);
+$array[] = $key;
+}
+} else {
+foreach ($collection as $entity) {
+$array[] = current($this->choiceList->getIdentifierValues($entity));
+}
+}
+return $array;
+}
+public function reverseTransform($keys)
+{
+$collection = $this->choiceList->getModelManager()->getModelCollectionInstance(
+$this->choiceList->getClass()
+);
+if (!$collection instanceof \ArrayAccess) {
+throw new UnexpectedTypeException($collection,'\ArrayAccess');
+}
+if (''=== $keys || null === $keys) {
+return $collection;
+}
+if (!is_array($keys)) {
+throw new UnexpectedTypeException($keys,'array');
+}
+$notFound = array();
+foreach ($keys as $key) {
+if ($entity = $this->choiceList->getEntity($key)) {
+$collection[] = $entity;
+} else {
+$notFound[] = $key;
+}
+}
+if (count($notFound) > 0) {
+throw new TransformationFailedException(sprintf('The entities with keys "%s" could not be found', implode('", "', $notFound)));
+}
+return $collection;
+}
+}
+}
 namespace Symfony\Component\EventDispatcher
 {
 interface EventSubscriberInterface
 {
 public static function getSubscribedEvents();
+}
+}
+namespace Sonata\AdminBundle\Form\EventListener
+{
+use Symfony\Component\Form\FormEvents;
+use Symfony\Component\Form\Event\FilterDataEvent;
+use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Sonata\AdminBundle\Model\ModelManagerInterface;
+class MergeCollectionListener implements EventSubscriberInterface
+{
+protected $modelManager;
+public function __construct(ModelManagerInterface $modelManager)
+{
+$this->modelManager = $modelManager;
+}
+public static function getSubscribedEvents()
+{
+return array(
+FormEvents::BIND => array('onBind', 10),
+);
+}
+public function onBind(FilterDataEvent $event)
+{
+$collection = $event->getForm()->getData();
+$data = $event->getData();
+$event->stopPropagation();
+if (!$collection) {
+$collection = $data;
+} elseif (count($data) === 0) {
+$this->modelManager->collectionClear($collection);
+} else {
+foreach ($collection as $entity) {
+if (!$this->modelManager->collectionHasElement($data, $entity)) {
+$this->modelManager->collectionRemoveElement($collection, $entity);
+} else {
+$this->modelManager->collectionRemoveElement($data, $entity);
+}
+}
+foreach ($data as $entity) {
+$this->modelManager->collectionAddElement($collection, $entity);
+}
+}
+$event->setData($collection);
+}
+}
+}
+namespace Sonata\AdminBundle\Form\EventListener
+{
+use Symfony\Component\Form\FormEvents;
+use Symfony\Component\Form\Event\DataEvent;
+use Symfony\Component\Form\Event\FilterDataEvent;
+use Symfony\Component\Form\FormFactoryInterface;
+use Symfony\Component\Form\Exception\UnexpectedTypeException;
+use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+class ResizeFormListener implements EventSubscriberInterface
+{
+private $factory;
+private $type;
+private $resizeOnBind;
+private $typeOptions;
+private $removed = array();
+public function __construct(FormFactoryInterface $factory, $type, array $typeOptions = array(), $resizeOnBind = false)
+{
+$this->factory = $factory;
+$this->type = $type;
+$this->resizeOnBind = $resizeOnBind;
+$this->typeOptions = $typeOptions;
+}
+public static function getSubscribedEvents()
+{
+return array(
+FormEvents::PRE_SET_DATA =>'preSetData',
+FormEvents::PRE_BIND =>'preBind',
+FormEvents::BIND =>'onBind',
+);
+}
+public function preSetData(DataEvent $event)
+{
+$form = $event->getForm();
+$data = $event->getData();
+if (null === $data) {
+$data = array();
+}
+if (!is_array($data) && !$data instanceof \Traversable) {
+throw new UnexpectedTypeException($data,'array or \Traversable');
+}
+foreach ($form as $name => $child) {
+$form->remove($name);
+}
+foreach ($data as $name => $value) {
+$options = array_merge($this->typeOptions, array('property_path'=>'['. $name .']',
+));
+$form->add($this->factory->createNamed($name, $this->type, $value, $options));
+}
+}
+public function preBind(DataEvent $event)
+{
+if (!$this->resizeOnBind) {
+return;
+}
+$form = $event->getForm();
+$data = $event->getData();
+if (null === $data ||''=== $data) {
+$data = array();
+}
+if (!is_array($data) && !$data instanceof \Traversable) {
+throw new UnexpectedTypeException($data,'array or \Traversable');
+}
+foreach ($form as $name => $child) {
+$form->remove($name);
+}
+foreach ($data as $name => $value) {
+if (!$form->has($name)) {
+$options = array_merge($this->typeOptions, array('property_path'=>'['. $name .']',
+));
+$form->add($this->factory->createNamed($name, $this->type, null, $options));
+}
+if (isset($value['_delete'])) {
+$this->removed[] = $name;
+}
+}
+}
+public function onBind(FilterDataEvent $event)
+{
+if (!$this->resizeOnBind) {
+return;
+}
+$form = $event->getForm();
+$data = $event->getData();
+if (null === $data) {
+$data = array();
+}
+if (!is_array($data) && !$data instanceof \Traversable) {
+throw new UnexpectedTypeException($data,'array or \Traversable');
+}
+foreach ($data as $name => $child) {
+if (!$form->has($name)) {
+unset($data[$name]);
+}
+}
+foreach ($this->removed as $pos) {
+unset($data[$pos]);
+}
+$event->setData($data);
+}
+}
+}
+namespace Symfony\Component\Form
+{
+use Symfony\Component\OptionsResolver\OptionsResolverInterface;
+interface FormTypeExtensionInterface
+{
+public function buildForm(FormBuilderInterface $builder, array $options);
+public function buildView(FormView $view, FormInterface $form, array $options);
+public function finishView(FormView $view, FormInterface $form, array $options);
+public function setDefaultOptions(OptionsResolverInterface $resolver);
+public function getExtendedType();
+}
+}
+namespace Symfony\Component\Form
+{
+use Symfony\Component\OptionsResolver\OptionsResolverInterface;
+abstract class AbstractTypeExtension implements FormTypeExtensionInterface
+{
+public function buildForm(FormBuilderInterface $builder, array $options)
+{
+}
+public function buildView(FormView $view, FormInterface $form, array $options)
+{
+}
+public function finishView(FormView $view, FormInterface $form, array $options)
+{
+}
+public function setDefaultOptions(OptionsResolverInterface $resolver)
+{
+$defaults = $this->getDefaultOptions(array());
+$allowedTypes = $this->getAllowedOptionValues(array());
+if (!empty($defaults)) {
+trigger_error('getDefaultOptions() is deprecated since version 2.1 and will be removed in 2.3. Use setDefaultOptions() instead.', E_USER_DEPRECATED);
+$resolver->setDefaults($defaults);
+}
+if (!empty($allowedTypes)) {
+trigger_error('getAllowedOptionValues() is deprecated since version 2.1 and will be removed in 2.3. Use setDefaultOptions() instead.', E_USER_DEPRECATED);
+$resolver->addAllowedValues($allowedTypes);
+}
+}
+public function getDefaultOptions()
+{
+return array();
+}
+public function getAllowedOptionValues()
+{
+return array();
+}
+}
+}
+namespace Sonata\AdminBundle\Form\Extension\Field\Type
+{
+use Symfony\Component\Form\AbstractTypeExtension;
+use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\Form\FormInterface;
+use Symfony\Component\Form\FormView;
+use Symfony\Component\OptionsResolver\OptionsResolverInterface;
+use Sonata\AdminBundle\Admin\FieldDescriptionInterface;
+use Sonata\AdminBundle\Exception\NoValueException;
+class FormTypeFieldExtension extends AbstractTypeExtension
+{
+protected $defaultClasses = array();
+public function __construct(array $defaultClasses = array())
+{
+$this->defaultClasses = $defaultClasses;
+}
+public function buildForm(FormBuilderInterface $builder, array $options)
+{
+$sonataAdmin = array('name'=> null,'admin'=> null,'value'=> null,'edit'=>'standard','inline'=>'natural','field_description'=> null,'block_name'=> false
+);
+$builder->setAttribute('sonata_admin_enabled', false);
+if ($options['sonata_field_description'] instanceof FieldDescriptionInterface) {
+$fieldDescription = $options['sonata_field_description'];
+$sonataAdmin['admin'] = $fieldDescription->getAdmin();
+$sonataAdmin['field_description'] = $fieldDescription;
+$sonataAdmin['name'] = $fieldDescription->getName();
+$sonataAdmin['edit'] = $fieldDescription->getOption('edit','standard');
+$sonataAdmin['inline'] = $fieldDescription->getOption('inline','natural');
+$sonataAdmin['block_name'] = $fieldDescription->getOption('block_name', false);
+$sonataAdmin['class'] = $this->getClass($builder);
+$builder->setAttribute('sonata_admin_enabled', true);
+}
+$builder->setAttribute('sonata_admin', $sonataAdmin);
+}
+protected function getClass(FormBuilderInterface $formBuilder)
+{
+foreach ($this->getTypes($formBuilder) as $type) {
+if (isset($this->defaultClasses[$type->getName()])) {
+return $this->defaultClasses[$type->getName()];
+}
+}
+return'';
+}
+protected function getTypes(FormBuilderInterface $formBuilder)
+{
+$types = array();
+for ($type = $formBuilder->getType(); null !== $type; $type = $type->getParent()) {
+array_unshift($types, $type->getInnerType());
+}
+return $types;
+}
+public function buildView(FormView $view, FormInterface $form, array $options)
+{
+$sonataAdmin = $form->getConfig()->getAttribute('sonata_admin');
+if ($sonataAdmin && $form->getConfig()->getAttribute('sonata_admin_enabled', true)) {
+$sonataAdmin['value'] = $form->getData();
+$block_prefixes = $view->vars['block_prefixes'];
+$baseName = str_replace('.','_', $sonataAdmin['admin']->getCode());
+$baseType = $block_prefixes[count($block_prefixes) - 2];
+$blockSuffix = preg_replace("#^_([a-z0-9]{14})_(.++)$#","\$2", array_pop($block_prefixes));
+$block_prefixes[] = sprintf('%s_%s', $baseName, $baseType);
+$block_prefixes[] = sprintf('%s_%s_%s', $baseName, $sonataAdmin['name'], $baseType);
+$block_prefixes[] = sprintf('%s_%s_%s_%s', $baseName, $sonataAdmin['name'], $baseType, $blockSuffix);
+if (isset($sonataAdmin['block_name']) && $sonataAdmin['block_name'] !== false) {
+$block_prefixes[] = $sonataAdmin['block_name'];
+}
+$view->vars['block_prefixes'] = $block_prefixes;
+$view->vars['sonata_admin_enabled'] = true;
+$view->vars['sonata_admin'] = $sonataAdmin;
+$attr = $view->vars['attr'];
+if (!isset($attr['class']) && isset($sonataAdmin['class'])) {
+$attr['class'] = $sonataAdmin['class'];
+}
+$view->vars['attr'] = $attr;
+} else {
+$view->vars['sonata_admin_enabled'] = false;
+}
+$view->vars['sonata_admin'] = $sonataAdmin;
+}
+public function getExtendedType()
+{
+return'field';
+}
+public function setDefaultOptions(OptionsResolverInterface $resolver)
+{
+$resolver->setDefaults(array('sonata_admin'=> null,'sonata_field_description'=> null,
+));
+}
+public function getValueFromFieldDescription($object, FieldDescriptionInterface $fieldDescription)
+{
+$value = null;
+if (!$object) {
+return $value;
+}
+try {
+$value = $fieldDescription->getValue($object);
+} catch (NoValueException $e) {
+if ($fieldDescription->getAssociationAdmin()) {
+$value = $fieldDescription->getAssociationAdmin()->getNewInstance();
+}
+}
+return $value;
+}
+}
+}
+namespace Sonata\AdminBundle\Form
+{
+use Sonata\AdminBundle\Builder\FormContractorInterface;
+use Sonata\AdminBundle\Admin\AdminInterface;
+use Symfony\Component\Form\FormBuilder;
+class FormMapper
+{
+protected $formBuilder;
+protected $formContractor;
+protected $admin;
+protected $currentGroup;
+public function __construct(FormContractorInterface $formContractor, FormBuilder $formBuilder, AdminInterface $admin)
+{
+$this->formBuilder = $formBuilder;
+$this->formContractor = $formContractor;
+$this->admin = $admin;
+}
+public function with($name, array $options = array())
+{
+$formGroups = $this->admin->getFormGroups();
+if (!isset($formGroups[$name])) {
+$formGroups[$name] = array();
+}
+$formGroups[$name] = array_merge(array('collapsed'=> false,'fields'=> array(),'description'=> false
+), $formGroups[$name], $options);
+$this->admin->setFormGroups($formGroups);
+$this->currentGroup = $name;
+return $this;
+}
+public function end()
+{
+$this->currentGroup = null;
+return $this;
+}
+public function reorder(array $keys)
+{
+if (!$this->currentGroup) {
+$this->with($this->admin->getLabel());
+}
+$this->admin->reorderFormGroup($this->currentGroup, $keys);
+return $this;
+}
+public function add($name, $type = null, array $options = array(), array $fieldDescriptionOptions = array())
+{
+if (!$this->currentGroup) {
+$this->with($this->admin->getLabel());
+}
+$label = $name instanceof FormBuilder ? $name->getName() : $name;
+$formGroups = $this->admin->getFormGroups();
+$formGroups[$this->currentGroup]['fields'][$label] = $label;
+$this->admin->setFormGroups($formGroups);
+if (!isset($fieldDescriptionOptions['type']) && is_string($type)) {
+$fieldDescriptionOptions['type'] = $type;
+}
+$fieldDescription = $this->admin->getModelManager()->getNewFieldDescriptionInstance(
+$this->admin->getClass(),
+$name instanceof FormBuilder ? $name->getName() : $name,
+$fieldDescriptionOptions
+);
+$this->formContractor->fixFieldDescription($this->admin, $fieldDescription, $fieldDescriptionOptions);
+$this->admin->addFormFieldDescription($name instanceof FormBuilder ? $name->getName() : $name, $fieldDescription);
+if ($name instanceof FormBuilder) {
+$this->formBuilder->add($name);
+} else {
+$options = array_replace_recursive($this->formContractor->getDefaultOptions($type, $fieldDescription), $options);
+if (!isset($options['label'])) {
+$options['label'] = $this->admin->getLabelTranslatorStrategy()->getLabel($fieldDescription->getName(),'form','label');
+}
+$help = null;
+if (isset($options['help'])) {
+$help = $options['help'];
+unset($options['help']);
+}
+$this->formBuilder->add($name, $type, $options);
+if (null !== $help) {
+$this->admin->getFormFieldDescription($name)->setHelp($help);
+}
+}
+return $this;
+}
+public function get($name)
+{
+return $this->formBuilder->get($name);
+}
+public function has($key)
+{
+return $this->formBuilder->has($key);
+}
+public function remove($key)
+{
+$this->admin->removeFormFieldDescription($key);
+$this->formBuilder->remove($key);
+return $this;
+}
+public function getFormBuilder()
+{
+return $this->formBuilder;
+}
+public function getAdmin()
+{
+return $this->admin;
+}
+public function create($name, $type = null, array $options = array())
+{
+return $this->formBuilder->create($name, $type, $options);
+}
+public function setHelps(array $helps = array())
+{
+foreach ($helps as $name => $help) {
+if ($this->admin->hasFormFieldDescription($name)) {
+$this->admin->getFormFieldDescription($name)->setHelp($help);
+}
+}
+return $this;
+}
+}
+}
+namespace Symfony\Component\Form
+{
+use Symfony\Component\OptionsResolver\OptionsResolverInterface;
+interface FormTypeInterface
+{
+public function buildForm(FormBuilderInterface $builder, array $options);
+public function buildView(FormView $view, FormInterface $form, array $options);
+public function finishView(FormView $view, FormInterface $form, array $options);
+public function setDefaultOptions(OptionsResolverInterface $resolver);
+public function getParent();
+public function getName();
+}
+}
+namespace Symfony\Component\Form
+{
+use Symfony\Component\OptionsResolver\OptionsResolverInterface;
+abstract class AbstractType implements FormTypeInterface
+{
+private $extensions = array();
+public function buildForm(FormBuilderInterface $builder, array $options)
+{
+}
+public function buildView(FormView $view, FormInterface $form, array $options)
+{
+}
+public function finishView(FormView $view, FormInterface $form, array $options)
+{
+}
+public function setDefaultOptions(OptionsResolverInterface $resolver)
+{
+$defaults = $this->getDefaultOptions(array());
+$allowedTypes = $this->getAllowedOptionValues(array());
+if (!empty($defaults)) {
+trigger_error('getDefaultOptions() is deprecated since version 2.1 and will be removed in 2.3. Use setDefaultOptions() instead.', E_USER_DEPRECATED);
+$resolver->setDefaults($defaults);
+}
+if (!empty($allowedTypes)) {
+trigger_error('getAllowedOptionValues() is deprecated since version 2.1 and will be removed in 2.3. Use setDefaultOptions() instead.', E_USER_DEPRECATED);
+$resolver->addAllowedValues($allowedTypes);
+}
+}
+public function getDefaultOptions(array $options)
+{
+return array();
+}
+public function getAllowedOptionValues(array $options)
+{
+return array();
+}
+public function getParent()
+{
+return'form';
+}
+public function setExtensions(array $extensions)
+{
+trigger_error('setExtensions() is deprecated since version 2.1 and will be removed in 2.3.', E_USER_DEPRECATED);
+$this->extensions = $extensions;
+}
+public function getExtensions()
+{
+trigger_error('getExtensions() is deprecated since version 2.1 and will be removed in 2.3. Use ResolvedFormTypeInterface::getTypeExtensions instead.', E_USER_DEPRECATED);
+return $this->extensions;
+}
+}
+}
+namespace Sonata\AdminBundle\Form\Type
+{
+use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\OptionsResolver\OptionsResolverInterface;
+use Sonata\AdminBundle\Form\DataTransformer\ArrayToModelTransformer;
+class AdminType extends AbstractType
+{
+public function buildForm(FormBuilderInterface $builder, array $options)
+{
+$admin = $this->getAdmin($options);
+if ($options['delete'] && $admin->isGranted('DELETE') ) {
+$builder->add('_delete','checkbox', array('required'=> false,'mapped'=> false));
+}
+if (!$admin->hasSubject()) {
+$admin->setSubject($builder->getData());
+}
+$admin->defineFormBuilder($builder);
+$builder->addModelTransformer(new ArrayToModelTransformer($admin->getModelManager(), $admin->getClass()));
+}
+public function setDefaultOptions(OptionsResolverInterface $resolver)
+{
+$resolver->setDefaults(array('delete'=> true));
+}
+public function getFieldDescription(array $options)
+{
+if (!isset($options['sonata_field_description'])) {
+throw new \RuntimeException('Please provide a valid `sonata_field_description` option');
+}
+return $options['sonata_field_description'];
+}
+public function getAdmin(array $options)
+{
+return $this->getFieldDescription($options)->getAssociationAdmin();
+}
+public function getName()
+{
+return'sonata_type_admin';
+}
+}
+}
+namespace Sonata\AdminBundle\Form\Type
+{
+use Symfony\Component\Form\AbstractType;
+use Symfony\Component\OptionsResolver\OptionsResolverInterface;
+class BooleanType extends AbstractType
+{
+const TYPE_YES = 1;
+const TYPE_NO = 2;
+public function setDefaultOptions(OptionsResolverInterface $resolver)
+{
+$resolver->setDefaults(array('catalogue'=>'SonataAdminBundle','choices'=> array(
+self::TYPE_YES =>'label_type_yes',
+self::TYPE_NO =>'label_type_no')
+));
+}
+public function getParent()
+{
+return'sonata_type_translatable_choice';
+}
+public function getName()
+{
+return'sonata_type_boolean';
+}
+}
+}
+namespace Sonata\AdminBundle\Form\Type
+{
+use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\OptionsResolver\OptionsResolverInterface;
+use Sonata\AdminBundle\Form\EventListener\ResizeFormListener;
+class CollectionType extends AbstractType
+{
+public function buildForm(FormBuilderInterface $builder, array $options)
+{
+$listener = new ResizeFormListener(
+$builder->getFormFactory(),
+$options['type'],
+$options['type_options'],
+$options['modifiable']
+);
+$builder->addEventSubscriber($listener);
+}
+public function getParent()
+{
+return'field';
+}
+public function setDefaultOptions(OptionsResolverInterface $resolver)
+{
+$resolver->setDefaults(array('modifiable'=> false,'type'=>'text','type_options'=> array()
+));
+}
+public function getName()
+{
+return'sonata_type_collection';
+}
+}
+}
+namespace Sonata\AdminBundle\Form\Type
+{
+use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\Translation\TranslatorInterface;
+use Symfony\Component\OptionsResolver\OptionsResolverInterface;
+class DateRangeType extends AbstractType
+{
+protected $translator;
+public function __construct(TranslatorInterface $translator)
+{
+$this->translator = $translator;
+}
+public function buildForm(FormBuilderInterface $builder, array $options)
+{
+$builder->add('start','date', array_merge(array('required'=> false), $options['field_options']));
+$builder->add('end','date', array_merge(array('required'=> false), $options['field_options']));
+}
+public function getName()
+{
+return'sonata_type_date_range';
+}
+public function setDefaultOptions(OptionsResolverInterface $resolver)
+{
+$resolver->setDefaults(array('field_options'=> array()
+));
+}
+}
+}
+namespace Sonata\AdminBundle\Form\Type
+{
+use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\Translation\TranslatorInterface;
+use Symfony\Component\OptionsResolver\OptionsResolverInterface;
+class DateTimeRangeType extends AbstractType
+{
+protected $translator;
+public function __construct(TranslatorInterface $translator)
+{
+$this->translator = $translator;
+}
+public function buildForm(FormBuilderInterface $builder, array $options)
+{
+$builder->add('start','datetime', array_merge(array('required'=> false), $options['field_options']));
+$builder->add('end','datetime', array_merge(array('required'=> false), $options['field_options']));
+}
+public function getName()
+{
+return'sonata_type_datetime_range';
+}
+public function setDefaultOptions(OptionsResolverInterface $resolver)
+{
+$resolver->setDefaults(array('field_options'=> array()
+));
+}
+}
+}
+namespace Symfony\Component\Form\Extension\Core\Type
+{
+use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\Form\FormInterface;
+use Symfony\Component\Form\FormView;
+use Symfony\Component\Form\Exception\Exception;
+use Symfony\Component\Form\Extension\Core\ChoiceList\SimpleChoiceList;
+use Symfony\Component\Form\Extension\Core\EventListener\FixRadioInputListener;
+use Symfony\Component\Form\Extension\Core\EventListener\FixCheckboxInputListener;
+use Symfony\Component\Form\Extension\Core\EventListener\MergeCollectionListener;
+use Symfony\Component\Form\Extension\Core\DataTransformer\ChoiceToValueTransformer;
+use Symfony\Component\Form\Extension\Core\DataTransformer\ChoiceToBooleanArrayTransformer;
+use Symfony\Component\Form\Extension\Core\DataTransformer\ChoicesToValuesTransformer;
+use Symfony\Component\Form\Extension\Core\DataTransformer\ChoicesToBooleanArrayTransformer;
+use Symfony\Component\OptionsResolver\Options;
+use Symfony\Component\OptionsResolver\OptionsResolverInterface;
+class ChoiceType extends AbstractType
+{
+private $choiceListCache = array();
+public function buildForm(FormBuilderInterface $builder, array $options)
+{
+if (!$options['choice_list'] && !is_array($options['choices']) && !$options['choices'] instanceof \Traversable) {
+throw new Exception('Either the option "choices" or "choice_list" must be set.');
+}
+if ($options['expanded']) {
+$this->addSubForms($builder, $options['choice_list']->getPreferredViews(), $options);
+$this->addSubForms($builder, $options['choice_list']->getRemainingViews(), $options);
+if ($options['multiple']) {
+$builder
+->addViewTransformer(new ChoicesToBooleanArrayTransformer($options['choice_list']))
+->addEventSubscriber(new FixCheckboxInputListener($options['choice_list']), 10)
+;
+} else {
+$builder
+->addViewTransformer(new ChoiceToBooleanArrayTransformer($options['choice_list']))
+->addEventSubscriber(new FixRadioInputListener($options['choice_list']), 10)
+;
+}
+} else {
+if ($options['multiple']) {
+$builder->addViewTransformer(new ChoicesToValuesTransformer($options['choice_list']));
+} else {
+$builder->addViewTransformer(new ChoiceToValueTransformer($options['choice_list']));
+}
+}
+if ($options['multiple'] && $options['by_reference']) {
+$builder->addEventSubscriber(new MergeCollectionListener(true, true));
+}
+}
+public function buildView(FormView $view, FormInterface $form, array $options)
+{
+$view->vars = array_replace($view->vars, array('multiple'=> $options['multiple'],'expanded'=> $options['expanded'],'preferred_choices'=> $options['choice_list']->getPreferredViews(),'choices'=> $options['choice_list']->getRemainingViews(),'separator'=>'-------------------','empty_value'=> null,
+));
+if ($options['multiple']) {
+$view->vars['is_selected'] = function ($choice, array $values) {
+return false !== array_search($choice, $values, true);
+};
+} else {
+$view->vars['is_selected'] = function ($choice, $value) {
+return $choice === $value;
+};
+}
+if (0 === count($options['choice_list']->getIndicesForValues(array('')))) {
+$view->vars['empty_value'] = $options['empty_value'];
+}
+if ($options['multiple'] && !$options['expanded']) {
+$view->vars['full_name'] = $view->vars['full_name'].'[]';
+}
+}
+public function finishView(FormView $view, FormInterface $form, array $options)
+{
+if ($options['expanded']) {
+$childName = $view->vars['full_name'];
+if ($options['multiple']) {
+$childName .='[]';
+}
+foreach ($view as $childView) {
+$childView->vars['full_name'] = $childName;
+}
+}
+}
+public function setDefaultOptions(OptionsResolverInterface $resolver)
+{
+$choiceListCache =& $this->choiceListCache;
+$choiceList = function (Options $options) use (&$choiceListCache) {
+$choices = null !== $options['choices'] ? $options['choices'] : array();
+$hash = md5(json_encode(array($choices, $options['preferred_choices'])));
+if (!isset($choiceListCache[$hash])) {
+$choiceListCache[$hash] = new SimpleChoiceList($choices, $options['preferred_choices']);
+}
+return $choiceListCache[$hash];
+};
+$emptyData = function (Options $options) {
+if ($options['multiple'] || $options['expanded']) {
+return array();
+}
+return'';
+};
+$emptyValue = function (Options $options) {
+return $options['required'] ? null :'';
+};
+$emptyValueNormalizer = function (Options $options, $emptyValue) {
+if ($options['multiple'] || $options['expanded']) {
+return null;
+} elseif (false === $emptyValue) {
+return null;
+}
+return $emptyValue;
+};
+$compound = function (Options $options) {
+return $options['expanded'];
+};
+$resolver->setDefaults(array('multiple'=> false,'expanded'=> false,'choice_list'=> $choiceList,'choices'=> array(),'preferred_choices'=> array(),'empty_data'=> $emptyData,'empty_value'=> $emptyValue,'error_bubbling'=> false,'compound'=> $compound,'data_class'=> null,
+));
+$resolver->setNormalizers(array('empty_value'=> $emptyValueNormalizer,
+));
+$resolver->setAllowedTypes(array('choice_list'=> array('null','Symfony\Component\Form\Extension\Core\ChoiceList\ChoiceListInterface'),
+));
+}
+public function getParent()
+{
+return'field';
+}
+public function getName()
+{
+return'choice';
+}
+private function addSubForms(FormBuilderInterface $builder, array $choiceViews, array $options)
+{
+foreach ($choiceViews as $i => $choiceView) {
+if (is_array($choiceView)) {
+$this->addSubForms($builder, $choiceView, $options);
+} else {
+$choiceOpts = array('value'=> $choiceView->value,'label'=> $choiceView->label,'translation_domain'=> $options['translation_domain'],
+);
+if ($options['multiple']) {
+$choiceType ='checkbox';
+$choiceOpts['required'] = false;
+} else {
+$choiceType ='radio';
+}
+$builder->add($i, $choiceType, $choiceOpts);
+}
+}
+}
+}
+}
+namespace Sonata\AdminBundle\Form\Type
+{
+use Symfony\Component\Form\Extension\Core\Type\ChoiceType as FormChoiceType;
+use Symfony\Component\Translation\TranslatorInterface;
+use Symfony\Component\OptionsResolver\OptionsResolverInterface;
+class EqualType extends FormChoiceType
+{
+const TYPE_IS_EQUAL = 1;
+const TYPE_IS_NOT_EQUAL = 2;
+protected $translator;
+public function __construct(TranslatorInterface $translator)
+{
+$this->translator = $translator;
+}
+public function setDefaultOptions(OptionsResolverInterface $resolver)
+{
+parent::setDefaultOptions($resolver);
+$resolver->setDefaults(array('choices'=> array(
+self::TYPE_IS_EQUAL => $this->translator->trans('label_type_equals', array(),'SonataAdminBundle'),
+self::TYPE_IS_NOT_EQUAL => $this->translator->trans('label_type_not_equals', array(),'SonataAdminBundle'),
+)
+));
+}
+public function getParent()
+{
+return'choice';
+}
+public function getName()
+{
+return'sonata_type_equal';
+}
+}
+}
+namespace Sonata\AdminBundle\Form\Type\Filter
+{
+use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\Translation\TranslatorInterface;
+use Symfony\Component\OptionsResolver\OptionsResolverInterface;
+class ChoiceType extends AbstractType
+{
+const TYPE_CONTAINS = 1;
+const TYPE_NOT_CONTAINS = 2;
+const TYPE_EQUAL = 3;
+protected $translator;
+public function __construct(TranslatorInterface $translator)
+{
+$this->translator = $translator;
+}
+public function getName()
+{
+return'sonata_type_filter_choice';
+}
+public function buildForm(FormBuilderInterface $builder, array $options)
+{
+$choices = array(
+self::TYPE_CONTAINS => $this->translator->trans('label_type_contains', array(),'SonataAdminBundle'),
+self::TYPE_NOT_CONTAINS => $this->translator->trans('label_type_not_contains', array(),'SonataAdminBundle'),
+self::TYPE_EQUAL => $this->translator->trans('label_type_equals', array(),'SonataAdminBundle'),
+);
+$builder
+->add('type','choice', array('choices'=> $choices,'required'=> false))
+->add('value', $options['field_type'], array_merge(array('required'=> false), $options['field_options']))
+;
+}
+public function setDefaultOptions(OptionsResolverInterface $resolver)
+{
+$resolver->setDefaults(array('field_type'=>'choice','field_options'=> array()
+));
+}
+}
+}
+namespace Sonata\AdminBundle\Form\Type\Filter
+{
+use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\Translation\TranslatorInterface;
+use Symfony\Component\OptionsResolver\OptionsResolverInterface;
+class DateRangeType extends AbstractType
+{
+const TYPE_BETWEEN = 1;
+const TYPE_NOT_BETWEEN = 2;
+protected $translator;
+public function __construct(TranslatorInterface $translator)
+{
+$this->translator = $translator;
+}
+public function getName()
+{
+return'sonata_type_filter_date_range';
+}
+public function buildForm(FormBuilderInterface $builder, array $options)
+{
+$choices = array(
+self::TYPE_BETWEEN => $this->translator->trans('label_date_type_between', array(),'SonataAdminBundle'),
+self::TYPE_NOT_BETWEEN => $this->translator->trans('label_date_type_not_between', array(),'SonataAdminBundle'),
+);
+$builder
+->add('type','choice', array('choices'=> $choices,'required'=> false))
+->add('value','sonata_type_date_range', array('field_options'=> $options['field_options']))
+;
+}
+public function setDefaultOptions(OptionsResolverInterface $resolver)
+{
+$resolver->setDefaults(array('field_type'=>'sonata_type_date_range','field_options'=> array('format'=>'yyyy-MM-dd')
+));
+}
+}
+}
+namespace Sonata\AdminBundle\Form\Type\Filter
+{
+use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\Translation\TranslatorInterface;
+use Symfony\Component\OptionsResolver\OptionsResolverInterface;
+class DateTimeRangeType extends AbstractType
+{
+const TYPE_BETWEEN = 1;
+const TYPE_NOT_BETWEEN = 2;
+protected $translator;
+public function __construct(TranslatorInterface $translator)
+{
+$this->translator = $translator;
+}
+public function getName()
+{
+return'sonata_type_filter_datetime_range';
+}
+public function buildForm(FormBuilderInterface $builder, array $options)
+{
+$choices = array(
+self::TYPE_BETWEEN => $this->translator->trans('label_date_type_between', array(),'SonataAdminBundle'),
+self::TYPE_NOT_BETWEEN => $this->translator->trans('label_date_type_not_between', array(),'SonataAdminBundle'),
+);
+$builder
+->add('type','choice', array('choices'=> $choices,'required'=> false))
+->add('value','sonata_type_datetime_range', array('field_options'=> $options['field_options']))
+;
+}
+public function setDefaultOptions(OptionsResolverInterface $resolver)
+{
+$resolver->setDefaults(array('field_type'=>'sonata_type_datetime_range','field_options'=> array('date_format'=>'yyyy-MM-dd')
+));
+}
+}
+}
+namespace Sonata\AdminBundle\Form\Type\Filter
+{
+use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\Translation\TranslatorInterface;
+use Symfony\Component\OptionsResolver\OptionsResolverInterface;
+class DateTimeType extends AbstractType
+{
+const TYPE_GREATER_EQUAL = 1;
+const TYPE_GREATER_THAN = 2;
+const TYPE_EQUAL = 3;
+const TYPE_LESS_EQUAL = 4;
+const TYPE_LESS_THAN = 5;
+const TYPE_NULL = 6;
+const TYPE_NOT_NULL = 7;
+protected $translator;
+public function __construct(TranslatorInterface $translator)
+{
+$this->translator = $translator;
+}
+public function getName()
+{
+return'sonata_type_filter_datetime';
+}
+public function buildForm(FormBuilderInterface $builder, array $options)
+{
+$choices = array(
+self::TYPE_EQUAL => $this->translator->trans('label_date_type_equal', array(),'SonataAdminBundle'),
+self::TYPE_GREATER_EQUAL => $this->translator->trans('label_date_type_greater_equal', array(),'SonataAdminBundle'),
+self::TYPE_GREATER_THAN => $this->translator->trans('label_date_type_greater_than', array(),'SonataAdminBundle'),
+self::TYPE_LESS_EQUAL => $this->translator->trans('label_date_type_less_equal', array(),'SonataAdminBundle'),
+self::TYPE_LESS_THAN => $this->translator->trans('label_date_type_less_than', array(),'SonataAdminBundle'),
+self::TYPE_NULL => $this->translator->trans('label_date_type_null', array(),'SonataAdminBundle'),
+self::TYPE_NOT_NULL => $this->translator->trans('label_date_type_not_null', array(),'SonataAdminBundle'),
+);
+$builder
+->add('type','choice', array('choices'=> $choices,'required'=> false))
+->add('value','datetime', array_merge(array('required'=> false), $options['field_options']))
+;
+}
+public function setDefaultOptions(OptionsResolverInterface $resolver)
+{
+$resolver->setDefaults(array('field_type'=>'datetime','field_options'=> array('date_format'=>'yyyy-MM-dd')
+));
+}
+}
+}
+namespace Sonata\AdminBundle\Form\Type\Filter
+{
+use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\Translation\TranslatorInterface;
+use Symfony\Component\Optionsresolver\OptionsResolverInterface;
+class DateType extends AbstractType
+{
+const TYPE_GREATER_EQUAL = 1;
+const TYPE_GREATER_THAN = 2;
+const TYPE_EQUAL = 3;
+const TYPE_LESS_EQUAL = 4;
+const TYPE_LESS_THAN = 5;
+const TYPE_NULL = 6;
+const TYPE_NOT_NULL = 7;
+protected $translator;
+public function __construct(TranslatorInterface $translator)
+{
+$this->translator = $translator;
+}
+public function getName()
+{
+return'sonata_type_filter_date';
+}
+public function buildForm(FormBuilderInterface $builder, array $options)
+{
+$choices = array(
+self::TYPE_EQUAL => $this->translator->trans('label_date_type_equal', array(),'SonataAdminBundle'),
+self::TYPE_GREATER_EQUAL => $this->translator->trans('label_date_type_greater_equal', array(),'SonataAdminBundle'),
+self::TYPE_GREATER_THAN => $this->translator->trans('label_date_type_greater_than', array(),'SonataAdminBundle'),
+self::TYPE_LESS_EQUAL => $this->translator->trans('label_date_type_less_equal', array(),'SonataAdminBundle'),
+self::TYPE_LESS_THAN => $this->translator->trans('label_date_type_less_than', array(),'SonataAdminBundle'),
+self::TYPE_NULL => $this->translator->trans('label_date_type_null', array(),'SonataAdminBundle'),
+self::TYPE_NOT_NULL => $this->translator->trans('label_date_type_not_null', array(),'SonataAdminBundle'),
+);
+$builder
+->add('type','choice', array('choices'=> $choices,'required'=> false))
+->add('value','date', array_merge(array('required'=> false), $options['field_options']))
+;
+}
+public function setDefaultOptions(OptionsResolverInterface $resolver)
+{
+$resolver->setDefaults(array('field_type'=>'date','field_options'=> array('date_format'=>'yyyy-MM-dd')
+));
+}
+}
+}
+namespace Sonata\AdminBundle\Form\Type\Filter
+{
+use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\OptionsResolver\OptionsResolverInterface;
+class DefaultType extends AbstractType
+{
+public function getName()
+{
+return'sonata_type_filter_default';
+}
+public function buildForm(FormBuilderInterface $builder, array $options)
+{
+$builder
+->add('type', $options['operator_type'], array_merge(array('required'=> false), $options['operator_options']))
+->add('value', $options['field_type'], array_merge(array('required'=> false), $options['field_options']))
+;
+}
+public function setDefaultOptions(OptionsResolverInterface $resolver)
+{
+$resolver->setDefaults(array('operator_type'=>'hidden','operator_options'=> array(),'field_type'=>'text','field_options'=> array()
+));
+}
+}
+}
+namespace Sonata\AdminBundle\Form\Type\Filter
+{
+use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\Translation\TranslatorInterface;
+use Symfony\Component\OptionsResolver\OptionsResolverInterface;
+class NumberType extends AbstractType
+{
+const TYPE_GREATER_EQUAL = 1;
+const TYPE_GREATER_THAN = 2;
+const TYPE_EQUAL = 3;
+const TYPE_LESS_EQUAL = 4;
+const TYPE_LESS_THAN = 5;
+protected $translator;
+public function __construct(TranslatorInterface $translator)
+{
+$this->translator = $translator;
+}
+public function getName()
+{
+return'sonata_type_filter_number';
+}
+public function buildForm(FormBuilderInterface $builder, array $options)
+{
+$choices = array(
+self::TYPE_EQUAL => $this->translator->trans('label_type_equal', array(),'SonataAdminBundle'),
+self::TYPE_GREATER_EQUAL => $this->translator->trans('label_type_greater_equal', array(),'SonataAdminBundle'),
+self::TYPE_GREATER_THAN => $this->translator->trans('label_type_greater_than', array(),'SonataAdminBundle'),
+self::TYPE_LESS_EQUAL => $this->translator->trans('label_type_less_equal', array(),'SonataAdminBundle'),
+self::TYPE_LESS_THAN => $this->translator->trans('label_type_less_than', array(),'SonataAdminBundle'),
+);
+$builder
+->add('type','choice', array('choices'=> $choices,'required'=> false))
+->add('value', $options['field_type'], array_merge(array('required'=> false), $options['field_options']))
+;
+}
+public function setDefaultOptions(OptionsResolverInterface $resolver)
+{
+$resolver->setDefaults(array('field_type'=>'number','field_options'=> array(),
+));
+}
+}
+}
+namespace Sonata\AdminBundle\Form\Type
+{
+use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\OptionsResolver\OptionsResolverInterface;
+class ImmutableArrayType extends AbstractType
+{
+public function buildForm(FormBuilderInterface $builder, array $options)
+{
+foreach ($options['keys'] as $infos) {
+if ($infos instanceof FormBuilderInterface) {
+$builder->add($infos);
+} else {
+list($name, $type, $options) = $infos;
+$builder->add($name, $type, $options);
+}
+}
+}
+public function setDefaultOptions(OptionsResolverInterface $resolver)
+{
+$resolver->setDefaults(array('keys'=> array(),
+));
+}
+public function getName()
+{
+return'sonata_type_immutable_array';
+}
+}
+}
+namespace Sonata\AdminBundle\Form\Type
+{
+use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\Form\AbstractType;
+use Symfony\Component\OptionsResolver\OptionsResolverInterface;
+use Symfony\Component\OptionsResolver\Options;
+use Sonata\AdminBundle\Form\DataTransformer\ModelToIdTransformer;
+class ModelReferenceType extends AbstractType
+{
+public function buildForm(FormBuilderInterface $builder, array $options)
+{
+$builder->addModelTransformer(new ModelToIdTransformer($options['model_manager'], $options['class']));
+}
+public function setDefaultOptions(OptionsResolverInterface $resolver)
+{
+$resolver->setDefaults(array('compound'=> false,'model_manager'=> null,'class'=> null,'parent'=>'text'));
+}
+public function getParent()
+{
+return'text';
+}
+public function getName()
+{
+return'sonata_type_model_reference';
+}
+}
+}
+namespace Sonata\AdminBundle\Form\Type
+{
+use Symfony\Component\Form\Extension\Core\ChoiceList\ChoiceListInterface;
+use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\Form\AbstractType;
+use Symfony\Component\OptionsResolver\Options;
+use Symfony\Component\OptionsResolver\OptionsResolverInterface;
+use Sonata\AdminBundle\Form\EventListener\MergeCollectionListener;
+use Sonata\AdminBundle\Form\ChoiceList\ModelChoiceList;
+use Sonata\AdminBundle\Form\DataTransformer\ModelsToArrayTransformer;
+use Sonata\AdminBundle\Form\DataTransformer\ModelToIdTransformer;
+class ModelType extends AbstractType
+{
+public function buildForm(FormBuilderInterface $builder, array $options)
+{
+if ($options['multiple']) {
+$builder
+->addEventSubscriber(new MergeCollectionListener($options['model_manager']))
+->addViewTransformer(new ModelsToArrayTransformer($options['choice_list']), true);
+} else {
+$builder
+->addViewTransformer(new ModelToIdTransformer($options['model_manager'], $options['class']), true)
+;
+}
+}
+public function setDefaultOptions(OptionsResolverInterface $resolver)
+{
+$resolver->setDefaults(array('compound'=> function (Options $options) {
+return isset($options['multiple']) ? $options['multiple'] : false;
+},'template'=>'choice','multiple'=> false,'expanded'=> false,'model_manager'=> null,'class'=> null,'property'=> null,'query'=> null,'choices'=> null,'preferred_choices'=> array(),'choice_list'=> function (Options $options, $previousValue) {
+if ($previousValue instanceof ChoiceListInterface && count($choices = $previousValue->getChoices())) {
+return $choices;
+}
+return new ModelChoiceList(
+$options['model_manager'],
+$options['class'],
+$options['property'],
+$options['query'],
+$options['choices']
+);
+}
+));
+}
+public function getParent()
+{
+return'choice';
+}
+public function getName()
+{
+return'sonata_type_model';
+}
+}
+}
+namespace Sonata\AdminBundle\Form\Type
+{
+use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Form\FormInterface;
+use Symfony\Component\Form\FormView;
+use Symfony\Component\OptionsResolver\OptionsResolverInterface;
+use Sonata\AdminBundle\Form\DataTransformer\ModelToIdTransformer;
+class ModelTypeList extends AbstractType
+{
+public function buildForm(FormBuilderInterface $builder, array $options)
+{
+$builder
+->resetViewTransformers()
+->addViewTransformer(new ModelToIdTransformer($options['model_manager'], $options['class']));
+}
+public function buildView(FormView $view, FormInterface $form, array $options)
+{
+if (isset($view->vars['sonata_admin'])) {
+$view->vars['sonata_admin']['edit'] ='list';
+}
+}
+public function setDefaultOptions(OptionsResolverInterface $resolver)
+{
+$resolver->setDefaults(array('model_manager'=> null,'class'=> null,'parent'=>'text',
+));
+}
+public function getParent()
+{
+return'text';
+}
+public function getName()
+{
+return'sonata_type_model_list';
+}
+}
+}
+namespace Sonata\AdminBundle\Form\Type
+{
+use Symfony\Component\Translation\TranslatorInterface;
+use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Form\FormInterface;
+use Symfony\Component\Form\FormView;
+use Symfony\Component\OptionsResolver\Options;
+use Symfony\Component\OptionsResolver\OptionsResolverInterface;
+class TranslatableChoiceType extends AbstractType
+{
+protected $translator;
+public function __construct(TranslatorInterface $translator)
+{
+$this->translator = $translator;
+}
+public function setDefaultOptions(OptionsResolverInterface $resolver)
+{
+$resolver->setDefaults(array('catalogue'=>'messages',
+));
+}
+public function buildView(FormView $view, FormInterface $form, array $options)
+{
+$view->vars['translation_domain'] = $options['catalogue'];
+}
+public function getParent()
+{
+return'choice';
+}
+public function getName()
+{
+return'sonata_type_translatable_choice';
+}
+}
+}
+namespace Sonata\AdminBundle\Guesser
+{
+use Sonata\AdminBundle\Model\ModelManagerInterface;
+interface TypeGuesserInterface
+{
+public function guessType($class, $property, ModelManagerInterface $modelManager);
+}
+}
+namespace Sonata\AdminBundle\Guesser
+{
+use Sonata\AdminBundle\Guesser\TypeGuesserInterface;
+use Symfony\Component\Form\Exception\UnexpectedTypeException;
+use Symfony\Component\Form\Guess\Guess;
+use Sonata\AdminBundle\Model\ModelManagerInterface;
+class TypeGuesserChain implements TypeGuesserInterface
+{
+protected $guessers = array();
+public function __construct(array $guessers)
+{
+foreach ($guessers as $guesser) {
+if (!$guesser instanceof TypeGuesserInterface) {
+throw new UnexpectedTypeException($guesser,'Sonata\AdminBundle\Guesser\TypeGuesserInterface');
+}
+if ($guesser instanceof self) {
+$this->guessers = array_merge($this->guessers, $guesser->guessers);
+} else {
+$this->guessers[] = $guesser;
+}
+}
+}
+public function guessType($class, $property, ModelManagerInterface $modelManager)
+{
+return $this->guess(function ($guesser) use ($class, $property, $modelManager) {
+return $guesser->guessType($class, $property, $modelManager);
+});
+}
+private function guess(\Closure $closure)
+{
+$guesses = array();
+foreach ($this->guessers as $guesser) {
+if ($guess = $closure($guesser)) {
+$guesses[] = $guess;
+}
+}
+return Guess::getBestGuess($guesses);
+}
+}
+}
+namespace Sonata\AdminBundle\Model
+{
+interface AuditManagerInterface
+{
+public function setReader($serviceId, array $classes);
+public function hasReader($class);
+public function getReader($class);
+}
+}
+namespace Sonata\AdminBundle\Model
+{
+use Symfony\Component\DependencyInjection\ContainerInterface;
+class AuditManager implements AuditManagerInterface
+{
+protected $classes = array();
+protected $readers = array();
+protected $container;
+public function __construct(ContainerInterface $container)
+{
+$this->container = $container;
+}
+public function setReader($serviceId, array $classes)
+{
+$this->readers[$serviceId] = $classes;
+}
+public function hasReader($class)
+{
+foreach ($this->readers as $classes) {
+if (in_array($class, $classes)) {
+return true;
+}
+}
+return false;
+}
+public function getReader($class)
+{
+foreach ($this->readers as $readerId => $classes) {
+if (in_array($class, $classes)) {
+return $this->container->get($readerId);
+}
+}
+throw new \RuntimeException(sprintf('The class %s does not have any reader manager', $class));
+}
+}
+}
+namespace Sonata\AdminBundle\Model
+{
+interface AuditReaderInterface
+{
+public function find($className, $id, $revision);
+public function findRevisionHistory($className, $limit = 20, $offset = 0);
+public function findRevision($classname, $revision);
+public function findRevisions($className, $id);
+}
+}
+namespace Sonata\AdminBundle\Model
+{
+use Sonata\AdminBundle\Admin\FieldDescriptionInterface;
+use Sonata\AdminBundle\Datagrid\DatagridInterface;
+use Sonata\AdminBundle\Datagrid\ProxyQueryInterface;
+interface ModelManagerInterface
+{
+public function getNewFieldDescriptionInstance($class, $name, array $options = array());
+public function create($object);
+public function update($object);
+public function delete($object);
+public function findBy($class, array $criteria = array());
+public function findOneBy($class, array $criteria = array());
+public function find($class, $id);
+public function batchDelete($class, ProxyQueryInterface $queryProxy);
+public function getParentFieldDescription($parentAssociationMapping, $class);
+public function createQuery($class, $alias ='o');
+public function getModelIdentifier($class);
+public function getIdentifierValues($model);
+public function getIdentifierFieldNames($class);
+public function getNormalizedIdentifier($model);
+public function getUrlsafeIdentifier($model);
+public function getModelInstance($class);
+public function getModelCollectionInstance($class);
+public function collectionRemoveElement(&$collection, &$element);
+public function collectionAddElement(&$collection, &$element);
+public function collectionHasElement(&$collection, &$element);
+public function collectionClear(&$collection);
+public function getSortParameters(FieldDescriptionInterface $fieldDescription, DatagridInterface $datagrid);
+public function getDefaultSortValues($class);
+public function modelReverseTransform($class, array $array = array());
+public function modelTransform($class, $instance);
+public function executeQuery($query);
+public function getDataSourceIterator(DatagridInterface $datagrid, array $fields, $firstResult = null, $maxResult = null);
+public function getExportFields($class);
+public function getPaginationParameters(DatagridInterface $datagrid, $page);
+public function addIdentifiersToQuery($class, ProxyQueryInterface $query, array $idx);
+}
+}
+namespace Symfony\Component\Config\Loader
+{
+interface LoaderInterface
+{
+public function load($resource, $type = null);
+public function supports($resource, $type = null);
+public function getResolver();
+public function setResolver(LoaderResolverInterface $resolver);
+}
+}
+namespace Symfony\Component\Config\Loader
+{
+use Symfony\Component\Config\Exception\FileLoaderLoadException;
+abstract class Loader implements LoaderInterface
+{
+protected $resolver;
+public function getResolver()
+{
+return $this->resolver;
+}
+public function setResolver(LoaderResolverInterface $resolver)
+{
+$this->resolver = $resolver;
+}
+public function import($resource, $type = null)
+{
+return $this->resolve($resource)->load($resource, $type);
+}
+public function resolve($resource, $type = null)
+{
+if ($this->supports($resource, $type)) {
+return $this;
+}
+$loader = null === $this->resolver ? false : $this->resolver->resolve($resource, $type);
+if (false === $loader) {
+throw new FileLoaderLoadException($resource);
+}
+return $loader;
+}
+}
+}
+namespace Symfony\Component\Config\Loader
+{
+use Symfony\Component\Config\FileLocatorInterface;
+use Symfony\Component\Config\Exception\FileLoaderLoadException;
+use Symfony\Component\Config\Exception\FileLoaderImportCircularReferenceException;
+abstract class FileLoader extends Loader
+{
+protected static $loading = array();
+protected $locator;
+private $currentDir;
+public function __construct(FileLocatorInterface $locator)
+{
+$this->locator = $locator;
+}
+public function setCurrentDir($dir)
+{
+$this->currentDir = $dir;
+}
+public function getLocator()
+{
+return $this->locator;
+}
+public function import($resource, $type = null, $ignoreErrors = false, $sourceResource = null)
+{
+try {
+$loader = $this->resolve($resource, $type);
+if ($loader instanceof FileLoader && null !== $this->currentDir) {
+$resource = $this->locator->locate($resource, $this->currentDir);
+}
+if (isset(self::$loading[$resource])) {
+throw new FileLoaderImportCircularReferenceException(array_keys(self::$loading));
+}
+self::$loading[$resource] = true;
+$ret = $loader->load($resource, $type);
+unset(self::$loading[$resource]);
+return $ret;
+} catch (FileLoaderImportCircularReferenceException $e) {
+throw $e;
+} catch (\Exception $e) {
+if (!$ignoreErrors) {
+if ($e instanceof FileLoaderLoadException) {
+throw $e;
+}
+throw new FileLoaderLoadException($resource, $sourceResource, null, $e);
+}
+}
+}
+}
+}
+namespace Sonata\AdminBundle\Route
+{
+use Symfony\Component\Routing\RouteCollection as SymfonyRouteCollection;
+use Symfony\Component\Routing\Route;
+use Symfony\Component\Config\Loader\FileLoader;
+use Symfony\Component\Config\Resource\FileResource;
+use Sonata\AdminBundle\Admin\Pool;
+use Symfony\Component\DependencyInjection\ContainerInterface;
+class AdminPoolLoader extends FileLoader
+{
+protected $pool;
+protected $adminServiceIds = array();
+protected $container;
+public function __construct(Pool $pool, $adminServiceIds, ContainerInterface $container)
+{
+$this->pool = $pool;
+$this->adminServiceIds = $adminServiceIds;
+$this->container = $container;
+}
+public function supports($resource, $type = null)
+{
+if ($type =='sonata_admin') {
+return true;
+}
+return false;
+}
+public function load($resource, $type = null)
+{
+$collection = new SymfonyRouteCollection;
+foreach ($this->adminServiceIds as $id) {
+$admin = $this->pool->getInstance($id);
+foreach ($admin->getRoutes()->getElements() as $code => $route) {
+$collection->add($route->getDefault('_sonata_name'), $route);
+}
+$reflection = new \ReflectionObject($admin);
+$collection->addResource(new FileResource($reflection->getFileName()));
+}
+$reflection = new \ReflectionObject($this->container);
+$collection->addResource(new FileResource($reflection->getFileName()));
+return $collection;
+}
+}
+}
+namespace Sonata\AdminBundle\Route
+{
+use Sonata\AdminBundle\Admin\AdminInterface;
+interface RouteGeneratorInterface
+{
+public function generateUrl(AdminInterface $admin, $name, array $parameters = array(), $absolute = false);
+public function generate($name, array $parameters = array(), $absolute = false);
+}
+}
+namespace Sonata\AdminBundle\Route
+{
+use Sonata\AdminBundle\Admin\AdminInterface;
+use Symfony\Component\Routing\RouterInterface;
+class DefaultRouteGenerator implements RouteGeneratorInterface
+{
+private $router;
+public function __construct(RouterInterface $router)
+{
+$this->router = $router;
+}
+public function generate($name, array $parameters = array(), $absolute = false)
+{
+return $this->router->generate($name, $parameters, $absolute);
+}
+public function generateUrl(AdminInterface $admin, $name, array $parameters = array(), $absolute = false)
+{
+if (!$admin->isChild()) {
+if (strpos($name,'.')) {
+$name = $admin->getCode().'|'.$name;
+} else {
+$name = $admin->getCode().'.'.$name;
+}
+}
+else if ($admin->isChild()) {
+$name = $admin->getBaseCodeRoute().'.'.$name;
+if (isset($parameters['id'])) {
+$parameters[$admin->getIdParameter()] = $parameters['id'];
+unset($parameters['id']);
+}
+$parameters[$admin->getParent()->getIdParameter()] = $admin->getRequest()->get($admin->getParent()->getIdParameter());
+}
+if ($admin->hasParentFieldDescription()) {
+$parameters = array_merge($parameters, $admin->getParentFieldDescription()->getOption('link_parameters', array()));
+$parameters['uniqid'] = $admin->getUniqid();
+$parameters['code'] = $admin->getCode();
+$parameters['pcode'] = $admin->getParentFieldDescription()->getAdmin()->getCode();
+$parameters['puniqid'] = $admin->getParentFieldDescription()->getAdmin()->getUniqid();
+}
+if ($name =='update'|| substr($name, -7) =='|update') {
+$parameters['uniqid'] = $admin->getUniqid();
+$parameters['code'] = $admin->getCode();
+}
+if ($admin->hasRequest()) {
+$parameters = array_merge($admin->getPersistentParameters(), $parameters);
+}
+$route = $admin->getRoute($name);
+if (!$route) {
+throw new \RuntimeException(sprintf('unable to find the route `%s`', $name));
+}
+return $this->router->generate($route->getDefault('_sonata_name'), $parameters, $absolute);
+}
+}
+}
+namespace Sonata\AdminBundle\Route
+{
+use Sonata\AdminBundle\Builder\RouteBuilderInterface;
+use Sonata\AdminBundle\Admin\AdminInterface;
+use Sonata\AdminBundle\Model\AuditManagerInterface;
+class PathInfoBuilder implements RouteBuilderInterface
+{
+protected $manager;
+public function __construct(AuditManagerInterface $manager)
+{
+$this->manager = $manager;
+}
+public function build(AdminInterface $admin, RouteCollection $collection)
+{
+$collection->add('list');
+$collection->add('create');
+$collection->add('batch');
+$collection->add('edit', $admin->getRouterIdParameter().'/edit');
+$collection->add('delete', $admin->getRouterIdParameter().'/delete');
+$collection->add('show', $admin->getRouterIdParameter().'/show');
+$collection->add('export');
+if ($this->manager->hasReader($admin->getClass())) {
+$collection->add('history', $admin->getRouterIdParameter().'/history');
+$collection->add('history_view_revision', $admin->getRouterIdParameter().'/history/{revision}/view');
+}
+if ($admin->getParent()) {
+return;
+}
+foreach ($admin->getChildren() as $children) {
+$collection->addCollection($children->getRoutes());
+}
+}
+}
+}
+namespace Sonata\AdminBundle\Route
+{
+use Sonata\AdminBundle\Builder\RouteBuilderInterface;
+use Sonata\AdminBundle\Admin\AdminInterface;
+use Sonata\AdminBundle\Model\AuditManagerInterface;
+class QueryStringBuilder implements RouteBuilderInterface
+{
+protected $manager;
+public function __construct(AuditManagerInterface $manager)
+{
+$this->manager = $manager;
+}
+public function build(AdminInterface $admin, RouteCollection $collection)
+{
+$collection->add('list');
+$collection->add('create');
+$collection->add('batch');
+$collection->add('edit');
+$collection->add('delete');
+$collection->add('show');
+$collection->add('export');
+if ($this->manager->hasReader($admin->getClass())) {
+$collection->add('history','/audit-history');
+$collection->add('history_view_revision','/audit-history-view');
+}
+if ($admin->getParent()) {
+return;
+}
+foreach ($admin->getChildren() as $children) {
+$collection->addCollection($children->getRoutes());
+}
+}
+}
+}
+namespace Sonata\AdminBundle\Route
+{
+use Symfony\Component\Routing\Route;
+class RouteCollection
+{
+protected $elements = array();
+protected $baseCodeRoute;
+protected $baseRouteName;
+protected $baseControllerName;
+protected $baseRoutePattern;
+public function __construct($baseCodeRoute, $baseRouteName, $baseRoutePattern, $baseControllerName)
+{
+$this->baseCodeRoute = $baseCodeRoute;
+$this->baseRouteName = $baseRouteName;
+$this->baseRoutePattern = $baseRoutePattern;
+$this->baseControllerName = $baseControllerName;
+}
+public function add($name, $pattern = null, array $defaults = array(), array $requirements = array(), array $options = array())
+{
+$pattern = sprintf('%s/%s', $this->baseRoutePattern, $pattern ?: $name);
+$code = $this->getCode($name);
+$routeName = sprintf('%s_%s', $this->baseRouteName, $name);
+if (!isset($defaults['_controller'])) {
+$defaults['_controller'] = sprintf('%s:%s', $this->baseControllerName, $this->actionify($code));
+}
+if (!isset($defaults['_sonata_admin'])) {
+$defaults['_sonata_admin'] = $this->baseCodeRoute;
+}
+$defaults['_sonata_name'] = $routeName;
+$this->elements[$this->getCode($name)] = new Route($pattern, $defaults, $requirements, $options);
+}
+public function getCode($name)
+{
+if (strrpos($name,'.') !== false) {
+return $name;
+}
+return sprintf('%s.%s', $this->baseCodeRoute, $name);
+}
+public function addCollection(RouteCollection $collection)
+{
+foreach ($collection->getElements() as $code => $route) {
+$this->elements[$code] = $route;
+}
+}
+public function getElements()
+{
+return $this->elements;
+}
+public function has($name)
+{
+return array_key_exists($this->getCode($name), $this->elements);
+}
+public function get($name)
+{
+if ($this->has($name)) {
+return $this->elements[$this->getCode($name)];
+}
+throw new \InvalidArgumentException(sprintf('Element "%s" does not exist.', $name));
+}
+public function remove($name)
+{
+unset($this->elements[$this->getCode($name)]);
+return $this;
+}
+public function clearExcept(array $routeList)
+{
+$routeCodeList = array();
+foreach ($routeList as $name) {
+$routeCodeList[] = $this->getCode($name);
+}
+$elements = $this->elements;
+foreach ($elements as $key => $element) {
+if (!in_array($key, $routeCodeList)) {
+unset($this->elements[$key]);
+}
+}
+return $this;
+}
+public function clear()
+{
+$this->elements = array();
+return $this;
+}
+public function actionify($action)
+{
+if (($pos = strrpos($action,'.')) !== false) {
+$action = substr($action, $pos + 1);
+}
+if (strpos($this->baseControllerName,':') === false) {
+$action .='Action';
+}
+return lcfirst(str_replace(' ','', ucwords(strtr($action,'_-','  '))));
+}
+public function getBaseCodeRoute()
+{
+return $this->baseCodeRoute;
+}
+public function getBaseControllerName()
+{
+return $this->baseControllerName;
+}
+public function getBaseRouteName()
+{
+return $this->baseRouteName;
+}
+public function getBaseRoutePattern()
+{
+return $this->baseRoutePattern;
+}
+}
+}
+namespace Symfony\Component\Security\Acl\Permission
+{
+interface PermissionMapInterface
+{
+public function getMasks($permission, $object);
+public function contains($permission);
+}
+}
+namespace Sonata\AdminBundle\Security\Acl\Permission
+{
+use Symfony\Component\Security\Acl\Permission\PermissionMapInterface;
+class AdminPermissionMap implements PermissionMapInterface
+{
+const PERMISSION_VIEW ='VIEW';
+const PERMISSION_EDIT ='EDIT';
+const PERMISSION_CREATE ='CREATE';
+const PERMISSION_DELETE ='DELETE';
+const PERMISSION_UNDELETE ='UNDELETE';
+const PERMISSION_LIST ='LIST';
+const PERMISSION_EXPORT ='EXPORT';
+const PERMISSION_OPERATOR ='OPERATOR';
+const PERMISSION_MASTER ='MASTER';
+const PERMISSION_OWNER ='OWNER';
+private $map = array(
+self::PERMISSION_VIEW => array(
+MaskBuilder::MASK_VIEW,
+MaskBuilder::MASK_LIST,
+MaskBuilder::MASK_EDIT,
+MaskBuilder::MASK_OPERATOR,
+MaskBuilder::MASK_MASTER,
+MaskBuilder::MASK_OWNER
+),
+self::PERMISSION_EDIT => array(
+MaskBuilder::MASK_EDIT,
+MaskBuilder::MASK_OPERATOR,
+MaskBuilder::MASK_MASTER,
+MaskBuilder::MASK_OWNER
+),
+self::PERMISSION_CREATE => array(
+MaskBuilder::MASK_CREATE,
+MaskBuilder::MASK_OPERATOR,
+MaskBuilder::MASK_MASTER,
+MaskBuilder::MASK_OWNER
+),
+self::PERMISSION_DELETE => array(
+MaskBuilder::MASK_DELETE,
+MaskBuilder::MASK_OPERATOR,
+MaskBuilder::MASK_MASTER,
+MaskBuilder::MASK_OWNER
+),
+self::PERMISSION_UNDELETE => array(
+MaskBuilder::MASK_UNDELETE,
+MaskBuilder::MASK_OPERATOR,
+MaskBuilder::MASK_MASTER,
+MaskBuilder::MASK_OWNER
+),
+self::PERMISSION_LIST => array(
+MaskBuilder::MASK_LIST,
+MaskBuilder::MASK_OPERATOR,
+MaskBuilder::MASK_MASTER,
+MaskBuilder::MASK_OWNER
+),
+self::PERMISSION_EXPORT => array(
+MaskBuilder::MASK_EXPORT,
+MaskBuilder::MASK_OPERATOR,
+MaskBuilder::MASK_MASTER,
+MaskBuilder::MASK_OWNER
+),
+self::PERMISSION_OPERATOR => array(
+MaskBuilder::MASK_OPERATOR,
+MaskBuilder::MASK_MASTER,
+MaskBuilder::MASK_OWNER
+),
+self::PERMISSION_MASTER => array(
+MaskBuilder::MASK_MASTER,
+MaskBuilder::MASK_OWNER,
+),
+self::PERMISSION_OWNER => array(
+MaskBuilder::MASK_OWNER,
+),
+);
+public function getMasks($permission, $object)
+{
+if (!isset($this->map[$permission])) {
+return null;
+}
+return $this->map[$permission];
+}
+public function contains($permission)
+{
+return isset($this->map[$permission]);
+}
+}
+}
+namespace Symfony\Component\Security\Acl\Permission
+{
+class MaskBuilder
+{
+const MASK_VIEW = 1; const MASK_CREATE = 2; const MASK_EDIT = 4; const MASK_DELETE = 8; const MASK_UNDELETE = 16; const MASK_OPERATOR = 32; const MASK_MASTER = 64; const MASK_OWNER = 128; const MASK_IDDQD = 1073741823;
+const CODE_VIEW ='V';
+const CODE_CREATE ='C';
+const CODE_EDIT ='E';
+const CODE_DELETE ='D';
+const CODE_UNDELETE ='U';
+const CODE_OPERATOR ='O';
+const CODE_MASTER ='M';
+const CODE_OWNER ='N';
+const ALL_OFF ='................................';
+const OFF ='.';
+const ON ='*';
+private $mask;
+public function __construct($mask = 0)
+{
+if (!is_int($mask)) {
+throw new \InvalidArgumentException('$mask must be an integer.');
+}
+$this->mask = $mask;
+}
+public function add($mask)
+{
+if (is_string($mask) && defined($name ='static::MASK_'.strtoupper($mask))) {
+$mask = constant($name);
+} elseif (!is_int($mask)) {
+throw new \InvalidArgumentException('$mask must be an integer.');
+}
+$this->mask |= $mask;
+return $this;
+}
+public function get()
+{
+return $this->mask;
+}
+public function getPattern()
+{
+$pattern = self::ALL_OFF;
+$length = strlen($pattern);
+$bitmask = str_pad(decbin($this->mask), $length,'0', STR_PAD_LEFT);
+for ($i=$length-1; $i>=0; $i--) {
+if ('1'=== $bitmask[$i]) {
+try {
+$pattern[$i] = self::getCode(1 << ($length - $i - 1));
+} catch (\Exception $notPredefined) {
+$pattern[$i] = self::ON;
+}
+}
+}
+return $pattern;
+}
+public function remove($mask)
+{
+if (is_string($mask) && defined($name ='static::MASK_'.strtoupper($mask))) {
+$mask = constant($name);
+} elseif (!is_int($mask)) {
+throw new \InvalidArgumentException('$mask must be an integer.');
+}
+$this->mask &= ~$mask;
+return $this;
+}
+public function reset()
+{
+$this->mask = 0;
+return $this;
+}
+public static function getCode($mask)
+{
+if (!is_int($mask)) {
+throw new \InvalidArgumentException('$mask must be an integer.');
+}
+$reflection = new \ReflectionClass(get_called_class());
+foreach ($reflection->getConstants() as $name => $cMask) {
+if (0 !== strpos($name,'MASK_')) {
+continue;
+}
+if ($mask === $cMask) {
+if (!defined($cName ='static::CODE_'.substr($name, 5))) {
+throw new \RuntimeException('There was no code defined for this mask.');
+}
+return constant($cName);
+}
+}
+throw new \InvalidArgumentException(sprintf('The mask "%d" is not supported.', $mask));
+}
+}
+}
+namespace Sonata\AdminBundle\Security\Acl\Permission
+{
+use Symfony\Component\Security\Acl\Permission\MaskBuilder as BaseMaskBuilder;
+class MaskBuilder extends BaseMaskBuilder
+{
+const MASK_LIST = 4096; const MASK_EXPORT = 8192;
+const CODE_LIST ='L';
+const CODE_EXPORT ='E';
+}
+}
+namespace Sonata\AdminBundle\Security\Handler
+{
+use Sonata\AdminBundle\Admin\AdminInterface;
+interface SecurityHandlerInterface
+{
+public function isGranted(AdminInterface $admin, $attributes, $object = null);
+public function getBaseRole(AdminInterface $admin);
+public function buildSecurityInformation(AdminInterface $admin);
+public function createObjectSecurity(AdminInterface $admin, $object);
+public function deleteObjectSecurity(AdminInterface $admin, $object);
+}
+}
+namespace Sonata\AdminBundle\Security\Handler
+{
+use Symfony\Component\Security\Acl\Domain\UserSecurityIdentity;
+use Symfony\Component\Security\Acl\Model\AclInterface;
+use Symfony\Component\Security\Acl\Model\ObjectIdentityInterface;
+interface AclSecurityHandlerInterface extends SecurityHandlerInterface
+{
+public function setAdminPermissions(array $permissions);
+public function getAdminPermissions();
+public function setObjectPermissions(array $permissions);
+public function getObjectPermissions();
+public function getObjectAcl(ObjectIdentityInterface $objectIdentity);
+public function findObjectAcls(array $oids, array $sids = array());
+public function addObjectOwner(AclInterface $acl, UserSecurityIdentity $securityIdentity = null);
+public function addObjectClassAces(AclInterface $acl, array $roleInformation = array());
+public function createAcl(ObjectIdentityInterface $objectIdentity);
+public function updateAcl(AclInterface $acl);
+public function deleteAcl(ObjectIdentityInterface $objectIdentity);
+public function findClassAceIndexByRole(AclInterface $acl, $role);
+public function findClassAceIndexByUsername(AclInterface $acl, $username);
+}
+}
+namespace Sonata\AdminBundle\Security\Handler
+{
+use Symfony\Component\Security\Core\SecurityContextInterface;
+use Symfony\Component\Security\Core\Exception\AuthenticationCredentialsNotFoundException;
+use Symfony\Component\Security\Acl\Model\MutableAclProviderInterface;
+use Symfony\Component\Security\Acl\Model\AclInterface;
+use Symfony\Component\Security\Acl\Domain\ObjectIdentity;
+use Symfony\Component\Security\Acl\Model\ObjectIdentityInterface;
+use Symfony\Component\Security\Acl\Domain\UserSecurityIdentity;
+use Symfony\Component\Security\Acl\Domain\RoleSecurityIdentity;
+use Symfony\Component\Security\Acl\Exception\AclNotFoundException;
+use Symfony\Component\Security\Acl\Exception\NotAllAclsFoundException;
+use Sonata\AdminBundle\Admin\AdminInterface;
+class AclSecurityHandler implements AclSecurityHandlerInterface
+{
+protected $securityContext;
+protected $aclProvider;
+protected $superAdminRoles;
+protected $adminPermissions;
+protected $objectPermissions;
+protected $maskBuilderClass;
+public function __construct(SecurityContextInterface $securityContext, MutableAclProviderInterface $aclProvider, $maskBuilderClass, array $superAdminRoles)
+{
+$this->securityContext = $securityContext;
+$this->aclProvider = $aclProvider;
+$this->maskBuilderClass = $maskBuilderClass;
+$this->superAdminRoles = $superAdminRoles;
+}
+public function setAdminPermissions(array $permissions)
+{
+$this->adminPermissions = $permissions;
+}
+public function getAdminPermissions()
+{
+return $this->adminPermissions;
+}
+public function setObjectPermissions(array $permissions)
+{
+$this->objectPermissions = $permissions;
+}
+public function getObjectPermissions()
+{
+return $this->objectPermissions;
+}
+public function isGranted(AdminInterface $admin, $attributes, $object = null)
+{
+if (!is_array($attributes)) {
+$attributes = array($attributes);
+}
+try {
+return $this->securityContext->isGranted($this->superAdminRoles) || $this->securityContext->isGranted($attributes, $object);
+} catch (AuthenticationCredentialsNotFoundException $e) {
+return false;
+} catch (\Exception $e) {
+throw $e;
+}
+}
+public function getBaseRole(AdminInterface $admin)
+{
+return'ROLE_'. str_replace('.','_', strtoupper($admin->getCode())) .'_%s';
+}
+public function buildSecurityInformation(AdminInterface $admin)
+{
+$baseRole = $this->getBaseRole($admin);
+$results = array();
+foreach ($admin->getSecurityInformation() as $role => $permissions) {
+$results[sprintf($baseRole, $role)] = $permissions;
+}
+return $results;
+}
+public function createObjectSecurity(AdminInterface $admin, $object)
+{
+$objectIdentity = ObjectIdentity::fromDomainObject($object);
+$acl = $this->getObjectAcl($objectIdentity);
+if (is_null($acl)) {
+$acl = $this->createAcl($objectIdentity);
+}
+$user = $this->securityContext->getToken()->getUser();
+$securityIdentity = UserSecurityIdentity::fromAccount($user);
+$this->addObjectOwner($acl, $securityIdentity);
+$this->addObjectClassAces($acl, $this->buildSecurityInformation($admin));
+$this->updateAcl($acl);
+}
+public function deleteObjectSecurity(AdminInterface $admin, $object)
+{
+$objectIdentity = ObjectIdentity::fromDomainObject($object);
+$this->deleteAcl($objectIdentity);
+}
+public function getObjectAcl(ObjectIdentityInterface $objectIdentity)
+{
+try {
+$acl = $this->aclProvider->findAcl($objectIdentity);
+} catch (AclNotFoundException $e) {
+return null;
+}
+return $acl;
+}
+public function findObjectAcls(array $oids, array $sids = array())
+{
+try {
+$acls = $this->aclProvider->findAcls($oids, $sids);
+} catch (\Exception $e) {
+if ($e instanceof NotAllAclsFoundException) {
+$acls = $e->getPartialResult();
+} elseif ($e instanceof AclNotFoundException) {
+$acls = new \SplObjectStorage();
+} else {
+throw $e;
+}
+}
+return $acls;
+}
+public function addObjectOwner(AclInterface $acl, UserSecurityIdentity $securityIdentity = null)
+{
+if (false === $this->findClassAceIndexByUsername($acl, $securityIdentity->getUsername())) {
+$acl->insertObjectAce($securityIdentity, constant("$this->maskBuilderClass::MASK_OWNER"));
+}
+}
+public function addObjectClassAces(AclInterface $acl, array $roleInformation = array())
+{
+$builder = new $this->maskBuilderClass();
+foreach ($roleInformation as $role => $permissions) {
+$aceIndex = $this->findClassAceIndexByRole($acl, $role);
+$hasRole = false;
+foreach ($permissions as $permission) {
+if (in_array($permission, $this->getObjectPermissions())) {
+$builder->add($permission);
+$hasRole = true;
+}
+}
+if ($hasRole) {
+if ($aceIndex === false) {
+$acl->insertClassAce(new RoleSecurityIdentity($role), $builder->get());
+} else {
+$acl->updateClassAce($aceIndex, $builder->get());
+}
+$builder->reset();
+} elseif ($aceIndex !== false) {
+$acl->deleteClassAce($aceIndex);
+}
+}
+}
+public function createAcl(ObjectIdentityInterface $objectIdentity)
+{
+return $this->aclProvider->createAcl($objectIdentity);
+}
+public function updateAcl(AclInterface $acl)
+{
+$this->aclProvider->updateAcl($acl);
+}
+public function deleteAcl(ObjectIdentityInterface $objectIdentity)
+{
+$this->aclProvider->deleteAcl($objectIdentity);
+}
+public function findClassAceIndexByRole(AclInterface $acl, $role)
+{
+foreach ($acl->getClassAces() as $index => $entry) {
+if ($entry->getSecurityIdentity() instanceof RoleSecurityIdentity && $entry->getSecurityIdentity()->getRole() === $role) {
+return $index;
+}
+}
+return false;
+}
+public function findClassAceIndexByUsername(AclInterface $acl, $username)
+{
+foreach ($acl->getClassAces() as $index => $entry) {
+if ($entry->getSecurityIdentity() instanceof UserSecurityIdentity && $entry->getSecurityIdentity()->getUsername() === $username) {
+return $index;
+}
+}
+return false;
+}
+}
+}
+namespace Sonata\AdminBundle\Security\Handler
+{
+use Sonata\AdminBundle\Admin\AdminInterface;
+class NoopSecurityHandler implements SecurityHandlerInterface
+{
+public function isGranted(AdminInterface $admin, $attributes, $object = null)
+{
+return true;
+}
+public function getBaseRole(AdminInterface $admin)
+{
+return'';
+}
+public function buildSecurityInformation(AdminInterface $admin)
+{
+return array();
+}
+public function createObjectSecurity(AdminInterface $admin, $object)
+{
+}
+public function deleteObjectSecurity(AdminInterface $admin, $object)
+{
+}
+}
+}
+namespace Sonata\AdminBundle\Security\Handler
+{
+use Symfony\Component\Security\Core\SecurityContextInterface;
+use Symfony\Component\Security\Core\Exception\AuthenticationCredentialsNotFoundException;
+use Sonata\AdminBundle\Admin\AdminInterface;
+class RoleSecurityHandler implements SecurityHandlerInterface
+{
+protected $securityContext;
+protected $superAdminRoles;
+public function __construct(SecurityContextInterface $securityContext, array $superAdminRoles)
+{
+$this->securityContext = $securityContext;
+$this->superAdminRoles = $superAdminRoles;
+}
+public function isGranted(AdminInterface $admin, $attributes, $object = null)
+{
+if (!is_array($attributes)) {
+$attributes = array($attributes);
+}
+foreach ($attributes as $pos => $attribute) {
+$attributes[$pos] = sprintf($this->getBaseRole($admin), $attribute);
+}
+try {
+return $this->securityContext->isGranted($this->superAdminRoles) || $this->securityContext->isGranted($attributes);
+} catch (AuthenticationCredentialsNotFoundException $e) {
+return false;
+} catch (\Exception $e) {
+throw $e;
+}
+}
+public function getBaseRole(AdminInterface $admin)
+{
+return'ROLE_'. str_replace('.','_', strtoupper($admin->getCode())) .'_%s';
+}
+public function buildSecurityInformation(AdminInterface $admin)
+{
+return array();
+}
+public function createObjectSecurity(AdminInterface $admin, $object)
+{
+}
+public function deleteObjectSecurity(AdminInterface $admin, $object)
+{
+}
+}
+}
+namespace Sonata\AdminBundle\Show
+{
+use Sonata\AdminBundle\Admin\AdminInterface;
+use Sonata\AdminBundle\Admin\FieldDescriptionInterface;
+use Sonata\AdminBundle\Admin\FieldDescriptionCollection;
+use Sonata\AdminBundle\Builder\ShowBuilderInterface;
+class ShowMapper
+{
+protected $showBuilder;
+protected $list;
+protected $admin;
+protected $currentGroup;
+public function __construct(ShowBuilderInterface $showBuilder, FieldDescriptionCollection $list, AdminInterface $admin)
+{
+$this->showBuilder = $showBuilder;
+$this->list = $list;
+$this->admin = $admin;
+}
+public function add($name, $type = null, array $fieldDescriptionOptions = array())
+{
+if (!$this->currentGroup) {
+$this->with($this->admin->getLabel());
+}
+$fieldKey = ($name instanceof FieldDescriptionInterface) ? $name->getName() : $name;
+$formGroups = $this->admin->getShowGroups();
+$formGroups[$this->currentGroup]['fields'][$fieldKey] = $fieldKey;
+$this->admin->setShowGroups($formGroups);
+if ($name instanceof FieldDescriptionInterface) {
+$fieldDescription = $name;
+$fieldDescription->mergeOptions($fieldDescriptionOptions);
+} elseif (is_string($name) && !$this->admin->hasShowFieldDescription($name)) {
+$fieldDescription = $this->admin->getModelManager()->getNewFieldDescriptionInstance(
+$this->admin->getClass(),
+$name,
+$fieldDescriptionOptions
+);
+} else {
+throw new \RuntimeException('invalid state');
+}
+if (!$fieldDescription->getLabel()) {
+$fieldDescription->setOption('label', $this->admin->getLabelTranslatorStrategy()->getLabel($fieldDescription->getName(),'show','label'));
+}
+$fieldDescription->setOption('safe', $fieldDescription->getOption('safe', false));
+$this->showBuilder->addField($this->list, $type, $fieldDescription, $this->admin);
+return $this;
+}
+public function get($name)
+{
+return $this->list->get($name);
+}
+public function has($key)
+{
+return $this->list->has($key);
+}
+public function remove($key)
+{
+$this->admin->removeShowFieldDescription($key);
+$this->list->remove($key);
+return $this;
+}
+public function reorder(array $keys)
+{
+if (!$this->currentGroup) {
+$this->with($this->admin->getLabel());
+}
+$this->admin->reorderShowGroup($this->currentGroup, $keys);
+return $this;
+}
+public function with($name, array $options = array())
+{
+$showGroups = $this->admin->getShowGroups();
+if (!isset($showGroups[$name])) {
+$showGroups[$name] = array_merge(array('collapsed'=> false,'fields'=> array()
+), $options);
+}
+$this->admin->setShowGroups($showGroups);
+$this->currentGroup = $name;
+return $this;
+}
+public function end()
+{
+$this->currentGroup = null;
+return $this;
+}
+}
+}
+namespace Sonata\AdminBundle\Translator
+{
+interface LabelTranslatorStrategyInterface
+{
+public function getLabel($label, $context ='', $type ='');
+}
+}
+namespace Sonata\AdminBundle\Translator
+{
+class BCLabelTranslatorStrategy implements LabelTranslatorStrategyInterface
+{
+public function getLabel($label, $context ='', $type ='')
+{
+if ($context =='breadcrumb') {
+return sprintf('%s.%s_%s', $context, $type, strtolower($label));
+}
+return ucfirst(strtolower($label));
+}
+}
+}
+namespace Sonata\AdminBundle\Translator
+{
+class FormLabelTranslatorStrategy implements LabelTranslatorStrategyInterface
+{
+public function getLabel($label, $context ='', $type ='')
+{
+return ucfirst(strtolower($label));
+}
+}
+}
+namespace Sonata\AdminBundle\Translator
+{
+class NativeLabelTranslatorStrategy implements LabelTranslatorStrategyInterface
+{
+public function getLabel($label, $context ='', $type ='')
+{
+$label = str_replace(array('_','.'),' ', $label);
+$label = strtolower(preg_replace('~(?<=\\w)([A-Z])~','_$1', $label));
+return ucwords(str_replace('_',' ', $label));
+}
+}
+}
+namespace Sonata\AdminBundle\Translator
+{
+class NoopLabelTranslatorStrategy implements LabelTranslatorStrategyInterface
+{
+public function getLabel($label, $context ='', $type ='')
+{
+return $label;
+}
+}
+}
+namespace Sonata\AdminBundle\Translator
+{
+class UnderscoreLabelTranslatorStrategy implements LabelTranslatorStrategyInterface
+{
+public function getLabel($label, $context ='', $type ='')
+{
+$label = str_replace('.','_', $label);
+return sprintf('%s.%s_%s', $context, $type, strtolower(preg_replace('~(?<=\\w)([A-Z])~','_$1', $label)));
+}
+}
+}
+namespace
+{
+interface Twig_ExtensionInterface
+{
+public function initRuntime(Twig_Environment $environment);
+public function getTokenParsers();
+public function getNodeVisitors();
+public function getFilters();
+public function getTests();
+public function getFunctions();
+public function getOperators();
+public function getGlobals();
+public function getName();
+}
+}
+namespace
+{
+abstract class Twig_Extension implements Twig_ExtensionInterface
+{
+public function initRuntime(Twig_Environment $environment)
+{
+}
+public function getTokenParsers()
+{
+return array();
+}
+public function getNodeVisitors()
+{
+return array();
+}
+public function getFilters()
+{
+return array();
+}
+public function getTests()
+{
+return array();
+}
+public function getFunctions()
+{
+return array();
+}
+public function getOperators()
+{
+return array();
+}
+public function getGlobals()
+{
+return array();
+}
+}
+}
+namespace Sonata\AdminBundle\Twig\Extension
+{
+use Doctrine\Common\Util\ClassUtils;
+use Sonata\AdminBundle\Admin\FieldDescriptionInterface;
+use Sonata\AdminBundle\Exception\NoValueException;
+use Sonata\AdminBundle\Admin\Pool;
+class SonataAdminExtension extends \Twig_Extension
+{
+protected $environment;
+protected $pool;
+public function __construct(Pool $pool)
+{
+$this->pool = $pool;
+}
+public function initRuntime(\Twig_Environment $environment)
+{
+$this->environment = $environment;
+}
+public function getFilters()
+{
+return array('render_list_element'=> new \Twig_Filter_Method($this,'renderListElement', array('is_safe'=> array('html'))),'render_view_element'=> new \Twig_Filter_Method($this,'renderViewElement', array('is_safe'=> array('html'))),'render_relation_element'=> new \Twig_Filter_Method($this,'renderRelationElement'),'sonata_urlsafeid'=> new \Twig_Filter_Method($this,'getUrlsafeIdentifier'),'sonata_slugify'=> new \Twig_Filter_Method($this,'slugify'),
+);
+}
+public function getTokenParsers()
+{
+return array();
+}
+public function getName()
+{
+return'sonata_admin';
+}
+protected function getTemplate(FieldDescriptionInterface $fieldDescription)
+{
+$default = $fieldDescription->getAdmin()->getTemplate('base_list_field');
+$templateName = $fieldDescription->getTemplate() ? : $default;
+try {
+$template = $this->environment->loadTemplate($templateName);
+} catch (\Twig_Error_Loader $e) {
+$template = $this->environment->loadTemplate($default);
+}
+return $template;
+}
+public function renderListElement($object, FieldDescriptionInterface $fieldDescription, $params = array())
+{
+$template = $this->getTemplate($fieldDescription);
+return $this->output($fieldDescription, $template, array_merge($params, array('admin'=> $fieldDescription->getAdmin(),'object'=> $object,'value'=> $this->getValueFromFieldDescription($object, $fieldDescription),'field_description'=> $fieldDescription
+)));
+}
+public function output(FieldDescriptionInterface $fieldDescription, \Twig_TemplateInterface $template, array $parameters = array())
+{
+$content = $template->render($parameters);
+if ($this->environment->isDebug()) {
+return sprintf("\n<!-- START  \n  fieldName: %s\n  template: %s\n  compiled template: %s\n -->\n%s\n<!-- END - fieldName: %s -->",
+$fieldDescription->getFieldName(),
+$fieldDescription->getTemplate(),
+$template->getTemplateName(),
+$content,
+$fieldDescription->getFieldName()
+);
+}
+return $content;
+}
+public function getValueFromFieldDescription($object, FieldDescriptionInterface $fieldDescription, array $params = array())
+{
+if (isset($params['loop']) && $object instanceof \ArrayAccess) {
+throw new \RuntimeException('remove the loop requirement');
+}
+$value = null;
+try {
+$value = $fieldDescription->getValue($object);
+} catch (NoValueException $e) {
+if ($fieldDescription->getAssociationAdmin()) {
+$value = $fieldDescription->getAssociationAdmin()->getNewInstance();
+}
+}
+return $value;
+}
+public function renderViewElement(FieldDescriptionInterface $fieldDescription, $object)
+{
+$template = $this->getTemplate($fieldDescription,'SonataAdminBundle:CRUD:base_show_field.html.twig');
+try {
+$value = $fieldDescription->getValue($object);
+} catch (NoValueException $e) {
+$value = null;
+}
+return $this->output($fieldDescription, $template, array('field_description'=> $fieldDescription,'object'=> $object,'value'=> $value,'admin'=> $fieldDescription->getAdmin()
+));
+}
+public function renderRelationElement($element, FieldDescriptionInterface $fieldDescription)
+{
+$method = $fieldDescription->getOption('associated_tostring','__toString');
+if (!is_object($element)) {
+return $element;
+}
+if (!method_exists($element, $method)) {
+throw new \RunTimeException(sprintf('You must define an `associated_tostring` option or create a `%s::__toString` method to the field option %s from service %s is ', get_class($element), $fieldDescription->getName(), $fieldDescription->getAdmin()->getCode()));
+}
+return call_user_func(array($element, $method));
+}
+public function getUrlsafeIdentifier($model)
+{
+$admin = $this->pool->getAdminByClass(
+ClassUtils::getClass($model)
+);
+return $admin->getUrlsafeIdentifier($model);
+}
+public function slugify($text)
+{
+$text = preg_replace('~[^\\pL\d]+~u','-', $text);
+$text = trim($text,'-');
+if (function_exists('iconv')) {
+$text = iconv('utf-8','us-ascii//TRANSLIT', $text);
+}
+$text = strtolower($text);
+$text = preg_replace('~[^-\w]+~','', $text);
+return $text;
+}
+}
+}
+namespace Sonata\AdminBundle\Util
+{
+use Symfony\Component\Security\Acl\Model\AclInterface;
+use Symfony\Component\Console\Output\OutputInterface;
+use Sonata\AdminBundle\Admin\AdminInterface;
+use Sonata\AdminBundle\Security\Handler\AclSecurityHandlerInterface;
+interface AdminAclManipulatorInterface
+{
+public function configureAcls(OutputInterface $output, AdminInterface $admin);
+public function addAdminClassAces(OutputInterface $output, AclInterface $acl, AclSecurityHandlerInterface $securityHandler, array $roleInformation = array());
+}
+}
+namespace Sonata\AdminBundle\Util
+{
+use Symfony\Component\Security\Acl\Domain\RoleSecurityIdentity;
+use Symfony\Component\Security\Acl\Domain\ObjectIdentity;
+use Symfony\Component\Security\Acl\Model\AclInterface;
+use Symfony\Component\Console\Output\OutputInterface;
+use Sonata\AdminBundle\Admin\AdminInterface;
+use Sonata\AdminBundle\Security\Handler\AclSecurityHandlerInterface;
+class AdminAclManipulator implements AdminAclManipulatorInterface
+{
+protected $maskBuilderClass;
+public function __construct($maskBuilderClass)
+{
+$this->maskBuilderClass = $maskBuilderClass;
+}
+public function configureAcls(OutputInterface $output, AdminInterface $admin)
+{
+$securityHandler = $admin->getSecurityHandler();
+if (!$securityHandler instanceof AclSecurityHandlerInterface) {
+$output->writeln(sprintf('Admin `%s` is not configured to use ACL : <info>ignoring</info>', $admin->getCode()));
+return;
+}
+$objectIdentity = ObjectIdentity::fromDomainObject($admin);
+$newAcl = false;
+if (is_null($acl = $securityHandler->getObjectAcl($objectIdentity))) {
+$acl = $securityHandler->createAcl($objectIdentity);
+$newAcl = true;
+}
+$output->writeln(sprintf(' > install ACL for %s', $admin->getCode()));
+$configResult = $this->addAdminClassAces($output, $acl, $securityHandler, $securityHandler->buildSecurityInformation($admin));
+if ($configResult) {
+$securityHandler->updateAcl($acl);
+} else {
+$output->writeln(sprintf('   - %s , no roles and permissions found', ($newAcl ?'skip':'removed')));
+$securityHandler->deleteAcl($objectIdentity);
+}
+}
+public function addAdminClassAces(OutputInterface $output, AclInterface $acl, AclSecurityHandlerInterface $securityHandler, array $roleInformation = array())
+{
+if (count($securityHandler->getAdminPermissions()) > 0 ) {
+$builder = new $this->maskBuilderClass();
+foreach ($roleInformation as $role => $permissions) {
+$aceIndex = $securityHandler->findClassAceIndexByRole($acl, $role);
+$roleAdminPermissions = array();
+foreach ($permissions as $permission) {
+if (in_array($permission, $securityHandler->getAdminPermissions())) {
+$builder->add($permission);
+$roleAdminPermissions[] = $permission;
+}
+}
+if (count($roleAdminPermissions) > 0) {
+if ($aceIndex === false) {
+$acl->insertClassAce(new RoleSecurityIdentity($role), $builder->get());
+$action ='add';
+} else {
+$acl->updateClassAce($aceIndex, $builder->get());
+$action ='update';
+}
+if (!is_null($output)) {
+$output->writeln(sprintf('   - %s role: %s, permissions: %s', $action, $role, json_encode($roleAdminPermissions)));
+}
+$builder->reset();
+} elseif ($aceIndex !== false) {
+$acl->deleteClassAce($aceIndex);
+if (!is_null($output)) {
+$output->writeln(sprintf('   - remove role: %s', $action, $role));
+}
+}
+}
+return true;
+} else {
+return false;
+}
+}
+}
+}
+namespace Sonata\AdminBundle\Util
+{
+use Symfony\Component\Form\FormBuilder;
+class FormBuilderIterator extends \RecursiveArrayIterator
+{
+protected static $reflection;
+protected $formBuilder;
+protected $keys = array();
+protected $prefix;
+public function __construct(FormBuilder $formBuilder, $prefix = false)
+{
+$this->formBuilder = $formBuilder;
+$this->prefix = $prefix ? $prefix : $formBuilder->getName();
+$this->iterator = new \ArrayIterator(self::getKeys($formBuilder));
+}
+private static function getKeys(FormBuilder $formBuilder)
+{
+if (!self::$reflection) {
+self::$reflection = new \ReflectionProperty(get_class($formBuilder),'children');
+self::$reflection->setAccessible(true);
+}
+return array_keys(self::$reflection->getValue($formBuilder));
+}
+public function rewind()
+{
+$this->iterator->rewind();
+}
+public function valid()
+{
+return $this->iterator->valid();
+}
+public function key()
+{
+$name = $this->iterator->current();
+return sprintf('%s_%s', $this->prefix, $name);
+}
+public function next()
+{
+$this->iterator->next();
+}
+public function current()
+{
+return $this->formBuilder->get($this->iterator->current());
+}
+public function getChildren()
+{
+return new self($this->formBuilder->get($this->iterator->current()), $this->current());
+}
+public function hasChildren()
+{
+return count(self::getKeys($this->current())) > 0;
+}
+}
+}
+namespace Sonata\AdminBundle\Util
+{
+use Symfony\Component\Form\FormView;
+class FormViewIterator implements \RecursiveIterator
+{
+protected $formView;
+public function __construct(FormView $formView)
+{
+$this->iterator = $formView->getIterator();
+}
+public function getChildren()
+{
+return new FormViewIterator($this->current());
+}
+public function hasChildren()
+{
+return count($this->current()->children) > 0;
+}
+public function current()
+{
+return $this->iterator->current();
+}
+public function next()
+{
+$this->iterator->next();
+}
+public function key()
+{
+return $this->current()->vars['id'];
+}
+public function valid()
+{
+return $this->iterator->valid();
+}
+public function rewind()
+{
+$this->iterator->rewind();
+}
+}
+}
+namespace Sonata\AdminBundle\Util
+{
+use Symfony\Component\Security\Acl\Domain\UserSecurityIdentity;
+use Symfony\Component\Console\Output\OutputInterface;
+use Sonata\AdminBundle\Admin\AdminInterface;
+interface ObjectAclManipulatorInterface
+{
+public function batchConfigureAcls(OutputInterface $output, AdminInterface $admin, UserSecurityIdentity $securityIdentity = null);
+}
+}
+namespace Sonata\AdminBundle\Util
+{
+use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Security\Acl\Domain\UserSecurityIdentity;
+use Sonata\AdminBundle\Admin\AdminInterface;
+use Sonata\AdminBundle\Security\Handler\AclSecurityHandlerInterface;
+abstract class ObjectAclManipulator implements ObjectAclManipulatorInterface
+{
+public function configureAcls(OutputInterface $output, AdminInterface $admin, array $oids, UserSecurityIdentity $securityIdentity = null)
+{
+$countAdded = 0;
+$countUpdated = 0;
+$securityHandler = $admin->getSecurityHandler();
+if (!$securityHandler instanceof AclSecurityHandlerInterface) {
+$output->writeln(sprintf('Admin `%s` is not configured to use ACL : <info>ignoring</info>', $admin->getCode()));
+return array(0, 0);
+}
+$acls = $securityHandler->findObjectAcls($oids);
+foreach ($oids as $oid) {
+if ($acls->contains($oid)) {
+$acl = $acls->offsetGet($oid);
+$countUpdated++;
+} else {
+$acl = $securityHandler->createAcl($oid);
+$countAdded++;
+}
+if (!is_null($securityIdentity)) {
+$securityHandler->addObjectOwner($acl, $securityIdentity);
+}
+$securityHandler->addObjectClassAces($acl, $securityHandler->buildSecurityInformation($admin));
+try {
+$securityHandler->updateAcl($acl);
+} catch (\Exception $e) {
+$output->writeln(sprintf('Error saving ObjectIdentity (%s, %s) ACL : %s <info>ignoring</info>', $oid->getIdentifier(), $oid->getType(), $e->getMessage()));
+}
+}
+return array($countAdded, $countUpdated);
+}
+}
+}
+namespace Symfony\Component\Validator
+{
+use Symfony\Component\Validator\Exception\InvalidOptionsException;
+use Symfony\Component\Validator\Exception\MissingOptionsException;
+use Symfony\Component\Validator\Exception\ConstraintDefinitionException;
+abstract class Constraint
+{
+const DEFAULT_GROUP ='Default';
+const CLASS_CONSTRAINT ='class';
+const PROPERTY_CONSTRAINT ='property';
+public $groups = array(self::DEFAULT_GROUP);
+public function __construct($options = null)
+{
+$invalidOptions = array();
+$missingOptions = array_flip((array) $this->getRequiredOptions());
+if (is_array($options) && count($options) == 1 && isset($options['value'])) {
+$options = $options['value'];
+}
+if (is_array($options) && count($options) > 0 && is_string(key($options))) {
+foreach ($options as $option => $value) {
+if (property_exists($this, $option)) {
+$this->$option = $value;
+unset($missingOptions[$option]);
+} else {
+$invalidOptions[] = $option;
+}
+}
+} elseif (null !== $options && ! (is_array($options) && count($options) === 0)) {
+$option = $this->getDefaultOption();
+if (null === $option) {
+throw new ConstraintDefinitionException(
+sprintf('No default option is configured for constraint %s', get_class($this))
+);
+}
+if (property_exists($this, $option)) {
+$this->$option = $options;
+unset($missingOptions[$option]);
+} else {
+$invalidOptions[] = $option;
+}
+}
+if (count($invalidOptions) > 0) {
+throw new InvalidOptionsException(
+sprintf('The options "%s" do not exist in constraint %s', implode('", "', $invalidOptions), get_class($this)),
+$invalidOptions
+);
+}
+if (count($missingOptions) > 0) {
+throw new MissingOptionsException(
+sprintf('The options "%s" must be set for constraint %s', implode('", "', array_keys($missingOptions)), get_class($this)),
+array_keys($missingOptions)
+);
+}
+$this->groups = (array) $this->groups;
+}
+public function __set($option, $value)
+{
+throw new InvalidOptionsException(sprintf('The option "%s" does not exist in constraint %s', $option, get_class($this)), array($option));
+}
+public function addImplicitGroupName($group)
+{
+if (in_array(Constraint::DEFAULT_GROUP, $this->groups) && !in_array($group, $this->groups)) {
+$this->groups[] = $group;
+}
+}
+public function getDefaultOption()
+{
+return null;
+}
+public function getRequiredOptions()
+{
+return array();
+}
+public function validatedBy()
+{
+return get_class($this).'Validator';
+}
+public function getTargets()
+{
+return self::PROPERTY_CONSTRAINT;
+}
+}
+}
+namespace Sonata\AdminBundle\Validator\Constraints
+{
+use Symfony\Component\Validator\Constraint;
+class InlineConstraint extends Constraint
+{
+protected $service;
+protected $method;
+public function validatedBy()
+{
+return'sonata.admin.validator.inline';
+}
+public function isClosure()
+{
+return $this->method instanceof \Closure;
+}
+public function getClosure()
+{
+return $this->method;
+}
+public function getTargets()
+{
+return self::CLASS_CONSTRAINT;
+}
+public function getRequiredOptions()
+{
+return array('service','method');
+}
+public function getMethod()
+{
+return $this->method;
+}
+public function getService()
+{
+return $this->service;
+}
+}
+}
+namespace Sonata\AdminBundle\Validator
+{
+use Symfony\Bundle\FrameworkBundle\Validator\ConstraintValidatorFactory;
+use Symfony\Component\Validator\ExecutionContext;
+use Symfony\Component\PropertyAccess\PropertyAccess;
+use Symfony\Component\PropertyAccess\PropertyPath;
+use Symfony\Component\Validator\Constraint;
+class ErrorElement
+{
+protected $context;
+protected $group;
+protected $constraintValidatorFactory;
+protected $stack = array();
+protected $propertyPaths = array();
+protected $subject;
+protected $current;
+protected $basePropertyPath;
+protected $errors = array();
+public function __construct($subject, ConstraintValidatorFactory $constraintValidatorFactory, ExecutionContext $context, $group)
+{
+$this->subject = $subject;
+$this->context = $context;
+$this->group = $group;
+$this->constraintValidatorFactory = $constraintValidatorFactory;
+$this->current ='';
+$this->basePropertyPath = $this->context->getPropertyPath();
+}
+public function __call($name, array $arguments = array())
+{
+if (substr($name, 0, 6) =='assert') {
+$this->validate($this->newConstraint(substr($name, 6), isset($arguments[0]) ? $arguments[0] : array()));
+} else {
+throw new \RunTimeException('Unable to recognize the command');
+}
+return $this;
+}
+public function addConstraint(Constraint $constraint)
+{
+$this->validate($constraint);
+return $this;
+}
+public function with($name, $key = false)
+{
+$key = $key ? $name .'.'. $key : $name;
+$this->stack[] = $key;
+$this->current = implode('.', $this->stack);
+if (!isset($this->propertyPaths[$this->current])) {
+$this->propertyPaths[$this->current] = new PropertyPath($this->current);
+}
+return $this;
+}
+public function end()
+{
+array_pop($this->stack);
+$this->current = implode('.', $this->stack);
+return $this;
+}
+protected function validate(Constraint $constraint)
+{
+$subPath = (string) $this->getCurrentPropertyPath();
+$this->context->validateValue($this->getValue(), $constraint, $subPath, $this->group);
+}
+public function getFullPropertyPath()
+{
+if ($this->getCurrentPropertyPath()) {
+return sprintf('%s.%s', $this->basePropertyPath, $this->getCurrentPropertyPath());
+} else {
+return $this->basePropertyPath;
+}
+}
+protected function getValue()
+{
+$propertyAccessor = PropertyAccess::getPropertyAccessor();
+return $propertyAccessor->getValue($this->subject, $this->getCurrentPropertyPath());
+}
+public function getSubject()
+{
+return $this->subject;
+}
+protected function newConstraint($name, array $options = array())
+{
+if (strpos($name,'\\') !== false && class_exists($name)) {
+$className = (string) $name;
+} else {
+$className ='Symfony\\Component\\Validator\\Constraints\\'. $name;
+}
+return new $className($options);
+}
+protected function getCurrentPropertyPath()
+{
+if (!isset($this->propertyPaths[$this->current])) {
+return null; }
+return $this->propertyPaths[$this->current];
+}
+public function addViolation($message, $parameters = array(), $value = null)
+{
+if (is_array($message)) {
+$value = isset($message[2]) ? $message[2] : $value;
+$parameters = isset($message[1]) ? (array) $message[1] : array();
+$message = isset($message[0]) ? $message[0] :'error';
+}
+$subPath = (string) $this->getCurrentPropertyPath();
+$this->context->addViolationAt($subPath, $message, $parameters, $value);
+$this->errors[] = array($message, $parameters, $value);
+return $this;
+}
+public function getErrors()
+{
+return $this->errors;
+}
+}
+}
+namespace Symfony\Component\Validator
+{
+interface ConstraintValidatorInterface
+{
+public function initialize(ExecutionContextInterface $context);
+public function validate($value, Constraint $constraint);
+}
+}
+namespace Symfony\Component\Validator
+{
+use Symfony\Component\Validator\Exception\ValidatorException;
+abstract class ConstraintValidator implements ConstraintValidatorInterface
+{
+protected $context;
+private $messageTemplate;
+private $messageParameters;
+public function initialize(ExecutionContextInterface $context)
+{
+$this->context = $context;
+$this->messageTemplate ='';
+$this->messageParameters = array();
+}
+public function getMessageTemplate()
+{
+trigger_error('getMessageTemplate() is deprecated since version 2.1 and will be removed in 2.3.', E_USER_DEPRECATED);
+return $this->messageTemplate;
+}
+public function getMessageParameters()
+{
+trigger_error('getMessageParameters() is deprecated since version 2.1 and will be removed in 2.3.', E_USER_DEPRECATED);
+return $this->messageParameters;
+}
+protected function setMessage($template, array $parameters = array())
+{
+trigger_error('setMessage() is deprecated since version 2.1 and will be removed in 2.3.', E_USER_DEPRECATED);
+$this->messageTemplate = $template;
+$this->messageParameters = $parameters;
+if (!$this->context instanceof ExecutionContext) {
+throw new ValidatorException('ConstraintValidator::initialize() must be called before setting violation messages');
+}
+$this->context->addViolation($template, $parameters);
+}
+public function validate($value, Constraint $constraint)
+{
+trigger_error('isValid() is deprecated since version 2.1 and will be removed in 2.3. Implement validate() instead.', E_USER_DEPRECATED);
+return $this->isValid($value, $constraint);
+}
+protected function isValid($value, Constraint $constraint)
+{
+}
+}
+}
+namespace Sonata\AdminBundle\Validator
+{
+use Symfony\Component\Validator\ConstraintValidator;
+use Symfony\Component\Validator\Constraint;
+use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Bundle\FrameworkBundle\Validator\ConstraintValidatorFactory;
+use Sonata\AdminBundle\Validator\ErrorElement;
+class InlineValidator extends ConstraintValidator
+{
+protected $container;
+public function __construct(ContainerInterface $container, ConstraintValidatorFactory $constraintValidatorFactory)
+{
+$this->container = $container;
+$this->constraintValidatorFactory = $constraintValidatorFactory;
+}
+public function isValid($value, Constraint $constraint)
+{
+$errorElement = new ErrorElement(
+$value,
+$this->constraintValidatorFactory,
+$this->context,
+$this->context->getGroup()
+);
+if ($constraint->isClosure()) {
+$function = $constraint->getClosure();
+} else {
+if (is_string($constraint->getService())) {
+$service = $this->container->get($constraint->getService());
+} else {
+$service = $constraint->getService();
+}
+$function = array($service, $constraint->getMethod());
+}
+call_user_func($function, $errorElement, $value);
+return true;
+}
+}
+}
+namespace Sonata\BlockBundle\Block
+{
+interface BlockLoaderInterface
+{
+public function load($name);
+public function support($name);
+}
+}
+namespace Sonata\BlockBundle\Block
+{
+use Sonata\BlockBundle\Exception\BlockNotFoundException;
+class BlockLoaderChain implements BlockLoaderInterface
+{
+protected $loaders;
+public function __construct(array $loaders)
+{
+$this->loaders = $loaders;
+}
+public function load($block)
+{
+foreach ($this->loaders as $loader) {
+if ($loader->support($block)) {
+return $loader->load($block);
+}
+}
+throw new BlockNotFoundException;
+}
+public function support($name)
+{
+return true;
+}
+}
+}
+namespace Sonata\BlockBundle\Block
+{
+use Sonata\BlockBundle\Model\BlockInterface;
+use Symfony\Component\HttpFoundation\Response;
+interface BlockRendererInterface
+{
+public function render(BlockInterface $name, Response $response = null);
+}
+}
+namespace Sonata\BlockBundle\Block
+{
+use Sonata\BlockBundle\Model\BlockInterface;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Log\LoggerInterface;
+use Sonata\BlockBundle\Exception\Strategy\StrategyManagerInterface;
+class BlockRenderer implements BlockRendererInterface
+{
+protected $blockServiceManager;
+protected $exceptionStrategyManager;
+protected $logger;
+protected $debug;
+public function __construct(BlockServiceManagerInterface $blockServiceManager, StrategyManagerInterface $exceptionStrategyManager, LoggerInterface $logger = null, $debug = false)
+{
+$this->blockServiceManager = $blockServiceManager;
+$this->exceptionStrategyManager = $exceptionStrategyManager;
+$this->logger = $logger;
+$this->debug = $debug;
+}
+public function render(BlockInterface $block, Response $response = null)
+{
+if ($this->logger) {
+$this->logger->info(sprintf('[cms::renderBlock] block.id=%d, block.type=%s ', $block->getId(), $block->getType()));
+}
+try {
+$service = $this->blockServiceManager->get($block);
+$service->load($block);
+if (null === $response) {
+$response = new Response();
+$response->setTtl($block->getTtl());
+}
+$newResponse = $service->execute($block, $response);
+if (!$newResponse instanceof Response) {
+throw new \RuntimeException('A block service must return a Response object');
+}
+} catch (\Exception $exception) {
+if ($this->logger) {
+$this->logger->crit(sprintf('[cms::renderBlock] block.id=%d - error while rendering block - %s', $block->getId(), $exception->getMessage()));
+}
+$newResponse = $this->exceptionStrategyManager->handleException($exception, $block, $response);
+}
+return $newResponse;
+}
+}
+}
+namespace Sonata\BlockBundle\Block
+{
+use Sonata\AdminBundle\Validator\ErrorElement;
+use Sonata\BlockBundle\Model\BlockInterface;
+interface BlockServiceManagerInterface
+{
+public function add($name, $service);
+public function get(BlockInterface $block);
+public function setServices(array $blockServices);
+public function getServices();
+public function has($name);
+public function getService($name);
+public function getLoadedServices();
+public function validate(ErrorElement $errorElement, BlockInterface $block);
+}
+}
+namespace Sonata\BlockBundle\Block
+{
+use Sonata\BlockBundle\Model\BlockInterface;
+use Sonata\AdminBundle\Validator\ErrorElement;
+use Symfony\Component\HttpKernel\Log\LoggerInterface;
+use Symfony\Component\DependencyInjection\ContainerInterface;
+class BlockServiceManager implements BlockServiceManagerInterface
+{
+protected $services;
+protected $container;
+protected $inValidate;
+public function __construct(ContainerInterface $container, $debug, LoggerInterface $logger = null)
+{
+$this->services = array();
+$this->container = $container;
+}
+private function load($type)
+{
+if (!$this->has($type)) {
+throw new \RuntimeException(sprintf('The block service `%s` does not exists', $type));
+}
+if (!$this->services[$type] instanceof BlockServiceInterface) {
+$this->services[$type] = $this->container->get($type);
+}
+if (!$this->services[$type] instanceof BlockServiceInterface) {
+throw new \RuntimeException(sprintf('The service %s does not implement BlockServiceInterface', $type));
+}
+return $this->services[$type];
+}
+public function get(BlockInterface $block)
+{
+$this->load($block->getType());
+return $this->services[$block->getType()];
+}
+public function getService($id)
+{
+return $this->load($id);
+}
+public function has($id)
+{
+return isset($this->services[$id]) ? true : false;
+}
+public function add($name, $service)
+{
+$this->services[$name] = $service;
+}
+public function setServices(array $blockServices)
+{
+$this->services = $blockServices;
+}
+public function getServices()
+{
+foreach ($this->services as $name => $id) {
+if (is_string($id)) {
+$this->load($id);
+}
+}
+return $this->services;
+}
+public function getLoadedServices()
+{
+$services = array();
+foreach ($this->services as $service) {
+if (!$service instanceof BlockServiceInterface) {
+continue;
+}
+$services[] = $service;
+}
+return $services;
+}
+public function validate(ErrorElement $errorElement, BlockInterface $block)
+{
+if (!$block->getId() && !$block->getType()) {
+return;
+}
+if ($this->inValidate) {
+return;
+}
+try {
+$this->inValidate = true;
+$this->get($block)->validateBlock($errorElement, $block);
+$this->inValidate = false;
+} catch (\Exception $e) {
+$this->inValidate = false;
+}
+}
+}
+}
+namespace Sonata\BlockBundle\Block\Loader
+{
+use Sonata\BlockBundle\Block\BlockLoaderInterface;
+use Sonata\BlockBundle\Model\Block;
+class ServiceLoader implements BlockLoaderInterface
+{
+protected $settings;
+public function __construct(array $settings)
+{
+$this->settings = $settings;
+}
+public function load($configuration)
+{
+$block = new Block;
+$block->setId(uniqid());
+$block->setType($configuration['type']);
+$block->setSettings($this->getSettings($configuration));
+$block->setEnabled(true);
+$block->setCreatedAt(new \DateTime);
+$block->setUpdatedAt(new \DateTime);
+return $block;
+}
+public function support($configuration)
+{
+if (!is_array($configuration)) {
+return false;
+}
+if (!isset($configuration['type'])) {
+return false;
+}
+return true;
+}
+private function getSettings($block)
+{
+if (!isset($this->settings[$block['type']])) {
+throw new \RuntimeException(sprintf('The block type %s does not exist', $block['type']));
+}
+return array_merge(
+$this->settings[$block['type']],
+isset($block['settings']) && is_array($block['settings']) ? $block['settings'] : array()
+);
+}
+}
+}
+namespace Sonata\BlockBundle\Block\Service
+{
+use Symfony\Component\HttpFoundation\Response;
+use Sonata\AdminBundle\Form\FormMapper;
+use Sonata\BlockBundle\Model\BlockInterface;
+use Sonata\AdminBundle\Validator\ErrorElement;
+use Sonata\BlockBundle\Block\BaseBlockService;
+class EmptyBlockService extends BaseBlockService
+{
+public function buildEditForm(FormMapper $form, BlockInterface $block)
+{
+throw new \RuntimeException('Not used, this block renders an empty result if no block document can be found');
+}
+public function validateBlock(ErrorElement $errorElement, BlockInterface $block)
+{
+throw new \RuntimeException('Not used, this block renders an empty result if no block document can be found');
+}
+public function execute(BlockInterface $block, Response $response = null)
+{
+return new Response();
+}
+}
+}
+namespace Sonata\BlockBundle\Block\Service
+{
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Form\Form;
+use Sonata\AdminBundle\Form\FormMapper;
+use Sonata\AdminBundle\Validator\ErrorElement;
+use Sonata\BlockBundle\Model\BlockInterface;
+use Sonata\BlockBundle\Block\BaseBlockService;
+class RssBlockService extends BaseBlockService
+{
+public function getName()
+{
+return'Rss Reader';
+}
+public function getDefaultSettings()
+{
+return array('url'=> false,'title'=>'Insert the rss title');
+}
+public function buildEditForm(FormMapper $formMapper, BlockInterface $block)
+{
+$formMapper->add('settings','sonata_type_immutable_array', array('keys'=> array(
+array('url','url', array('required'=> false)),
+array('title','text', array('required'=> false)),
+)
+));
+}
+public function validateBlock(ErrorElement $errorElement, BlockInterface $block)
+{
+$errorElement
+->with('settings[url]')
+->assertNotNull(array())
+->assertNotBlank()
+->end()
+->with('settings[title]')
+->assertNotNull(array())
+->assertNotBlank()
+->assertMaxLength(array('limit'=> 50))
+->end();
+}
+public function execute(BlockInterface $block, Response $response = null)
+{
+$settings = array_merge($this->getDefaultSettings(), $block->getSettings());
+$feeds = false;
+if ($settings['url']) {
+$options = array('http'=> array('user_agent'=>'Sonata/RSS Reader','timeout'=> 2,
+)
+);
+$content = @file_get_contents($settings['url'], false, stream_context_create($options));
+if ($content) {
+try {
+$feeds = new \SimpleXMLElement($content);
+$feeds = $feeds->channel->item;
+} catch (\Exception $e) {
+}
+}
+}
+return $this->renderResponse('SonataBlockBundle:Block:block_core_rss.html.twig', array('feeds'=> $feeds,'block'=> $block,'settings'=> $settings
+), $response);
+}
+}
+}
+namespace Sonata\BlockBundle\Block\Service
+{
+use Symfony\Component\HttpFoundation\Response;
+use Sonata\AdminBundle\Form\FormMapper;
+use Sonata\AdminBundle\Validator\ErrorElement;
+use Sonata\BlockBundle\Model\BlockInterface;
+use Sonata\BlockBundle\Block\BaseBlockService;
+class TextBlockService extends BaseBlockService
+{
+public function execute(BlockInterface $block, Response $response = null)
+{
+$settings = array_merge($this->getDefaultSettings(), $block->getSettings());
+return $this->renderResponse('SonataBlockBundle:Block:block_core_text.html.twig', array('block'=> $block,'settings'=> $settings
+), $response);
+}
+public function validateBlock(ErrorElement $errorElement, BlockInterface $block)
+{
+}
+public function buildEditForm(FormMapper $formMapper, BlockInterface $block)
+{
+$formMapper->add('settings','sonata_type_immutable_array', array('keys'=> array(
+array('content','textarea', array()),
+)
+));
+}
+public function getName()
+{
+return'Text (core)';
+}
+public function getDefaultSettings()
+{
+return array('content'=>'Insert your custom content here',
+);
+}
+}
+}
+namespace Sonata\BlockBundle\Exception
+{
+interface BlockExceptionInterface
+{
+}
+}
+namespace Symfony\Component\HttpKernel\Exception
+{
+interface HttpExceptionInterface
+{
+public function getStatusCode();
+public function getHeaders();
+}
+}
+namespace Symfony\Component\HttpKernel\Exception
+{
+class HttpException extends \RuntimeException implements HttpExceptionInterface
+{
+private $statusCode;
+private $headers;
+public function __construct($statusCode, $message = null, \Exception $previous = null, array $headers = array(), $code = 0)
+{
+$this->statusCode = $statusCode;
+$this->headers = $headers;
+parent::__construct($message, $code, $previous);
+}
+public function getStatusCode()
+{
+return $this->statusCode;
+}
+public function getHeaders()
+{
+return $this->headers;
+}
+}
+}
+namespace Symfony\Component\HttpKernel\Exception
+{
+class NotFoundHttpException extends HttpException
+{
+public function __construct($message = null, \Exception $previous = null, $code = 0)
+{
+parent::__construct(404, $message, $previous, array(), $code);
+}
+}
+}
+namespace Sonata\BlockBundle\Exception
+{
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+class BlockNotFoundException extends NotFoundHttpException
+{
+}
+}
+namespace Sonata\BlockBundle\Exception\Filter
+{
+use Sonata\BlockBundle\Model\BlockInterface;
+interface FilterInterface
+{
+public function handle(\Exception $exception, BlockInterface $block);
+}
+}
+namespace Sonata\BlockBundle\Exception\Filter
+{
+use Sonata\BlockBundle\Model\BlockInterface;
+class DebugOnlyFilter implements FilterInterface
+{
+protected $debug;
+public function __construct($debug)
+{
+$this->debug = $debug;
+}
+public function handle(\Exception $exception, BlockInterface $block)
+{
+return $this->debug ? true : false;
+}
+}
+}
+namespace Sonata\BlockBundle\Exception\Filter
+{
+use Sonata\BlockBundle\Model\BlockInterface;
+class IgnoreClassFilter implements FilterInterface
+{
+protected $class;
+public function __construct($class)
+{
+$this->class = $class;
+}
+public function handle(\Exception $exception, BlockInterface $block)
+{
+return (!$exception instanceof $this->class);
+}
+}
+}
+namespace Sonata\BlockBundle\Exception\Filter
+{
+use Sonata\BlockBundle\Model\BlockInterface;
+class KeepAllFilter implements FilterInterface
+{
+public function handle(\Exception $exception, BlockInterface $block)
+{
+return true;
+}
+}
+}
+namespace Sonata\BlockBundle\Exception\Filter
+{
+use Sonata\BlockBundle\Model\BlockInterface;
+class KeepNoneFilter implements FilterInterface
+{
+public function handle(\Exception $exception, BlockInterface $block)
+{
+return false;
+}
+}
+}
+namespace Sonata\BlockBundle\Exception\Renderer
+{
+use Symfony\Component\HttpFoundation\Response;
+use Sonata\BlockBundle\Model\BlockInterface;
+interface RendererInterface
+{
+public function render(\Exception $exception, BlockInterface $block, Response $response = null);
+}
+}
+namespace Sonata\BlockBundle\Exception\Renderer
+{
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Templating\EngineInterface;
+use Sonata\BlockBundle\Model\BlockInterface;
+use Symfony\Component\HttpKernel\Exception\FlattenException;
+class InlineDebugRenderer implements RendererInterface
+{
+protected $templating;
+protected $template;
+protected $forceStyle;
+protected $debug;
+public function __construct(EngineInterface $templating, $template, $debug, $forceStyle = true)
+{
+$this->templating = $templating;
+$this->template = $template;
+$this->debug = $debug;
+$this->forceStyle = $forceStyle;
+}
+public function render(\Exception $exception, BlockInterface $block, Response $response = null)
+{
+$response = $response ?: new Response();
+if (!$this->debug) {
+return $response;
+}
+$flattenException = FlattenException::create($exception);
+$code = $flattenException->getStatusCode();
+$parameters = array('exception'=> $flattenException,'status_code'=> $code,'status_text'=> isset(Response::$statusTexts[$code]) ? Response::$statusTexts[$code] :'','logger'=> false,'currentContent'=> false,'block'=> $block,'forceStyle'=> $this->forceStyle
+);
+$content = $this->templating->render($this->template, $parameters);
+$response->setContent($content);
+return $response;
+}
+}
+}
+namespace Sonata\BlockBundle\Exception\Renderer
+{
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Templating\EngineInterface;
+use Sonata\BlockBundle\Model\BlockInterface;
+class InlineRenderer implements RendererInterface
+{
+protected $templating;
+protected $template;
+public function __construct(EngineInterface $templating, $template)
+{
+$this->templating = $templating;
+$this->template = $template;
+}
+public function render(\Exception $exception, BlockInterface $block, Response $response = null)
+{
+$parameters = array('exception'=> $exception,'block'=> $block
+);
+$content = $this->templating->render($this->template, $parameters);
+$response = $response ?: new Response();
+$response->setContent($content);
+return $response;
+}
+}
+}
+namespace Sonata\BlockBundle\Exception\Renderer
+{
+use Symfony\Component\HttpFoundation\Response;
+use Sonata\BlockBundle\Model\BlockInterface;
+class MonkeyThrowRenderer implements RendererInterface
+{
+public function render(\Exception $banana, BlockInterface $block, Response $response = null)
+{
+throw $banana;
+}
+}
+}
+namespace Sonata\BlockBundle\Exception\Strategy
+{
+use Sonata\BlockBundle\Model\BlockInterface;
+use Symfony\Component\HttpFoundation\Response;
+interface StrategyManagerInterface
+{
+public function handleException(\Exception $exception, BlockInterface $block, Response $response = null);
+}
+}
+namespace Sonata\BlockBundle\Exception\Strategy
+{
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\DependencyInjection\ContainerInterface;
+use Sonata\BlockBundle\Model\BlockInterface;
+use Sonata\BlockBundle\Exception\Renderer\RendererInterface;
+use Sonata\BlockBundle\Exception\Filter\FilterInterface;
+class StrategyManager implements StrategyManagerInterface
+{
+protected $container;
+protected $filters;
+protected $renderers;
+protected $blockFilters;
+protected $blockRenderers;
+protected $defaultFilter;
+protected $defaultRenderer;
+public function __construct(ContainerInterface $container, array $filters, array $renderers, array $blockFilters, array $blockRenderers)
+{
+$this->container = $container;
+$this->filters = $filters;
+$this->renderers = $renderers;
+$this->blockFilters = $blockFilters;
+$this->blockRenderers = $blockRenderers;
+}
+public function setDefaultFilter($name)
+{
+if (!array_key_exists($name, $this->filters)) {
+throw new \InvalidArgumentException(sprintf('Cannot set default exception filter "%s". It does not exists.', $name));
+}
+$this->defaultFilter = $name;
+}
+public function setDefaultRenderer($name)
+{
+if (!array_key_exists($name, $this->renderers)) {
+throw new \InvalidArgumentException(sprintf('Cannot set default exception renderer "%s". It does not exists.', $name));
+}
+$this->defaultRenderer = $name;
+}
+public function handleException(\Exception $exception, BlockInterface $block, Response $response = null)
+{
+$response = $response ?: new Response();
+$response->setPrivate();
+$filter = $this->getBlockFilter($block);
+if ($filter->handle($exception, $block)) {
+$renderer = $this->getBlockRenderer($block);
+$response = $renderer->render($exception, $block, $response);
+} else {
+}
+return $response;
+}
+public function getBlockRenderer(BlockInterface $block)
+{
+$type = $block->getType();
+$name = isset($this->blockRenderers[$type]) ? $this->blockRenderers[$type] : $this->defaultRenderer;
+$service = $this->getRendererService($name);
+if (!$service instanceof RendererInterface) {
+throw new \RuntimeException(sprintf('The service "%s" is not an exception renderer', $name));
+}
+return $service;
+}
+public function getBlockFilter(BlockInterface $block)
+{
+$type = $block->getType();
+$name = isset($this->blockFilters[$type]) ? $this->blockFilters[$type] : $this->defaultFilter;
+$service = $this->getFilterService($name);
+if (!$service instanceof FilterInterface) {
+throw new \RuntimeException(sprintf('The service "%s" is not an exception filter', $name));
+}
+return $service;
+}
+protected function getFilterService($name)
+{
+if (!isset($this->filters[$name])) {
+throw new \RuntimeException('The filter "%s" does not exists.');
+}
+return $this->container->get($this->filters[$name]);
+}
+protected function getRendererService($name)
+{
+if (!isset($this->renderers[$name])) {
+throw new \RuntimeException('The renderer "%s" does not exists.');
+}
+return $this->container->get($this->renderers[$name]);
+}
+}
+}
+namespace Sonata\BlockBundle\Form\Type
+{
+use Symfony\Component\Form\Exception\FormException;
+use Symfony\Component\Form\AbstractType;
+use Symfony\Component\OptionsResolver\Options;
+use Symfony\Component\OptionsResolver\OptionsResolverInterface;
+use Sonata\BlockBundle\Block\BlockServiceManagerInterface;
+class ServiceListType extends AbstractType
+{
+protected $manager;
+protected $contexts;
+public function __construct(BlockServiceManagerInterface $manager, array $contexts = array())
+{
+$this->manager = $manager;
+$this->contexts = $contexts;
+}
+public function getName()
+{
+return'sonata_block_service_choice';
+}
+public function getParent()
+{
+return'choice';
+}
+public function setDefaultOptions(OptionsResolverInterface $resolver)
+{
+$contexts = $this->contexts;
+$manager = $this->manager;
+$resolver->setDefaults(array('context'=> false,'multiple'=> false,'expanded'=> false,'choices'=> function (Options $options, $previousValue) use ($contexts, $manager) {
+if (!isset($options['context'])) {
+throw new FormException('Please define a context option');
+}
+if (!isset($contexts[$options['context']])) {
+throw new FormException('Invalid context');
+}
+$types = array();
+foreach ($contexts[$options['context']] as $service) {
+$types[$service] = sprintf('%s - %s', $manager->getService($service)->getName(), $service);
+}
+return $types;
+},'preferred_choices'=> array(),'empty_data'=> function (Options $options) {
+$multiple = isset($options['multiple']) && $options['multiple'];
+$expanded = isset($options['expanded']) && $options['expanded'];
+return $multiple || $expanded ? array() :'';
+},'empty_value'=> function (Options $options, $previousValue) {
+$multiple = isset($options['multiple']) && $options['multiple'];
+$expanded = isset($options['expanded']) && $options['expanded'];
+return $multiple || $expanded || !isset($previousValue) ? null :'';
+},'error_bubbling'=> false,
+));
+}
+}
+}
+namespace Sonata\BlockBundle\Model
+{
+interface BlockInterface
+{
+public function setId($id);
+public function getId();
+public function setName($name);
+public function getName();
+public function setType($type);
+public function getType();
+public function setEnabled($enabled);
+public function getEnabled();
+public function setPosition($position);
+public function getPosition();
+public function setCreatedAt(\DateTime $createdAt = null);
+public function getCreatedAt();
+public function setUpdatedAt(\DateTime $updatedAt = null);
+public function getUpdatedAt();
+public function getTtl();
+public function __toString();
+public function setSettings(array $settings = array());
+public function getSettings();
+public function setSetting($name, $value);
+public function getSetting($name, $default = null);
+public function addChildren(BlockInterface $children);
+public function getChildren();
+public function hasChildren();
+public function setParent(BlockInterface $parent = null);
+public function getParent();
+public function hasParent();
+}
+}
+namespace Sonata\BlockBundle\Model
+{
+abstract class BaseBlock implements BlockInterface
+{
+protected $name;
+protected $settings;
+protected $enabled;
+protected $position;
+protected $parent;
+protected $children;
+protected $createdAt;
+protected $updatedAt;
+protected $type;
+protected $ttl;
+public function __construct()
+{
+$this->settings = array();
+$this->enabled = false;
+$this->children = array();
+}
+public function setName($name)
+{
+$this->name = $name;
+}
+public function getName()
+{
+return $this->name;
+}
+public function setType($type)
+{
+$this->type = $type;
+}
+public function getType()
+{
+return $this->type;
+}
+public function setSettings(array $settings = array())
+{
+$this->settings = $settings;
+}
+public function getSettings()
+{
+return $this->settings;
+}
+public function setSetting($name, $value)
+{
+$this->settings[$name] = $value;
+}
+public function getSetting($name, $default = null)
+{
+return isset($this->settings[$name]) ? $this->settings[$name] : $default;
+}
+public function setEnabled($enabled)
+{
+$this->enabled = $enabled;
+}
+public function getEnabled()
+{
+return $this->enabled;
+}
+public function setPosition($position)
+{
+$this->position = $position;
+}
+public function getPosition()
+{
+return $this->position;
+}
+public function setCreatedAt(\DateTime $createdAt = null)
+{
+$this->createdAt = $createdAt;
+}
+public function getCreatedAt()
+{
+return $this->createdAt;
+}
+public function setUpdatedAt(\DateTime $updatedAt = null)
+{
+$this->updatedAt = $updatedAt;
+}
+public function getUpdatedAt()
+{
+return $this->updatedAt;
+}
+public function addChildren(BlockInterface $child)
+{
+$this->children[] = $child;
+$child->setParent($this);
+}
+public function getChildren()
+{
+return $this->children;
+}
+public function setParent(BlockInterface $parent = null)
+{
+$this->parent = $parent;
+}
+public function getParent()
+{
+return $this->parent;
+}
+public function hasParent()
+{
+return $this->getParent() != null;
+}
+public function __toString()
+{
+return sprintf('block %d : "%s"', $this->getId(), $this->getname());
+}
+public function getTtl()
+{
+if ($this->ttl === null) {
+$ttl = $this->getSetting('ttl', 84600);
+foreach ($this->getChildren() as $block) {
+$blockTtl = $block->getTtl();
+$ttl = ($blockTtl < $ttl) ? $blockTtl : $ttl;
+}
+$this->ttl = $ttl;
+}
+return $this->ttl;
+}
+public function hasChildren()
+{
+return count($this->children) > 0;
+}
+}
+}
+namespace Sonata\BlockBundle\Model
+{
+class Block extends BaseBlock
+{
+protected $id;
+public function setId($id)
+{
+$this->id = $id;
+}
+public function getId()
+{
+return $this->id;
+}
+}
+}
+namespace Sonata\BlockBundle\Model
+{
+interface BlockManagerInterface
+{
+public function create();
+public function delete(BlockInterface $block);
+public function findOneBy(array $criteria);
+public function findBy(array $criteria);
+public function getClass();
+public function save(BlockInterface $block);
+}
+}
+namespace Sonata\BlockBundle\Model
+{
+use Sonata\BlockBundle\Model\Block;
+class EmptyBlock extends Block
+{
+}
+}
+namespace Sonata\BlockBundle\Twig\Extension
+{
+use Sonata\BlockBundle\Block\BlockServiceManagerInterface;
+use Sonata\BlockBundle\Model\BlockInterface;
+use Sonata\BlockBundle\Block\BlockLoaderInterface;
+use Sonata\BlockBundle\Block\BlockRendererInterface;
+use Sonata\CacheBundle\Cache\CacheManagerInterface;
+use Symfony\Component\HttpFoundation\Response;
+class BlockExtension extends \Twig_Extension
+{
+private $blockServiceManager;
+private $cacheManager;
+private $environment;
+private $cacheBlocks;
+private $blockLoader;
+private $blockRenderer;
+public function __construct(BlockServiceManagerInterface $blockServiceManager, array $cacheBlocks, BlockLoaderInterface $blockLoader, BlockRendererInterface $blockRenderer, CacheManagerInterface $cacheManager = null)
+{
+$this->blockServiceManager = $blockServiceManager;
+$this->cacheBlocks = $cacheBlocks;
+$this->blockLoader = $blockLoader;
+$this->blockRenderer = $blockRenderer;
+$this->cacheManager = $cacheManager;
+}
+public function getFunctions()
+{
+return array('sonata_block_render'=> new \Twig_Function_Method($this,'renderBlock', array('is_safe'=> array('html'))),'sonata_block_include_javascripts'=> new \Twig_Function_Method($this,'includeJavascripts', array('is_safe'=> array('html'))),'sonata_block_include_stylesheets'=> new \Twig_Function_Method($this,'includeStylesheets', array('is_safe'=> array('html'))),
+);
+}
+public function initRuntime(\Twig_Environment $environment)
+{
+$this->environment = $environment;
+}
+public function getName()
+{
+return'sonata_block';
+}
+public function includeJavascripts($media)
+{
+$javascripts = array();
+foreach ($this->blockServiceManager->getLoadedServices() as $service) {
+$javascripts = array_merge($javascripts, $service->getJavascripts($media));
+}
+if (count($javascripts) == 0) {
+return'';
+}
+$html ="";
+foreach ($javascripts as $javascript) {
+$html .="\n". sprintf('<script src="%s" type="text/javascript"></script>', $javascript);
+}
+return $html;
+}
+public function includeStylesheets($media)
+{
+$stylesheets = array();
+foreach ($this->blockServiceManager->getLoadedServices() as $service) {
+$stylesheets = array_merge($stylesheets, $service->getStylesheets($media));
+}
+if (count($stylesheets) == 0) {
+return'';
+}
+$html = sprintf("<style type='text/css' media='%s'>", $media);
+foreach ($stylesheets as $stylesheet) {
+$html .="\n". sprintf('@import url(%s);', $stylesheet, $media);
+}
+$html .="\n</style>";
+return $html;
+}
+public function renderBlock($block, $useCache = true, array $extraCacheKeys = array())
+{
+if (!$block instanceof BlockInterface) {
+$block = $this->blockLoader->load($block);
+if (!$block instanceof BlockInterface) {
+return'';
+}
+}
+$cacheKeys = false;
+$cacheService = $useCache ? $this->getCacheService($block) : false;
+if ($cacheService) {
+$cacheKeys = array_merge(
+$extraCacheKeys,
+$this->blockServiceManager->get($block)->getCacheKeys($block)
+);
+if ($cacheService->has($cacheKeys)) {
+$cacheElement = $cacheService->get($cacheKeys);
+if (!$cacheElement->isExpired() && $cacheElement->getData() instanceof Response) {
+return $cacheElement->getData()->getContent();
+}
+}
+}
+$recorder = null;
+if ($this->cacheManager) {
+$recorder = $this->cacheManager->getRecorder();
+if ($recorder) {
+$recorder->add($block);
+$recorder->push();
+}
+}
+$response = $this->blockRenderer->render($block);
+$contextualKeys = $recorder ? $recorder->pop() : array();
+if ($response->isCacheable() && $cacheKeys && $cacheService) {
+$cacheService->set($cacheKeys, $response, $response->getTtl(), $contextualKeys);
+}
+return $response->getContent();
+}
+protected function getCacheService(BlockInterface $block)
+{
+if (!$this->cacheManager) {
+return false;
+}
+$type = isset($this->cacheBlocks[$block->getType()]) ? $this->cacheBlocks[$block->getType()] : false;
+if (!$type) {
+return false;
+}
+return $this->cacheManager->getCacheService($type);
+}
+}
+}
+namespace Sonata\BlockBundle\Twig
+{
+use Symfony\Component\DependencyInjection\ContainerInterface;
+class GlobalVariables
+{
+protected $container;
+protected $templates;
+public function __construct(ContainerInterface $container, array $templates)
+{
+$this->container = $container;
+$this->templates = $templates;
+}
+public function getTemplates()
+{
+return $this->templates;
+}
+}
+}
+namespace Symfony\Component\HttpKernel\Log
+{
+interface DebugLoggerInterface
+{
+public function getLogs();
+public function countErrors();
+}
+}
+namespace Symfony\Bridge\Monolog\Handler
+{
+use Monolog\Logger;
+use Monolog\Handler\TestHandler;
+use Symfony\Component\HttpKernel\Log\DebugLoggerInterface;
+class DebugHandler extends TestHandler implements DebugLoggerInterface
+{
+public function getLogs()
+{
+$records = array();
+foreach ($this->records as $record) {
+$records[] = array('timestamp'=> $record['datetime']->getTimestamp(),'message'=> $record['message'],'priority'=> $record['level'],'priorityName'=> $record['level_name'],'context'=> $record['context'],
+);
+}
+return $records;
+}
+public function countErrors()
+{
+$cnt = 0;
+$levels = array(Logger::ERROR, Logger::CRITICAL, Logger::ALERT, Logger::EMERGENCY);
+foreach ($levels as $level) {
+if (isset($this->recordsByLevel[$level])) {
+$cnt += count($this->recordsByLevel[$level]);
+}
+}
+return $cnt;
+}
+}
+}
+namespace Symfony\Component\HttpKernel\Log
+{
+use Psr\Log\LoggerInterface as PsrLogger;
+interface LoggerInterface extends PsrLogger
+{
+public function emerg($message, array $context = array());
+public function crit($message, array $context = array());
+public function err($message, array $context = array());
+public function warn($message, array $context = array());
+}
+}
+namespace Symfony\Bridge\Monolog
+{
+use Monolog\Logger as BaseLogger;
+use Symfony\Component\HttpKernel\Log\LoggerInterface;
+use Symfony\Component\HttpKernel\Log\DebugLoggerInterface;
+class Logger extends BaseLogger implements LoggerInterface, DebugLoggerInterface
+{
+public function emerg($message, array $context = array())
+{
+return parent::addRecord(BaseLogger::EMERGENCY, $message, $context);
+}
+public function crit($message, array $context = array())
+{
+return parent::addRecord(BaseLogger::CRITICAL, $message, $context);
+}
+public function err($message, array $context = array())
+{
+return parent::addRecord(BaseLogger::ERROR, $message, $context);
+}
+public function warn($message, array $context = array())
+{
+return parent::addRecord(BaseLogger::WARNING, $message, $context);
+}
+public function getLogs()
+{
+if ($logger = $this->getDebugLogger()) {
+return $logger->getLogs();
+}
+}
+public function countErrors()
+{
+if ($logger = $this->getDebugLogger()) {
+return $logger->countErrors();
+}
+}
+private function getDebugLogger()
+{
+foreach ($this->handlers as $handler) {
+if ($handler instanceof DebugLoggerInterface) {
+return $handler;
+}
+}
+}
+}
+}
+namespace Symfony\Bundle\FrameworkBundle\Controller
+{
+use Symfony\Component\HttpKernel\KernelInterface;
+class ControllerNameParser
+{
+protected $kernel;
+public function __construct(KernelInterface $kernel)
+{
+$this->kernel = $kernel;
+}
+public function parse($controller)
+{
+if (3 != count($parts = explode(':', $controller))) {
+throw new \InvalidArgumentException(sprintf('The "%s" controller is not a valid a:b:c controller string.', $controller));
+}
+list($bundle, $controller, $action) = $parts;
+$controller = str_replace('/','\\', $controller);
+$bundles = array();
+foreach ($this->kernel->getBundle($bundle, false) as $b) {
+$try = $b->getNamespace().'\\Controller\\'.$controller.'Controller';
+if (class_exists($try)) {
+return $try.'::'.$action.'Action';
+}
+$bundles[] = $b->getName();
+$msg = sprintf('Unable to find controller "%s:%s" - class "%s" does not exist.', $bundle, $controller, $try);
+}
+if (count($bundles) > 1) {
+$msg = sprintf('Unable to find controller "%s:%s" in bundles %s.', $bundle, $controller, implode(', ', $bundles));
+}
+throw new \InvalidArgumentException($msg);
+}
 }
 }
 namespace Symfony\Bundle\FrameworkBundle\EventListener
@@ -39,757 +9212,11 @@ KernelEvents::REQUEST => array('onKernelRequest', 128),
 }
 }
 }
-namespace Symfony\Component\HttpFoundation\Session\Storage
+namespace Symfony\Component\Routing\Matcher
 {
-use Symfony\Component\HttpFoundation\Session\SessionBagInterface;
-use Symfony\Component\HttpFoundation\Session\Storage\MetadataBag;
-interface SessionStorageInterface
+interface RedirectableUrlMatcherInterface
 {
-public function start();
-public function isStarted();
-public function getId();
-public function setId($id);
-public function getName();
-public function setName($name);
-public function regenerate($destroy = false, $lifetime = null);
-public function save();
-public function clear();
-public function getBag($name);
-public function registerBag(SessionBagInterface $bag);
-public function getMetadataBag();
-}
-}
-namespace Symfony\Component\HttpFoundation\Session\Storage
-{
-use Symfony\Component\HttpFoundation\Session\SessionBagInterface;
-use Symfony\Component\HttpFoundation\Session\Storage\MetadataBag;
-use Symfony\Component\HttpFoundation\Session\Storage\Proxy\NativeProxy;
-use Symfony\Component\HttpFoundation\Session\Storage\Proxy\AbstractProxy;
-use Symfony\Component\HttpFoundation\Session\Storage\Proxy\SessionHandlerProxy;
-class NativeSessionStorage implements SessionStorageInterface
-{
-protected $bags;
-protected $started = false;
-protected $closed = false;
-protected $saveHandler;
-protected $metadataBag;
-public function __construct(array $options = array(), $handler = null, MetadataBag $metaBag = null)
-{
-ini_set('session.cache_limiter',''); ini_set('session.use_cookies', 1);
-if (version_compare(phpversion(),'5.4.0','>=')) {
-session_register_shutdown();
-} else {
-register_shutdown_function('session_write_close');
-}
-$this->setMetadataBag($metaBag);
-$this->setOptions($options);
-$this->setSaveHandler($handler);
-}
-public function getSaveHandler()
-{
-return $this->saveHandler;
-}
-public function start()
-{
-if ($this->started && !$this->closed) {
-return true;
-}
-if (!$this->started && !$this->closed && $this->saveHandler->isActive()
-&& $this->saveHandler->isSessionHandlerInterface()) {
-$this->loadSession();
-return true;
-}
-if (ini_get('session.use_cookies') && headers_sent()) {
-throw new \RuntimeException('Failed to start the session because headers have already been sent.');
-}
-if (!session_start()) {
-throw new \RuntimeException('Failed to start the session');
-}
-$this->loadSession();
-if (!$this->saveHandler->isWrapper() && !$this->saveHandler->isSessionHandlerInterface()) {
-$this->saveHandler->setActive(false);
-}
-return true;
-}
-public function getId()
-{
-if (!$this->started) {
-return''; }
-return $this->saveHandler->getId();
-}
-public function setId($id)
-{
-$this->saveHandler->setId($id);
-}
-public function getName()
-{
-return $this->saveHandler->getName();
-}
-public function setName($name)
-{
-$this->saveHandler->setName($name);
-}
-public function regenerate($destroy = false, $lifetime = null)
-{
-if (null !== $lifetime) {
-ini_set('session.cookie_lifetime', $lifetime);
-}
-if ($destroy) {
-$this->metadataBag->stampNew();
-}
-return session_regenerate_id($destroy);
-}
-public function save()
-{
-session_write_close();
-if (!$this->saveHandler->isWrapper() && !$this->getSaveHandler()->isSessionHandlerInterface()) {
-$this->saveHandler->setActive(false);
-}
-$this->closed = true;
-}
-public function clear()
-{
-foreach ($this->bags as $bag) {
-$bag->clear();
-}
-$_SESSION = array();
-$this->loadSession();
-}
-public function registerBag(SessionBagInterface $bag)
-{
-$this->bags[$bag->getName()] = $bag;
-}
-public function getBag($name)
-{
-if (!isset($this->bags[$name])) {
-throw new \InvalidArgumentException(sprintf('The SessionBagInterface %s is not registered.', $name));
-}
-if ($this->saveHandler->isActive() && !$this->started) {
-$this->loadSession();
-} elseif (!$this->started) {
-$this->start();
-}
-return $this->bags[$name];
-}
-public function setMetadataBag(MetadataBag $metaBag = null)
-{
-if (null === $metaBag) {
-$metaBag = new MetadataBag();
-}
-$this->metadataBag = $metaBag;
-}
-public function getMetadataBag()
-{
-return $this->metadataBag;
-}
-public function isStarted()
-{
-return $this->started;
-}
-public function setOptions(array $options)
-{
-$validOptions = array_flip(array('cache_limiter','cookie_domain','cookie_httponly','cookie_lifetime','cookie_path','cookie_secure','entropy_file','entropy_length','gc_divisor','gc_maxlifetime','gc_probability','hash_bits_per_character','hash_function','name','referer_check','serialize_handler','use_cookies','use_only_cookies','use_trans_sid','upload_progress.enabled','upload_progress.cleanup','upload_progress.prefix','upload_progress.name','upload_progress.freq','upload_progress.min-freq','url_rewriter.tags',
-));
-foreach ($options as $key => $value) {
-if (isset($validOptions[$key])) {
-ini_set('session.'.$key, $value);
-}
-}
-}
-public function setSaveHandler($saveHandler = null)
-{
-if (!$saveHandler instanceof AbstractProxy && $saveHandler instanceof \SessionHandlerInterface) {
-$saveHandler = new SessionHandlerProxy($saveHandler);
-} elseif (!$saveHandler instanceof AbstractProxy) {
-$saveHandler = new NativeProxy();
-}
-$this->saveHandler = $saveHandler;
-if ($this->saveHandler instanceof \SessionHandlerInterface) {
-if (version_compare(phpversion(),'5.4.0','>=')) {
-session_set_save_handler($this->saveHandler, false);
-} else {
-session_set_save_handler(
-array($this->saveHandler,'open'),
-array($this->saveHandler,'close'),
-array($this->saveHandler,'read'),
-array($this->saveHandler,'write'),
-array($this->saveHandler,'destroy'),
-array($this->saveHandler,'gc')
-);
-}
-}
-}
-protected function loadSession(array &$session = null)
-{
-if (null === $session) {
-$session = &$_SESSION;
-}
-$bags = array_merge($this->bags, array($this->metadataBag));
-foreach ($bags as $bag) {
-$key = $bag->getStorageKey();
-$session[$key] = isset($session[$key]) ? $session[$key] : array();
-$bag->initialize($session[$key]);
-}
-$this->started = true;
-$this->closed = false;
-}
-}
-}
-namespace Symfony\Component\HttpFoundation\Session\Storage\Handler
-{
-if (version_compare(phpversion(),'5.4.0','>=')) {
-class NativeSessionHandler extends \SessionHandler {}
-} else {
-class NativeSessionHandler {}
-}
-}
-namespace Symfony\Component\HttpFoundation\Session\Storage\Handler
-{
-class NativeFileSessionHandler extends NativeSessionHandler
-{
-public function __construct($savePath = null)
-{
-if (null === $savePath) {
-$savePath = ini_get('session.save_path');
-}
-$baseDir = $savePath;
-if ($count = substr_count($savePath,';')) {
-if ($count > 2) {
-throw new \InvalidArgumentException(sprintf('Invalid argument $savePath \'%s\'', $savePath));
-}
-$baseDir = ltrim(strrchr($savePath,';'),';');
-}
-if ($baseDir && !is_dir($baseDir)) {
-mkdir($baseDir, 0777, true);
-}
-ini_set('session.save_path', $savePath);
-ini_set('session.save_handler','files');
-}
-}
-}
-namespace Symfony\Component\HttpFoundation\Session\Storage\Proxy
-{
-abstract class AbstractProxy
-{
-protected $wrapper = false;
-protected $active = false;
-protected $saveHandlerName;
-public function getSaveHandlerName()
-{
-return $this->saveHandlerName;
-}
-public function isSessionHandlerInterface()
-{
-return ($this instanceof \SessionHandlerInterface);
-}
-public function isWrapper()
-{
-return $this->wrapper;
-}
-public function isActive()
-{
-return $this->active;
-}
-public function setActive($flag)
-{
-$this->active = (bool) $flag;
-}
-public function getId()
-{
-return session_id();
-}
-public function setId($id)
-{
-if ($this->isActive()) {
-throw new \LogicException('Cannot change the ID of an active session');
-}
-session_id($id);
-}
-public function getName()
-{
-return session_name();
-}
-public function setName($name)
-{
-if ($this->isActive()) {
-throw new \LogicException('Cannot change the name of an active session');
-}
-session_name($name);
-}
-}
-}
-namespace
-{
-interface SessionHandlerInterface
-{
-public function open($savePath, $sessionName);
-public function close();
-public function read($sessionId);
-public function write($sessionId, $data);
-public function destroy($sessionId);
-public function gc($lifetime);
-}
-}
-namespace Symfony\Component\HttpFoundation\Session\Storage\Proxy
-{
-class SessionHandlerProxy extends AbstractProxy implements \SessionHandlerInterface
-{
-protected $handler;
-public function __construct(\SessionHandlerInterface $handler)
-{
-$this->handler = $handler;
-$this->wrapper = ($handler instanceof \SessionHandler);
-$this->saveHandlerName = $this->wrapper ? ini_get('session.save_handler') :'user';
-}
-public function open($savePath, $sessionName)
-{
-$return = (bool) $this->handler->open($savePath, $sessionName);
-if (true === $return) {
-$this->active = true;
-}
-return $return;
-}
-public function close()
-{
-$this->active = false;
-return (bool) $this->handler->close();
-}
-public function read($id)
-{
-return (string) $this->handler->read($id);
-}
-public function write($id, $data)
-{
-return (bool) $this->handler->write($id, $data);
-}
-public function destroy($id)
-{
-return (bool) $this->handler->destroy($id);
-}
-public function gc($maxlifetime)
-{
-return (bool) $this->handler->gc($maxlifetime);
-}
-}
-}
-namespace Symfony\Component\HttpFoundation\Session
-{
-use Symfony\Component\HttpFoundation\Session\Storage\MetadataBag;
-interface SessionInterface
-{
-public function start();
-public function getId();
-public function setId($id);
-public function getName();
-public function setName($name);
-public function invalidate($lifetime = null);
-public function migrate($destroy = false, $lifetime = null);
-public function save();
-public function has($name);
-public function get($name, $default = null);
-public function set($name, $value);
-public function all();
-public function replace(array $attributes);
-public function remove($name);
-public function clear();
-public function isStarted();
-public function registerBag(SessionBagInterface $bag);
-public function getBag($name);
-public function getMetadataBag();
-}
-}
-namespace Symfony\Component\HttpFoundation\Session
-{
-use Symfony\Component\HttpFoundation\Session\Storage\SessionStorageInterface;
-use Symfony\Component\HttpFoundation\Session\Attribute\AttributeBag;
-use Symfony\Component\HttpFoundation\Session\Attribute\AttributeBagInterface;
-use Symfony\Component\HttpFoundation\Session\Flash\FlashBag;
-use Symfony\Component\HttpFoundation\Session\Flash\FlashBagInterface;
-use Symfony\Component\HttpFoundation\Session\SessionBagInterface;
-use Symfony\Component\HttpFoundation\Session\Storage\NativeSessionStorage;
-class Session implements SessionInterface, \IteratorAggregate, \Countable
-{
-protected $storage;
-private $flashName;
-private $attributeName;
-public function __construct(SessionStorageInterface $storage = null, AttributeBagInterface $attributes = null, FlashBagInterface $flashes = null)
-{
-$this->storage = $storage ?: new NativeSessionStorage();
-$attributes = $attributes ?: new AttributeBag();
-$this->attributeName = $attributes->getName();
-$this->registerBag($attributes);
-$flashes = $flashes ?: new FlashBag();
-$this->flashName = $flashes->getName();
-$this->registerBag($flashes);
-}
-public function start()
-{
-return $this->storage->start();
-}
-public function has($name)
-{
-return $this->storage->getBag($this->attributeName)->has($name);
-}
-public function get($name, $default = null)
-{
-return $this->storage->getBag($this->attributeName)->get($name, $default);
-}
-public function set($name, $value)
-{
-$this->storage->getBag($this->attributeName)->set($name, $value);
-}
-public function all()
-{
-return $this->storage->getBag($this->attributeName)->all();
-}
-public function replace(array $attributes)
-{
-$this->storage->getBag($this->attributeName)->replace($attributes);
-}
-public function remove($name)
-{
-return $this->storage->getBag($this->attributeName)->remove($name);
-}
-public function clear()
-{
-$this->storage->getBag($this->attributeName)->clear();
-}
-public function isStarted()
-{
-return $this->storage->isStarted();
-}
-public function getIterator()
-{
-return new \ArrayIterator($this->storage->getBag($this->attributeName)->all());
-}
-public function count()
-{
-return count($this->storage->getBag($this->attributeName)->all());
-}
-public function invalidate($lifetime = null)
-{
-$this->storage->clear();
-return $this->migrate(true, $lifetime);
-}
-public function migrate($destroy = false, $lifetime = null)
-{
-return $this->storage->regenerate($destroy, $lifetime);
-}
-public function save()
-{
-$this->storage->save();
-}
-public function getId()
-{
-return $this->storage->getId();
-}
-public function setId($id)
-{
-$this->storage->setId($id);
-}
-public function getName()
-{
-return $this->storage->getName();
-}
-public function setName($name)
-{
-$this->storage->setName($name);
-}
-public function getMetadataBag()
-{
-return $this->storage->getMetadataBag();
-}
-public function registerBag(SessionBagInterface $bag)
-{
-$this->storage->registerBag($bag);
-}
-public function getBag($name)
-{
-return $this->storage->getBag($name);
-}
-public function getFlashBag()
-{
-return $this->getBag($this->flashName);
-}
-public function getFlashes()
-{
-trigger_error('getFlashes() is deprecated since version 2.1 and will be removed in 2.3. Use the FlashBag instead.', E_USER_DEPRECATED);
-$all = $this->getBag($this->flashName)->all();
-$return = array();
-if ($all) {
-foreach ($all as $name => $array) {
-if (is_numeric(key($array))) {
-$return[$name] = reset($array);
-} else {
-$return[$name] = $array;
-}
-}
-}
-return $return;
-}
-public function setFlashes($values)
-{
-trigger_error('setFlashes() is deprecated since version 2.1 and will be removed in 2.3. Use the FlashBag instead.', E_USER_DEPRECATED);
-foreach ($values as $name => $value) {
-$this->getBag($this->flashName)->set($name, $value);
-}
-}
-public function getFlash($name, $default = null)
-{
-trigger_error('getFlash() is deprecated since version 2.1 and will be removed in 2.3. Use the FlashBag instead.', E_USER_DEPRECATED);
-$return = $this->getBag($this->flashName)->get($name);
-return empty($return) ? $default : reset($return);
-}
-public function setFlash($name, $value)
-{
-trigger_error('setFlash() is deprecated since version 2.1 and will be removed in 2.3. Use the FlashBag instead.', E_USER_DEPRECATED);
-$this->getBag($this->flashName)->set($name, $value);
-}
-public function hasFlash($name)
-{
-trigger_error('hasFlash() is deprecated since version 2.1 and will be removed in 2.3. Use the FlashBag instead.', E_USER_DEPRECATED);
-return $this->getBag($this->flashName)->has($name);
-}
-public function removeFlash($name)
-{
-trigger_error('removeFlash() is deprecated since version 2.1 and will be removed in 2.3. Use the FlashBag instead.', E_USER_DEPRECATED);
-$this->getBag($this->flashName)->get($name);
-}
-public function clearFlashes()
-{
-trigger_error('clearFlashes() is deprecated since version 2.1 and will be removed in 2.3. Use the FlashBag instead.', E_USER_DEPRECATED);
-return $this->getBag($this->flashName)->clear();
-}
-}
-}
-namespace Symfony\Bundle\FrameworkBundle\Templating
-{
-use Symfony\Component\DependencyInjection\ContainerInterface;
-use Symfony\Component\HttpFoundation\Session\Session;
-use Symfony\Component\Security\Core\SecurityContext;
-use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
-use Symfony\Component\HttpFoundation\Request;
-class GlobalVariables
-{
-protected $container;
-public function __construct(ContainerInterface $container)
-{
-$this->container = $container;
-}
-public function getSecurity()
-{
-if ($this->container->has('security.context')) {
-return $this->container->get('security.context');
-}
-}
-public function getUser()
-{
-if (!$security = $this->getSecurity()) {
-return;
-}
-if (!$token = $security->getToken()) {
-return;
-}
-$user = $token->getUser();
-if (!is_object($user)) {
-return;
-}
-return $user;
-}
-public function getRequest()
-{
-if ($this->container->has('request') && $request = $this->container->get('request')) {
-return $request;
-}
-}
-public function getSession()
-{
-if ($request = $this->getRequest()) {
-return $request->getSession();
-}
-}
-public function getEnvironment()
-{
-return $this->container->getParameter('kernel.environment');
-}
-public function getDebug()
-{
-return (Boolean) $this->container->getParameter('kernel.debug');
-}
-}
-}
-namespace Symfony\Component\Templating
-{
-interface TemplateReferenceInterface
-{
-public function all();
-public function set($name, $value);
-public function get($name);
-public function getPath();
-public function getLogicalName();
-}
-}
-namespace Symfony\Component\Templating
-{
-class TemplateReference implements TemplateReferenceInterface
-{
-protected $parameters;
-public function __construct($name = null, $engine = null)
-{
-$this->parameters = array('name'=> $name,'engine'=> $engine,
-);
-}
-public function __toString()
-{
-return $this->getLogicalName();
-}
-public function set($name, $value)
-{
-if (array_key_exists($name, $this->parameters)) {
-$this->parameters[$name] = $value;
-} else {
-throw new \InvalidArgumentException(sprintf('The template does not support the "%s" parameter.', $name));
-}
-return $this;
-}
-public function get($name)
-{
-if (array_key_exists($name, $this->parameters)) {
-return $this->parameters[$name];
-}
-throw new \InvalidArgumentException(sprintf('The template does not support the "%s" parameter.', $name));
-}
-public function all()
-{
-return $this->parameters;
-}
-public function getPath()
-{
-return $this->parameters['name'];
-}
-public function getLogicalName()
-{
-return $this->parameters['name'];
-}
-}
-}
-namespace Symfony\Bundle\FrameworkBundle\Templating
-{
-use Symfony\Component\Templating\TemplateReference as BaseTemplateReference;
-class TemplateReference extends BaseTemplateReference
-{
-public function __construct($bundle = null, $controller = null, $name = null, $format = null, $engine = null)
-{
-$this->parameters = array('bundle'=> $bundle,'controller'=> $controller,'name'=> $name,'format'=> $format,'engine'=> $engine,
-);
-}
-public function getPath()
-{
-$controller = str_replace('\\','/', $this->get('controller'));
-$path = (empty($controller) ?'': $controller.'/').$this->get('name').'.'.$this->get('format').'.'.$this->get('engine');
-return empty($this->parameters['bundle']) ?'views/'.$path :'@'.$this->get('bundle').'/Resources/views/'.$path;
-}
-public function getLogicalName()
-{
-return sprintf('%s:%s:%s.%s.%s', $this->parameters['bundle'], $this->parameters['controller'], $this->parameters['name'], $this->parameters['format'], $this->parameters['engine']);
-}
-}
-}
-namespace Symfony\Component\Templating
-{
-interface TemplateNameParserInterface
-{
-public function parse($name);
-}
-}
-namespace Symfony\Bundle\FrameworkBundle\Templating
-{
-use Symfony\Component\Templating\TemplateNameParserInterface;
-use Symfony\Component\Templating\TemplateReferenceInterface;
-use Symfony\Component\HttpKernel\KernelInterface;
-class TemplateNameParser implements TemplateNameParserInterface
-{
-protected $kernel;
-protected $cache;
-public function __construct(KernelInterface $kernel)
-{
-$this->kernel = $kernel;
-$this->cache = array();
-}
-public function parse($name)
-{
-if ($name instanceof TemplateReferenceInterface) {
-return $name;
-} elseif (isset($this->cache[$name])) {
-return $this->cache[$name];
-}
-$name = str_replace(':/',':', preg_replace('#/{2,}#','/', strtr($name,'\\','/')));
-if (false !== strpos($name,'..')) {
-throw new \RuntimeException(sprintf('Template name "%s" contains invalid characters.', $name));
-}
-$parts = explode(':', $name);
-if (3 !== count($parts)) {
-throw new \InvalidArgumentException(sprintf('Template name "%s" is not valid (format is "bundle:section:template.format.engine").', $name));
-}
-$elements = explode('.', $parts[2]);
-if (3 > count($elements)) {
-throw new \InvalidArgumentException(sprintf('Template name "%s" is not valid (format is "bundle:section:template.format.engine").', $name));
-}
-$engine = array_pop($elements);
-$format = array_pop($elements);
-$template = new TemplateReference($parts[0], $parts[1], implode('.', $elements), $format, $engine);
-if ($template->get('bundle')) {
-try {
-$this->kernel->getBundle($template->get('bundle'));
-} catch (\Exception $e) {
-throw new \InvalidArgumentException(sprintf('Template name "%s" is not valid.', $name), 0, $e);
-}
-}
-return $this->cache[$name] = $template;
-}
-}
-}
-namespace Symfony\Component\Config
-{
-interface FileLocatorInterface
-{
-public function locate($name, $currentPath = null, $first = true);
-}
-}
-namespace Symfony\Bundle\FrameworkBundle\Templating\Loader
-{
-use Symfony\Component\Config\FileLocatorInterface;
-use Symfony\Component\Templating\TemplateReferenceInterface;
-class TemplateLocator implements FileLocatorInterface
-{
-protected $locator;
-protected $cache;
-public function __construct(FileLocatorInterface $locator, $cacheDir = null)
-{
-if (null !== $cacheDir && is_file($cache = $cacheDir.'/templates.php')) {
-$this->cache = require $cache;
-}
-$this->locator = $locator;
-}
-protected function getCacheKey($template)
-{
-return $template->getLogicalName();
-}
-public function locate($template, $currentPath = null, $first = true)
-{
-if (!$template instanceof TemplateReferenceInterface) {
-throw new \InvalidArgumentException("The template must be an instance of TemplateReferenceInterface.");
-}
-$key = $this->getCacheKey($template);
-if (isset($this->cache[$key])) {
-return $this->cache[$key];
-}
-try {
-return $this->cache[$key] = $this->locator->locate($template->getPath(), $currentPath);
-} catch (\InvalidArgumentException $e) {
-throw new \InvalidArgumentException(sprintf('Unable to find template "%s" : "%s".', $template, $e->getMessage()), 0, $e);
-}
-}
+public function redirect($path, $route, $scheme = null);
 }
 }
 namespace Symfony\Component\Routing
@@ -800,306 +9227,6 @@ public function setContext(RequestContext $context);
 public function getContext();
 }
 }
-namespace Symfony\Component\Routing\Generator
-{
-use Symfony\Component\Routing\Exception\InvalidParameterException;
-use Symfony\Component\Routing\Exception\MissingMandatoryParametersException;
-use Symfony\Component\Routing\Exception\RouteNotFoundException;
-use Symfony\Component\Routing\RequestContextAwareInterface;
-interface UrlGeneratorInterface extends RequestContextAwareInterface
-{
-const ABSOLUTE_URL = true;
-const ABSOLUTE_PATH = false;
-const RELATIVE_PATH ='relative';
-const NETWORK_PATH ='network';
-public function generate($name, $parameters = array(), $referenceType = self::ABSOLUTE_PATH);
-}
-}
-namespace Symfony\Component\Routing\Generator
-{
-interface ConfigurableRequirementsInterface
-{
-public function setStrictRequirements($enabled);
-public function isStrictRequirements();
-}
-}
-namespace Symfony\Component\Routing\Generator
-{
-use Symfony\Component\Routing\RouteCollection;
-use Symfony\Component\Routing\RequestContext;
-use Symfony\Component\Routing\Exception\InvalidParameterException;
-use Symfony\Component\Routing\Exception\RouteNotFoundException;
-use Symfony\Component\Routing\Exception\MissingMandatoryParametersException;
-use Psr\Log\LoggerInterface;
-class UrlGenerator implements UrlGeneratorInterface, ConfigurableRequirementsInterface
-{
-protected $routes;
-protected $context;
-protected $strictRequirements = true;
-protected $logger;
-protected $decodedChars = array('%2F'=>'/','%40'=>'@','%3A'=>':','%3B'=>';','%2C'=>',','%3D'=>'=','%2B'=>'+','%21'=>'!','%2A'=>'*','%7C'=>'|',
-);
-public function __construct(RouteCollection $routes, RequestContext $context, LoggerInterface $logger = null)
-{
-$this->routes = $routes;
-$this->context = $context;
-$this->logger = $logger;
-}
-public function setContext(RequestContext $context)
-{
-$this->context = $context;
-}
-public function getContext()
-{
-return $this->context;
-}
-public function setStrictRequirements($enabled)
-{
-$this->strictRequirements = null === $enabled ? null : (Boolean) $enabled;
-}
-public function isStrictRequirements()
-{
-return $this->strictRequirements;
-}
-public function generate($name, $parameters = array(), $referenceType = self::ABSOLUTE_PATH)
-{
-if (null === $route = $this->routes->get($name)) {
-throw new RouteNotFoundException(sprintf('Unable to generate a URL for the named route "%s" as such route does not exist.', $name));
-}
-$compiledRoute = $route->compile();
-return $this->doGenerate($compiledRoute->getVariables(), $route->getDefaults(), $route->getRequirements(), $compiledRoute->getTokens(), $parameters, $name, $referenceType, $compiledRoute->getHostTokens());
-}
-protected function doGenerate($variables, $defaults, $requirements, $tokens, $parameters, $name, $referenceType, $hostTokens)
-{
-$variables = array_flip($variables);
-$mergedParams = array_replace($defaults, $this->context->getParameters(), $parameters);
-if ($diff = array_diff_key($variables, $mergedParams)) {
-throw new MissingMandatoryParametersException(sprintf('Some mandatory parameters are missing ("%s") to generate a URL for route "%s".', implode('", "', array_keys($diff)), $name));
-}
-$url ='';
-$optional = true;
-foreach ($tokens as $token) {
-if ('variable'=== $token[0]) {
-if (!$optional || !array_key_exists($token[3], $defaults) || (string) $mergedParams[$token[3]] !== (string) $defaults[$token[3]]) {
-if (null !== $this->strictRequirements && !preg_match('#^'.$token[2].'$#', $mergedParams[$token[3]])) {
-$message = sprintf('Parameter "%s" for route "%s" must match "%s" ("%s" given) to generate a corresponding URL.', $token[3], $name, $token[2], $mergedParams[$token[3]]);
-if ($this->strictRequirements) {
-throw new InvalidParameterException($message);
-}
-if ($this->logger) {
-$this->logger->error($message);
-}
-return null;
-}
-$url = $token[1].$mergedParams[$token[3]].$url;
-$optional = false;
-}
-} else {
-$url = $token[1].$url;
-$optional = false;
-}
-}
-if (''=== $url) {
-$url ='/';
-}
-$url = strtr(rawurlencode($url), $this->decodedChars);
-$url = strtr($url, array('/../'=>'/%2E%2E/','/./'=>'/%2E/'));
-if ('/..'=== substr($url, -3)) {
-$url = substr($url, 0, -2) .'%2E%2E';
-} elseif ('/.'=== substr($url, -2)) {
-$url = substr($url, 0, -1) .'%2E';
-}
-$schemeAuthority ='';
-if ($host = $this->context->getHost()) {
-$scheme = $this->context->getScheme();
-if (isset($requirements['_scheme']) && ($req = strtolower($requirements['_scheme'])) && $scheme !== $req) {
-$referenceType = self::ABSOLUTE_URL;
-$scheme = $req;
-}
-if ($hostTokens) {
-$routeHost ='';
-foreach ($hostTokens as $token) {
-if ('variable'=== $token[0]) {
-if (null !== $this->strictRequirements && !preg_match('#^'.$token[2].'$#', $mergedParams[$token[3]])) {
-$message = sprintf('Parameter "%s" for route "%s" must match "%s" ("%s" given) to generate a corresponding URL.', $token[3], $name, $token[2], $mergedParams[$token[3]]);
-if ($this->strictRequirements) {
-throw new InvalidParameterException($message);
-}
-if ($this->logger) {
-$this->logger->error($message);
-}
-return null;
-}
-$routeHost = $token[1].$mergedParams[$token[3]].$routeHost;
-} else {
-$routeHost = $token[1].$routeHost;
-}
-}
-if ($routeHost !== $host) {
-$host = $routeHost;
-if (self::ABSOLUTE_URL !== $referenceType) {
-$referenceType = self::NETWORK_PATH;
-}
-}
-}
-if (self::ABSOLUTE_URL === $referenceType || self::NETWORK_PATH === $referenceType) {
-$port ='';
-if ('http'=== $scheme && 80 != $this->context->getHttpPort()) {
-$port =':'.$this->context->getHttpPort();
-} elseif ('https'=== $scheme && 443 != $this->context->getHttpsPort()) {
-$port =':'.$this->context->getHttpsPort();
-}
-$schemeAuthority = self::NETWORK_PATH === $referenceType ?'//': "$scheme://";
-$schemeAuthority .= $host.$port;
-}
-}
-if (self::RELATIVE_PATH === $referenceType) {
-$url = self::getRelativePath($this->context->getPathInfo(), $url);
-} else {
-$url = $schemeAuthority.$this->context->getBaseUrl().$url;
-}
-$extra = array_diff_key($parameters, $variables);
-if ($extra && $query = http_build_query($extra,'','&')) {
-$url .='?'.$query;
-}
-return $url;
-}
-public static function getRelativePath($basePath, $targetPath)
-{
-if ($basePath === $targetPath) {
-return'';
-}
-$sourceDirs = explode('/', isset($basePath[0]) &&'/'=== $basePath[0] ? substr($basePath, 1) : $basePath);
-$targetDirs = explode('/', isset($targetPath[0]) &&'/'=== $targetPath[0] ? substr($targetPath, 1) : $targetPath);
-array_pop($sourceDirs);
-$targetFile = array_pop($targetDirs);
-foreach ($sourceDirs as $i => $dir) {
-if (isset($targetDirs[$i]) && $dir === $targetDirs[$i]) {
-unset($sourceDirs[$i], $targetDirs[$i]);
-} else {
-break;
-}
-}
-$targetDirs[] = $targetFile;
-$path = str_repeat('../', count($sourceDirs)) . implode('/', $targetDirs);
-return''=== $path ||'/'=== $path[0]
-|| false !== ($colonPos = strpos($path,':')) && ($colonPos < ($slashPos = strpos($path,'/')) || false === $slashPos)
-? "./$path" : $path;
-}
-}
-}
-namespace Symfony\Component\Routing
-{
-use Symfony\Component\HttpFoundation\Request;
-class RequestContext
-{
-private $baseUrl;
-private $pathInfo;
-private $method;
-private $host;
-private $scheme;
-private $httpPort;
-private $httpsPort;
-private $parameters = array();
-public function __construct($baseUrl ='', $method ='GET', $host ='localhost', $scheme ='http', $httpPort = 80, $httpsPort = 443, $path ='/')
-{
-$this->baseUrl = $baseUrl;
-$this->method = strtoupper($method);
-$this->host = $host;
-$this->scheme = strtolower($scheme);
-$this->httpPort = $httpPort;
-$this->httpsPort = $httpsPort;
-$this->pathInfo = $path;
-}
-public function fromRequest(Request $request)
-{
-$this->setBaseUrl($request->getBaseUrl());
-$this->setPathInfo($request->getPathInfo());
-$this->setMethod($request->getMethod());
-$this->setHost($request->getHost());
-$this->setScheme($request->getScheme());
-$this->setHttpPort($request->isSecure() ? $this->httpPort : $request->getPort());
-$this->setHttpsPort($request->isSecure() ? $request->getPort() : $this->httpsPort);
-}
-public function getBaseUrl()
-{
-return $this->baseUrl;
-}
-public function setBaseUrl($baseUrl)
-{
-$this->baseUrl = $baseUrl;
-}
-public function getPathInfo()
-{
-return $this->pathInfo;
-}
-public function setPathInfo($pathInfo)
-{
-$this->pathInfo = $pathInfo;
-}
-public function getMethod()
-{
-return $this->method;
-}
-public function setMethod($method)
-{
-$this->method = strtoupper($method);
-}
-public function getHost()
-{
-return $this->host;
-}
-public function setHost($host)
-{
-$this->host = $host;
-}
-public function getScheme()
-{
-return $this->scheme;
-}
-public function setScheme($scheme)
-{
-$this->scheme = strtolower($scheme);
-}
-public function getHttpPort()
-{
-return $this->httpPort;
-}
-public function setHttpPort($httpPort)
-{
-$this->httpPort = $httpPort;
-}
-public function getHttpsPort()
-{
-return $this->httpsPort;
-}
-public function setHttpsPort($httpsPort)
-{
-$this->httpsPort = $httpsPort;
-}
-public function getParameters()
-{
-return $this->parameters;
-}
-public function setParameters(array $parameters)
-{
-$this->parameters = $parameters;
-return $this;
-}
-public function getParameter($name)
-{
-return isset($this->parameters[$name]) ? $this->parameters[$name] : null;
-}
-public function hasParameter($name)
-{
-return array_key_exists($name, $this->parameters);
-}
-public function setParameter($name, $parameter)
-{
-$this->parameters[$name] = $parameter;
-}
-}
-}
 namespace Symfony\Component\Routing\Matcher
 {
 use Symfony\Component\Routing\RequestContextAwareInterface;
@@ -1108,152 +9235,6 @@ use Symfony\Component\Routing\Exception\MethodNotAllowedException;
 interface UrlMatcherInterface extends RequestContextAwareInterface
 {
 public function match($pathinfo);
-}
-}
-namespace Symfony\Component\Routing
-{
-use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
-use Symfony\Component\Routing\Matcher\UrlMatcherInterface;
-interface RouterInterface extends UrlMatcherInterface, UrlGeneratorInterface
-{
-public function getRouteCollection();
-}
-}
-namespace Symfony\Component\Routing
-{
-use Symfony\Component\Config\Loader\LoaderInterface;
-use Symfony\Component\Config\ConfigCache;
-use Psr\Log\LoggerInterface;
-use Symfony\Component\Routing\Generator\ConfigurableRequirementsInterface;
-use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
-use Symfony\Component\Routing\Matcher\UrlMatcherInterface;
-class Router implements RouterInterface
-{
-protected $matcher;
-protected $generator;
-protected $context;
-protected $loader;
-protected $collection;
-protected $resource;
-protected $options = array();
-protected $logger;
-public function __construct(LoaderInterface $loader, $resource, array $options = array(), RequestContext $context = null, LoggerInterface $logger = null)
-{
-$this->loader = $loader;
-$this->resource = $resource;
-$this->logger = $logger;
-$this->context = null === $context ? new RequestContext() : $context;
-$this->setOptions($options);
-}
-public function setOptions(array $options)
-{
-$this->options = array('cache_dir'=> null,'debug'=> false,'generator_class'=>'Symfony\\Component\\Routing\\Generator\\UrlGenerator','generator_base_class'=>'Symfony\\Component\\Routing\\Generator\\UrlGenerator','generator_dumper_class'=>'Symfony\\Component\\Routing\\Generator\\Dumper\\PhpGeneratorDumper','generator_cache_class'=>'ProjectUrlGenerator','matcher_class'=>'Symfony\\Component\\Routing\\Matcher\\UrlMatcher','matcher_base_class'=>'Symfony\\Component\\Routing\\Matcher\\UrlMatcher','matcher_dumper_class'=>'Symfony\\Component\\Routing\\Matcher\\Dumper\\PhpMatcherDumper','matcher_cache_class'=>'ProjectUrlMatcher','resource_type'=> null,'strict_requirements'=> true,
-);
-$invalid = array();
-foreach ($options as $key => $value) {
-if (array_key_exists($key, $this->options)) {
-$this->options[$key] = $value;
-} else {
-$invalid[] = $key;
-}
-}
-if ($invalid) {
-throw new \InvalidArgumentException(sprintf('The Router does not support the following options: "%s".', implode('\', \'', $invalid)));
-}
-}
-public function setOption($key, $value)
-{
-if (!array_key_exists($key, $this->options)) {
-throw new \InvalidArgumentException(sprintf('The Router does not support the "%s" option.', $key));
-}
-$this->options[$key] = $value;
-}
-public function getOption($key)
-{
-if (!array_key_exists($key, $this->options)) {
-throw new \InvalidArgumentException(sprintf('The Router does not support the "%s" option.', $key));
-}
-return $this->options[$key];
-}
-public function getRouteCollection()
-{
-if (null === $this->collection) {
-$this->collection = $this->loader->load($this->resource, $this->options['resource_type']);
-}
-return $this->collection;
-}
-public function setContext(RequestContext $context)
-{
-$this->context = $context;
-if (null !== $this->matcher) {
-$this->getMatcher()->setContext($context);
-}
-if (null !== $this->generator) {
-$this->getGenerator()->setContext($context);
-}
-}
-public function getContext()
-{
-return $this->context;
-}
-public function generate($name, $parameters = array(), $referenceType = self::ABSOLUTE_PATH)
-{
-return $this->getGenerator()->generate($name, $parameters, $referenceType);
-}
-public function match($pathinfo)
-{
-return $this->getMatcher()->match($pathinfo);
-}
-public function getMatcher()
-{
-if (null !== $this->matcher) {
-return $this->matcher;
-}
-if (null === $this->options['cache_dir'] || null === $this->options['matcher_cache_class']) {
-return $this->matcher = new $this->options['matcher_class']($this->getRouteCollection(), $this->context);
-}
-$class = $this->options['matcher_cache_class'];
-$cache = new ConfigCache($this->options['cache_dir'].'/'.$class.'.php', $this->options['debug']);
-if (!$cache->isFresh($class)) {
-$dumper = new $this->options['matcher_dumper_class']($this->getRouteCollection());
-$options = array('class'=> $class,'base_class'=> $this->options['matcher_base_class'],
-);
-$cache->write($dumper->dump($options), $this->getRouteCollection()->getResources());
-}
-require_once $cache;
-return $this->matcher = new $class($this->context);
-}
-public function getGenerator()
-{
-if (null !== $this->generator) {
-return $this->generator;
-}
-if (null === $this->options['cache_dir'] || null === $this->options['generator_cache_class']) {
-$this->generator = new $this->options['generator_class']($this->getRouteCollection(), $this->context, $this->logger);
-} else {
-$class = $this->options['generator_cache_class'];
-$cache = new ConfigCache($this->options['cache_dir'].'/'.$class.'.php', $this->options['debug']);
-if (!$cache->isFresh($class)) {
-$dumper = new $this->options['generator_dumper_class']($this->getRouteCollection());
-$options = array('class'=> $class,'base_class'=> $this->options['generator_base_class'],
-);
-$cache->write($dumper->dump($options), $this->getRouteCollection()->getResources());
-}
-require_once $cache;
-$this->generator = new $class($this->context, $this->logger);
-}
-if ($this->generator instanceof ConfigurableRequirementsInterface) {
-$this->generator->setStrictRequirements($this->options['strict_requirements']);
-}
-return $this->generator;
-}
-}
-}
-namespace Symfony\Component\Routing\Matcher
-{
-interface RedirectableUrlMatcherInterface
-{
-public function redirect($path, $route, $scheme = null);
 }
 }
 namespace Symfony\Component\Routing\Matcher
@@ -1394,11 +9375,165 @@ return array('_controller'=>'Symfony\\Bundle\\FrameworkBundle\\Controller\\Redir
 }
 }
 }
+namespace Symfony\Component\Routing\Generator
+{
+use Symfony\Component\Routing\Exception\InvalidParameterException;
+use Symfony\Component\Routing\Exception\MissingMandatoryParametersException;
+use Symfony\Component\Routing\Exception\RouteNotFoundException;
+use Symfony\Component\Routing\RequestContextAwareInterface;
+interface UrlGeneratorInterface extends RequestContextAwareInterface
+{
+const ABSOLUTE_URL = true;
+const ABSOLUTE_PATH = false;
+const RELATIVE_PATH ='relative';
+const NETWORK_PATH ='network';
+public function generate($name, $parameters = array(), $referenceType = self::ABSOLUTE_PATH);
+}
+}
+namespace Symfony\Component\Routing
+{
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+use Symfony\Component\Routing\Matcher\UrlMatcherInterface;
+interface RouterInterface extends UrlMatcherInterface, UrlGeneratorInterface
+{
+public function getRouteCollection();
+}
+}
 namespace Symfony\Component\HttpKernel\CacheWarmer
 {
 interface WarmableInterface
 {
 public function warmUp($cacheDir);
+}
+}
+namespace Symfony\Component\Routing
+{
+use Symfony\Component\Config\Loader\LoaderInterface;
+use Symfony\Component\Config\ConfigCache;
+use Psr\Log\LoggerInterface;
+use Symfony\Component\Routing\Generator\ConfigurableRequirementsInterface;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+use Symfony\Component\Routing\Matcher\UrlMatcherInterface;
+class Router implements RouterInterface
+{
+protected $matcher;
+protected $generator;
+protected $context;
+protected $loader;
+protected $collection;
+protected $resource;
+protected $options = array();
+protected $logger;
+public function __construct(LoaderInterface $loader, $resource, array $options = array(), RequestContext $context = null, LoggerInterface $logger = null)
+{
+$this->loader = $loader;
+$this->resource = $resource;
+$this->logger = $logger;
+$this->context = null === $context ? new RequestContext() : $context;
+$this->setOptions($options);
+}
+public function setOptions(array $options)
+{
+$this->options = array('cache_dir'=> null,'debug'=> false,'generator_class'=>'Symfony\\Component\\Routing\\Generator\\UrlGenerator','generator_base_class'=>'Symfony\\Component\\Routing\\Generator\\UrlGenerator','generator_dumper_class'=>'Symfony\\Component\\Routing\\Generator\\Dumper\\PhpGeneratorDumper','generator_cache_class'=>'ProjectUrlGenerator','matcher_class'=>'Symfony\\Component\\Routing\\Matcher\\UrlMatcher','matcher_base_class'=>'Symfony\\Component\\Routing\\Matcher\\UrlMatcher','matcher_dumper_class'=>'Symfony\\Component\\Routing\\Matcher\\Dumper\\PhpMatcherDumper','matcher_cache_class'=>'ProjectUrlMatcher','resource_type'=> null,'strict_requirements'=> true,
+);
+$invalid = array();
+foreach ($options as $key => $value) {
+if (array_key_exists($key, $this->options)) {
+$this->options[$key] = $value;
+} else {
+$invalid[] = $key;
+}
+}
+if ($invalid) {
+throw new \InvalidArgumentException(sprintf('The Router does not support the following options: "%s".', implode('\', \'', $invalid)));
+}
+}
+public function setOption($key, $value)
+{
+if (!array_key_exists($key, $this->options)) {
+throw new \InvalidArgumentException(sprintf('The Router does not support the "%s" option.', $key));
+}
+$this->options[$key] = $value;
+}
+public function getOption($key)
+{
+if (!array_key_exists($key, $this->options)) {
+throw new \InvalidArgumentException(sprintf('The Router does not support the "%s" option.', $key));
+}
+return $this->options[$key];
+}
+public function getRouteCollection()
+{
+if (null === $this->collection) {
+$this->collection = $this->loader->load($this->resource, $this->options['resource_type']);
+}
+return $this->collection;
+}
+public function setContext(RequestContext $context)
+{
+$this->context = $context;
+if (null !== $this->matcher) {
+$this->getMatcher()->setContext($context);
+}
+if (null !== $this->generator) {
+$this->getGenerator()->setContext($context);
+}
+}
+public function getContext()
+{
+return $this->context;
+}
+public function generate($name, $parameters = array(), $referenceType = self::ABSOLUTE_PATH)
+{
+return $this->getGenerator()->generate($name, $parameters, $referenceType);
+}
+public function match($pathinfo)
+{
+return $this->getMatcher()->match($pathinfo);
+}
+public function getMatcher()
+{
+if (null !== $this->matcher) {
+return $this->matcher;
+}
+if (null === $this->options['cache_dir'] || null === $this->options['matcher_cache_class']) {
+return $this->matcher = new $this->options['matcher_class']($this->getRouteCollection(), $this->context);
+}
+$class = $this->options['matcher_cache_class'];
+$cache = new ConfigCache($this->options['cache_dir'].'/'.$class.'.php', $this->options['debug']);
+if (!$cache->isFresh($class)) {
+$dumper = new $this->options['matcher_dumper_class']($this->getRouteCollection());
+$options = array('class'=> $class,'base_class'=> $this->options['matcher_base_class'],
+);
+$cache->write($dumper->dump($options), $this->getRouteCollection()->getResources());
+}
+require_once $cache;
+return $this->matcher = new $class($this->context);
+}
+public function getGenerator()
+{
+if (null !== $this->generator) {
+return $this->generator;
+}
+if (null === $this->options['cache_dir'] || null === $this->options['generator_cache_class']) {
+$this->generator = new $this->options['generator_class']($this->getRouteCollection(), $this->context, $this->logger);
+} else {
+$class = $this->options['generator_cache_class'];
+$cache = new ConfigCache($this->options['cache_dir'].'/'.$class.'.php', $this->options['debug']);
+if (!$cache->isFresh($class)) {
+$dumper = new $this->options['generator_dumper_class']($this->getRouteCollection());
+$options = array('class'=> $class,'base_class'=> $this->options['generator_base_class'],
+);
+$cache->write($dumper->dump($options), $this->getRouteCollection()->getResources());
+}
+require_once $cache;
+$this->generator = new $class($this->context, $this->logger);
+}
+if ($this->generator instanceof ConfigurableRequirementsInterface) {
+$this->generator->setStrictRequirements($this->options['strict_requirements']);
+}
+return $this->generator;
+}
 }
 }
 namespace Symfony\Bundle\FrameworkBundle\Routing
@@ -1480,6 +9615,588 @@ $value)
 );
 }, $value);
 return str_replace('%%','%', $escapedValue);
+}
+}
+}
+namespace Symfony\Bundle\FrameworkBundle\Templating
+{
+use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\HttpFoundation\Session\Session;
+use Symfony\Component\Security\Core\SecurityContext;
+use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+use Symfony\Component\HttpFoundation\Request;
+class GlobalVariables
+{
+protected $container;
+public function __construct(ContainerInterface $container)
+{
+$this->container = $container;
+}
+public function getSecurity()
+{
+if ($this->container->has('security.context')) {
+return $this->container->get('security.context');
+}
+}
+public function getUser()
+{
+if (!$security = $this->getSecurity()) {
+return;
+}
+if (!$token = $security->getToken()) {
+return;
+}
+$user = $token->getUser();
+if (!is_object($user)) {
+return;
+}
+return $user;
+}
+public function getRequest()
+{
+if ($this->container->has('request') && $request = $this->container->get('request')) {
+return $request;
+}
+}
+public function getSession()
+{
+if ($request = $this->getRequest()) {
+return $request->getSession();
+}
+}
+public function getEnvironment()
+{
+return $this->container->getParameter('kernel.environment');
+}
+public function getDebug()
+{
+return (Boolean) $this->container->getParameter('kernel.debug');
+}
+}
+}
+namespace Symfony\Component\Config
+{
+interface FileLocatorInterface
+{
+public function locate($name, $currentPath = null, $first = true);
+}
+}
+namespace Symfony\Bundle\FrameworkBundle\Templating\Loader
+{
+use Symfony\Component\Config\FileLocatorInterface;
+use Symfony\Component\Templating\TemplateReferenceInterface;
+class TemplateLocator implements FileLocatorInterface
+{
+protected $locator;
+protected $cache;
+public function __construct(FileLocatorInterface $locator, $cacheDir = null)
+{
+if (null !== $cacheDir && is_file($cache = $cacheDir.'/templates.php')) {
+$this->cache = require $cache;
+}
+$this->locator = $locator;
+}
+protected function getCacheKey($template)
+{
+return $template->getLogicalName();
+}
+public function locate($template, $currentPath = null, $first = true)
+{
+if (!$template instanceof TemplateReferenceInterface) {
+throw new \InvalidArgumentException("The template must be an instance of TemplateReferenceInterface.");
+}
+$key = $this->getCacheKey($template);
+if (isset($this->cache[$key])) {
+return $this->cache[$key];
+}
+try {
+return $this->cache[$key] = $this->locator->locate($template->getPath(), $currentPath);
+} catch (\InvalidArgumentException $e) {
+throw new \InvalidArgumentException(sprintf('Unable to find template "%s" : "%s".', $template, $e->getMessage()), 0, $e);
+}
+}
+}
+}
+namespace Symfony\Component\Templating
+{
+interface TemplateNameParserInterface
+{
+public function parse($name);
+}
+}
+namespace Symfony\Bundle\FrameworkBundle\Templating
+{
+use Symfony\Component\Templating\TemplateNameParserInterface;
+use Symfony\Component\Templating\TemplateReferenceInterface;
+use Symfony\Component\HttpKernel\KernelInterface;
+class TemplateNameParser implements TemplateNameParserInterface
+{
+protected $kernel;
+protected $cache;
+public function __construct(KernelInterface $kernel)
+{
+$this->kernel = $kernel;
+$this->cache = array();
+}
+public function parse($name)
+{
+if ($name instanceof TemplateReferenceInterface) {
+return $name;
+} elseif (isset($this->cache[$name])) {
+return $this->cache[$name];
+}
+$name = str_replace(':/',':', preg_replace('#/{2,}#','/', strtr($name,'\\','/')));
+if (false !== strpos($name,'..')) {
+throw new \RuntimeException(sprintf('Template name "%s" contains invalid characters.', $name));
+}
+$parts = explode(':', $name);
+if (3 !== count($parts)) {
+throw new \InvalidArgumentException(sprintf('Template name "%s" is not valid (format is "bundle:section:template.format.engine").', $name));
+}
+$elements = explode('.', $parts[2]);
+if (3 > count($elements)) {
+throw new \InvalidArgumentException(sprintf('Template name "%s" is not valid (format is "bundle:section:template.format.engine").', $name));
+}
+$engine = array_pop($elements);
+$format = array_pop($elements);
+$template = new TemplateReference($parts[0], $parts[1], implode('.', $elements), $format, $engine);
+if ($template->get('bundle')) {
+try {
+$this->kernel->getBundle($template->get('bundle'));
+} catch (\Exception $e) {
+throw new \InvalidArgumentException(sprintf('Template name "%s" is not valid.', $name), 0, $e);
+}
+}
+return $this->cache[$name] = $template;
+}
+}
+}
+namespace Symfony\Component\Templating
+{
+interface TemplateReferenceInterface
+{
+public function all();
+public function set($name, $value);
+public function get($name);
+public function getPath();
+public function getLogicalName();
+}
+}
+namespace Symfony\Component\Templating
+{
+class TemplateReference implements TemplateReferenceInterface
+{
+protected $parameters;
+public function __construct($name = null, $engine = null)
+{
+$this->parameters = array('name'=> $name,'engine'=> $engine,
+);
+}
+public function __toString()
+{
+return $this->getLogicalName();
+}
+public function set($name, $value)
+{
+if (array_key_exists($name, $this->parameters)) {
+$this->parameters[$name] = $value;
+} else {
+throw new \InvalidArgumentException(sprintf('The template does not support the "%s" parameter.', $name));
+}
+return $this;
+}
+public function get($name)
+{
+if (array_key_exists($name, $this->parameters)) {
+return $this->parameters[$name];
+}
+throw new \InvalidArgumentException(sprintf('The template does not support the "%s" parameter.', $name));
+}
+public function all()
+{
+return $this->parameters;
+}
+public function getPath()
+{
+return $this->parameters['name'];
+}
+public function getLogicalName()
+{
+return $this->parameters['name'];
+}
+}
+}
+namespace Symfony\Bundle\FrameworkBundle\Templating
+{
+use Symfony\Component\Templating\TemplateReference as BaseTemplateReference;
+class TemplateReference extends BaseTemplateReference
+{
+public function __construct($bundle = null, $controller = null, $name = null, $format = null, $engine = null)
+{
+$this->parameters = array('bundle'=> $bundle,'controller'=> $controller,'name'=> $name,'format'=> $format,'engine'=> $engine,
+);
+}
+public function getPath()
+{
+$controller = str_replace('\\','/', $this->get('controller'));
+$path = (empty($controller) ?'': $controller.'/').$this->get('name').'.'.$this->get('format').'.'.$this->get('engine');
+return empty($this->parameters['bundle']) ?'views/'.$path :'@'.$this->get('bundle').'/Resources/views/'.$path;
+}
+public function getLogicalName()
+{
+return sprintf('%s:%s:%s.%s.%s', $this->parameters['bundle'], $this->parameters['controller'], $this->parameters['name'], $this->parameters['format'], $this->parameters['engine']);
+}
+}
+}
+namespace Symfony\Bundle\SecurityBundle\Security
+{
+use Symfony\Component\Security\Http\Firewall\ExceptionListener;
+class FirewallContext
+{
+private $listeners;
+private $exceptionListener;
+public function __construct(array $listeners, ExceptionListener $exceptionListener = null)
+{
+$this->listeners = $listeners;
+$this->exceptionListener = $exceptionListener;
+}
+public function getContext()
+{
+return array($this->listeners, $this->exceptionListener);
+}
+}
+}
+namespace Symfony\Component\Security\Http
+{
+use Symfony\Component\HttpFoundation\Request;
+interface FirewallMapInterface
+{
+public function getListeners(Request $request);
+}
+}
+namespace Symfony\Bundle\SecurityBundle\Security
+{
+use Symfony\Component\Security\Http\FirewallMapInterface;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\DependencyInjection\ContainerInterface;
+class FirewallMap implements FirewallMapInterface
+{
+protected $container;
+protected $map;
+public function __construct(ContainerInterface $container, array $map)
+{
+$this->container = $container;
+$this->map = $map;
+}
+public function getListeners(Request $request)
+{
+foreach ($this->map as $contextId => $requestMatcher) {
+if (null === $requestMatcher || $requestMatcher->matches($request)) {
+return $this->container->get($contextId)->getContext();
+}
+}
+return array(array(), null);
+}
+}
+}
+namespace Symfony\Component\Config
+{
+class FileLocator implements FileLocatorInterface
+{
+protected $paths;
+public function __construct($paths = array())
+{
+$this->paths = (array) $paths;
+}
+public function locate($name, $currentPath = null, $first = true)
+{
+if ($this->isAbsolutePath($name)) {
+if (!file_exists($name)) {
+throw new \InvalidArgumentException(sprintf('The file "%s" does not exist.', $name));
+}
+return $name;
+}
+$filepaths = array();
+if (null !== $currentPath && file_exists($file = $currentPath.DIRECTORY_SEPARATOR.$name)) {
+if (true === $first) {
+return $file;
+}
+$filepaths[] = $file;
+}
+foreach ($this->paths as $path) {
+if (file_exists($file = $path.DIRECTORY_SEPARATOR.$name)) {
+if (true === $first) {
+return $file;
+}
+$filepaths[] = $file;
+}
+}
+if (!$filepaths) {
+throw new \InvalidArgumentException(sprintf('The file "%s" does not exist (in: %s%s).', $name, null !== $currentPath ? $currentPath.', ':'', implode(', ', $this->paths)));
+}
+return array_values(array_unique($filepaths));
+}
+private function isAbsolutePath($file)
+{
+if ($file[0] =='/'|| $file[0] =='\\'|| (strlen($file) > 3 && ctype_alpha($file[0])
+&& $file[1] ==':'&& ($file[2] =='\\'|| $file[2] =='/')
+)
+|| null !== parse_url($file, PHP_URL_SCHEME)
+) {
+return true;
+}
+return false;
+}
+}
+}
+namespace Symfony\Component\EventDispatcher
+{
+interface EventDispatcherInterface
+{
+public function dispatch($eventName, Event $event = null);
+public function addListener($eventName, $listener, $priority = 0);
+public function addSubscriber(EventSubscriberInterface $subscriber);
+public function removeListener($eventName, $listener);
+public function removeSubscriber(EventSubscriberInterface $subscriber);
+public function getListeners($eventName = null);
+public function hasListeners($eventName = null);
+}
+}
+namespace Symfony\Component\EventDispatcher
+{
+class EventDispatcher implements EventDispatcherInterface
+{
+private $listeners = array();
+private $sorted = array();
+public function dispatch($eventName, Event $event = null)
+{
+if (null === $event) {
+$event = new Event();
+}
+$event->setDispatcher($this);
+$event->setName($eventName);
+if (!isset($this->listeners[$eventName])) {
+return $event;
+}
+$this->doDispatch($this->getListeners($eventName), $eventName, $event);
+return $event;
+}
+public function getListeners($eventName = null)
+{
+if (null !== $eventName) {
+if (!isset($this->sorted[$eventName])) {
+$this->sortListeners($eventName);
+}
+return $this->sorted[$eventName];
+}
+foreach (array_keys($this->listeners) as $eventName) {
+if (!isset($this->sorted[$eventName])) {
+$this->sortListeners($eventName);
+}
+}
+return $this->sorted;
+}
+public function hasListeners($eventName = null)
+{
+return (Boolean) count($this->getListeners($eventName));
+}
+public function addListener($eventName, $listener, $priority = 0)
+{
+$this->listeners[$eventName][$priority][] = $listener;
+unset($this->sorted[$eventName]);
+}
+public function removeListener($eventName, $listener)
+{
+if (!isset($this->listeners[$eventName])) {
+return;
+}
+foreach ($this->listeners[$eventName] as $priority => $listeners) {
+if (false !== ($key = array_search($listener, $listeners, true))) {
+unset($this->listeners[$eventName][$priority][$key], $this->sorted[$eventName]);
+}
+}
+}
+public function addSubscriber(EventSubscriberInterface $subscriber)
+{
+foreach ($subscriber->getSubscribedEvents() as $eventName => $params) {
+if (is_string($params)) {
+$this->addListener($eventName, array($subscriber, $params));
+} elseif (is_string($params[0])) {
+$this->addListener($eventName, array($subscriber, $params[0]), isset($params[1]) ? $params[1] : 0);
+} else {
+foreach ($params as $listener) {
+$this->addListener($eventName, array($subscriber, $listener[0]), isset($listener[1]) ? $listener[1] : 0);
+}
+}
+}
+}
+public function removeSubscriber(EventSubscriberInterface $subscriber)
+{
+foreach ($subscriber->getSubscribedEvents() as $eventName => $params) {
+if (is_array($params) && is_array($params[0])) {
+foreach ($params as $listener) {
+$this->removeListener($eventName, array($subscriber, $listener[0]));
+}
+} else {
+$this->removeListener($eventName, array($subscriber, is_string($params) ? $params : $params[0]));
+}
+}
+}
+protected function doDispatch($listeners, $eventName, Event $event)
+{
+foreach ($listeners as $listener) {
+call_user_func($listener, $event);
+if ($event->isPropagationStopped()) {
+break;
+}
+}
+}
+private function sortListeners($eventName)
+{
+$this->sorted[$eventName] = array();
+if (isset($this->listeners[$eventName])) {
+krsort($this->listeners[$eventName]);
+$this->sorted[$eventName] = call_user_func_array('array_merge', $this->listeners[$eventName]);
+}
+}
+}
+}
+namespace Symfony\Component\EventDispatcher
+{
+use Symfony\Component\DependencyInjection\ContainerInterface;
+class ContainerAwareEventDispatcher extends EventDispatcher
+{
+private $container;
+private $listenerIds = array();
+private $listeners = array();
+public function __construct(ContainerInterface $container)
+{
+$this->container = $container;
+}
+public function addListenerService($eventName, $callback, $priority = 0)
+{
+if (!is_array($callback) || 2 !== count($callback)) {
+throw new \InvalidArgumentException('Expected an array("service", "method") argument');
+}
+$this->listenerIds[$eventName][] = array($callback[0], $callback[1], $priority);
+}
+public function removeListener($eventName, $listener)
+{
+$this->lazyLoad($eventName);
+if (isset($this->listeners[$eventName])) {
+foreach ($this->listeners[$eventName] as $key => $l) {
+foreach ($this->listenerIds[$eventName] as $i => $args) {
+list($serviceId, $method, $priority) = $args;
+if ($key === $serviceId.'.'.$method) {
+if ($listener === array($l, $method)) {
+unset($this->listeners[$eventName][$key]);
+if (empty($this->listeners[$eventName])) {
+unset($this->listeners[$eventName]);
+}
+unset($this->listenerIds[$eventName][$i]);
+if (empty($this->listenerIds[$eventName])) {
+unset($this->listenerIds[$eventName]);
+}
+}
+}
+}
+}
+}
+parent::removeListener($eventName, $listener);
+}
+public function hasListeners($eventName = null)
+{
+if (null === $eventName) {
+return (Boolean) count($this->listenerIds) || (Boolean) count($this->listeners);
+}
+if (isset($this->listenerIds[$eventName])) {
+return true;
+}
+return parent::hasListeners($eventName);
+}
+public function getListeners($eventName = null)
+{
+if (null === $eventName) {
+foreach (array_keys($this->listenerIds) as $serviceEventName) {
+$this->lazyLoad($serviceEventName);
+}
+} else {
+$this->lazyLoad($eventName);
+}
+return parent::getListeners($eventName);
+}
+public function addSubscriberService($serviceId, $class)
+{
+foreach ($class::getSubscribedEvents() as $eventName => $params) {
+if (is_string($params)) {
+$this->listenerIds[$eventName][] = array($serviceId, $params, 0);
+} elseif (is_string($params[0])) {
+$this->listenerIds[$eventName][] = array($serviceId, $params[0], isset($params[1]) ? $params[1] : 0);
+} else {
+foreach ($params as $listener) {
+$this->listenerIds[$eventName][] = array($serviceId, $listener[0], isset($listener[1]) ? $listener[1] : 0);
+}
+}
+}
+}
+public function dispatch($eventName, Event $event = null)
+{
+$this->lazyLoad($eventName);
+return parent::dispatch($eventName, $event);
+}
+public function getContainer()
+{
+return $this->container;
+}
+protected function lazyLoad($eventName)
+{
+if (isset($this->listenerIds[$eventName])) {
+foreach ($this->listenerIds[$eventName] as $args) {
+list($serviceId, $method, $priority) = $args;
+$listener = $this->container->get($serviceId);
+$key = $serviceId.'.'.$method;
+if (!isset($this->listeners[$eventName][$key])) {
+$this->addListener($eventName, array($listener, $method), $priority);
+} elseif ($listener !== $this->listeners[$eventName][$key]) {
+parent::removeListener($eventName, array($this->listeners[$eventName][$key], $method));
+$this->addListener($eventName, array($listener, $method), $priority);
+}
+$this->listeners[$eventName][$key] = $listener;
+}
+}
+}
+}
+}
+namespace Symfony\Component\EventDispatcher
+{
+class Event
+{
+private $propagationStopped = false;
+private $dispatcher;
+private $name;
+public function isPropagationStopped()
+{
+return $this->propagationStopped;
+}
+public function stopPropagation()
+{
+$this->propagationStopped = true;
+}
+public function setDispatcher(EventDispatcherInterface $dispatcher)
+{
+$this->dispatcher = $dispatcher;
+}
+public function getDispatcher()
+{
+return $this->dispatcher;
+}
+public function getName()
+{
+return $this->name;
+}
+public function setName($name)
+{
+$this->name = $name;
 }
 }
 }
@@ -1593,6 +10310,77 @@ return new \ArrayIterator($this->parameters);
 public function count()
 {
 return count($this->parameters);
+}
+}
+}
+namespace Symfony\Component\HttpFoundation
+{
+use Symfony\Component\HttpFoundation\File\UploadedFile;
+class FileBag extends ParameterBag
+{
+private static $fileKeys = array('error','name','size','tmp_name','type');
+public function __construct(array $parameters = array())
+{
+$this->replace($parameters);
+}
+public function replace(array $files = array())
+{
+$this->parameters = array();
+$this->add($files);
+}
+public function set($key, $value)
+{
+if (!is_array($value) && !$value instanceof UploadedFile) {
+throw new \InvalidArgumentException('An uploaded file must be an array or an instance of UploadedFile.');
+}
+parent::set($key, $this->convertFileInformation($value));
+}
+public function add(array $files = array())
+{
+foreach ($files as $key => $file) {
+$this->set($key, $file);
+}
+}
+protected function convertFileInformation($file)
+{
+if ($file instanceof UploadedFile) {
+return $file;
+}
+$file = $this->fixPhpFilesArray($file);
+if (is_array($file)) {
+$keys = array_keys($file);
+sort($keys);
+if ($keys == self::$fileKeys) {
+if (UPLOAD_ERR_NO_FILE == $file['error']) {
+$file = null;
+} else {
+$file = new UploadedFile($file['tmp_name'], $file['name'], $file['type'], $file['size'], $file['error']);
+}
+} else {
+$file = array_map(array($this,'convertFileInformation'), $file);
+}
+}
+return $file;
+}
+protected function fixPhpFilesArray($data)
+{
+if (!is_array($data)) {
+return $data;
+}
+$keys = array_keys($data);
+sort($keys);
+if (self::$fileKeys != $keys || !isset($data['name']) || !is_array($data['name'])) {
+return $data;
+}
+$files = $data;
+foreach (self::$fileKeys as $k) {
+unset($files[$k]);
+}
+foreach (array_keys($data['name']) as $key) {
+$files[$key] = $this->fixPhpFilesArray(array('error'=> $data['error'][$key],'name'=> $data['name'][$key],'type'=> $data['type'][$key],'tmp_name'=> $data['tmp_name'][$key],'size'=> $data['size'][$key]
+));
+}
+return $files;
 }
 }
 }
@@ -1748,116 +10536,6 @@ foreach ($matches as $match) {
 $cacheControl[strtolower($match[1])] = isset($match[3]) ? $match[3] : (isset($match[2]) ? $match[2] : true);
 }
 return $cacheControl;
-}
-}
-}
-namespace Symfony\Component\HttpFoundation
-{
-use Symfony\Component\HttpFoundation\File\UploadedFile;
-class FileBag extends ParameterBag
-{
-private static $fileKeys = array('error','name','size','tmp_name','type');
-public function __construct(array $parameters = array())
-{
-$this->replace($parameters);
-}
-public function replace(array $files = array())
-{
-$this->parameters = array();
-$this->add($files);
-}
-public function set($key, $value)
-{
-if (!is_array($value) && !$value instanceof UploadedFile) {
-throw new \InvalidArgumentException('An uploaded file must be an array or an instance of UploadedFile.');
-}
-parent::set($key, $this->convertFileInformation($value));
-}
-public function add(array $files = array())
-{
-foreach ($files as $key => $file) {
-$this->set($key, $file);
-}
-}
-protected function convertFileInformation($file)
-{
-if ($file instanceof UploadedFile) {
-return $file;
-}
-$file = $this->fixPhpFilesArray($file);
-if (is_array($file)) {
-$keys = array_keys($file);
-sort($keys);
-if ($keys == self::$fileKeys) {
-if (UPLOAD_ERR_NO_FILE == $file['error']) {
-$file = null;
-} else {
-$file = new UploadedFile($file['tmp_name'], $file['name'], $file['type'], $file['size'], $file['error']);
-}
-} else {
-$file = array_map(array($this,'convertFileInformation'), $file);
-}
-}
-return $file;
-}
-protected function fixPhpFilesArray($data)
-{
-if (!is_array($data)) {
-return $data;
-}
-$keys = array_keys($data);
-sort($keys);
-if (self::$fileKeys != $keys || !isset($data['name']) || !is_array($data['name'])) {
-return $data;
-}
-$files = $data;
-foreach (self::$fileKeys as $k) {
-unset($files[$k]);
-}
-foreach (array_keys($data['name']) as $key) {
-$files[$key] = $this->fixPhpFilesArray(array('error'=> $data['error'][$key],'name'=> $data['name'][$key],'type'=> $data['type'][$key],'tmp_name'=> $data['tmp_name'][$key],'size'=> $data['size'][$key]
-));
-}
-return $files;
-}
-}
-}
-namespace Symfony\Component\HttpFoundation
-{
-class ServerBag extends ParameterBag
-{
-public function getHeaders()
-{
-$headers = array();
-foreach ($this->parameters as $key => $value) {
-if (0 === strpos($key,'HTTP_')) {
-$headers[substr($key, 5)] = $value;
-}
-elseif (in_array($key, array('CONTENT_LENGTH','CONTENT_MD5','CONTENT_TYPE'))) {
-$headers[$key] = $value;
-}
-}
-if (isset($this->parameters['PHP_AUTH_USER'])) {
-$headers['PHP_AUTH_USER'] = $this->parameters['PHP_AUTH_USER'];
-$headers['PHP_AUTH_PW'] = isset($this->parameters['PHP_AUTH_PW']) ? $this->parameters['PHP_AUTH_PW'] :'';
-} else {
-$authorizationHeader = null;
-if (isset($this->parameters['HTTP_AUTHORIZATION'])) {
-$authorizationHeader = $this->parameters['HTTP_AUTHORIZATION'];
-} elseif (isset($this->parameters['REDIRECT_HTTP_AUTHORIZATION'])) {
-$authorizationHeader = $this->parameters['REDIRECT_HTTP_AUTHORIZATION'];
-}
-if ((null !== $authorizationHeader) && (0 === stripos($authorizationHeader,'basic'))) {
-$exploded = explode(':', base64_decode(substr($authorizationHeader, 6)));
-if (count($exploded) == 2) {
-list($headers['PHP_AUTH_USER'], $headers['PHP_AUTH_PW']) = $exploded;
-}
-}
-}
-if (isset($headers['PHP_AUTH_USER'])) {
-$headers['AUTHORIZATION'] ='Basic '.base64_encode($headers['PHP_AUTH_USER'].':'.$headers['PHP_AUTH_PW']);
-}
-return $headers;
 }
 }
 }
@@ -2386,7 +11064,17 @@ return isset($preferredLanguages[0]) ? $preferredLanguages[0] : null;
 if (!$preferredLanguages) {
 return $locales[0];
 }
-$preferredLanguages = array_values(array_intersect($preferredLanguages, $locales));
+$extendedPreferredLanguages = array();
+foreach ($preferredLanguages as $language) {
+$extendedPreferredLanguages[] = $language;
+if (false !== $position = strpos($language,'_')) {
+$superLanguage = substr($language, 0, $position);
+if (!in_array($superLanguage, $preferredLanguages)) {
+$extendedPreferredLanguages[] = $superLanguage;
+}
+}
+}
+$preferredLanguages = array_values(array_intersect($extendedPreferredLanguages, $locales));
 return isset($preferredLanguages[0]) ? $preferredLanguages[0] : $locales[0];
 }
 public function getLanguages()
@@ -2582,6 +11270,78 @@ return false;
 }
 namespace Symfony\Component\HttpFoundation
 {
+interface RequestMatcherInterface
+{
+public function matches(Request $request);
+}
+}
+namespace Symfony\Component\HttpFoundation
+{
+class RequestMatcher implements RequestMatcherInterface
+{
+private $path;
+private $host;
+private $methods = array();
+private $ip;
+private $attributes = array();
+public function __construct($path = null, $host = null, $methods = null, $ip = null, array $attributes = array())
+{
+$this->matchPath($path);
+$this->matchHost($host);
+$this->matchMethod($methods);
+$this->matchIp($ip);
+foreach ($attributes as $k => $v) {
+$this->matchAttribute($k, $v);
+}
+}
+public function matchHost($regexp)
+{
+$this->host = $regexp;
+}
+public function matchPath($regexp)
+{
+$this->path = $regexp;
+}
+public function matchIp($ip)
+{
+$this->ip = $ip;
+}
+public function matchMethod($method)
+{
+$this->methods = array_map('strtoupper', (array) $method);
+}
+public function matchAttribute($key, $regexp)
+{
+$this->attributes[$key] = $regexp;
+}
+public function matches(Request $request)
+{
+if ($this->methods && !in_array($request->getMethod(), $this->methods)) {
+return false;
+}
+foreach ($this->attributes as $key => $pattern) {
+if (!preg_match('#'.str_replace('#','\\#', $pattern).'#', $request->attributes->get($key))) {
+return false;
+}
+}
+if (null !== $this->path) {
+$path = str_replace('#','\\#', $this->path);
+if (!preg_match('#'.$path.'#', rawurldecode($request->getPathInfo()))) {
+return false;
+}
+}
+if (null !== $this->host && !preg_match('#'.str_replace('#','\\#', $this->host).'#i', $request->getHost())) {
+return false;
+}
+if (null !== $this->ip && !IpUtils::checkIp($request->getClientIp(), $this->ip)) {
+return false;
+}
+return true;
+}
+}
+}
+namespace Symfony\Component\HttpFoundation
+{
 class Response
 {
 public $headers;
@@ -2694,7 +11454,7 @@ $this->headers->set('pragma','no-cache');
 $this->headers->set('expires', -1);
 }
 if (false !== stripos($this->headers->get('Content-Disposition'),'attachment') && preg_match('/MSIE (.*?);/i', $request->server->get('HTTP_USER_AGENT'), $match) == 1 && true === $request->isSecure()) {
-if(intval(preg_replace("/(MSIE )(.*?);/","$2", $match[0])) < 9) {
+if (intval(preg_replace("/(MSIE )(.*?);/","$2", $match[0])) < 9) {
 $this->headers->remove('Cache-Control');
 }
 }
@@ -3210,304 +11970,589 @@ return $header;
 }
 }
 }
-namespace Symfony\Component\Config
+namespace Symfony\Component\HttpFoundation
 {
-class FileLocator implements FileLocatorInterface
+class ServerBag extends ParameterBag
 {
-protected $paths;
-public function __construct($paths = array())
+public function getHeaders()
 {
-$this->paths = (array) $paths;
+$headers = array();
+foreach ($this->parameters as $key => $value) {
+if (0 === strpos($key,'HTTP_')) {
+$headers[substr($key, 5)] = $value;
 }
-public function locate($name, $currentPath = null, $first = true)
+elseif (in_array($key, array('CONTENT_LENGTH','CONTENT_MD5','CONTENT_TYPE'))) {
+$headers[$key] = $value;
+}
+}
+if (isset($this->parameters['PHP_AUTH_USER'])) {
+$headers['PHP_AUTH_USER'] = $this->parameters['PHP_AUTH_USER'];
+$headers['PHP_AUTH_PW'] = isset($this->parameters['PHP_AUTH_PW']) ? $this->parameters['PHP_AUTH_PW'] :'';
+} else {
+$authorizationHeader = null;
+if (isset($this->parameters['HTTP_AUTHORIZATION'])) {
+$authorizationHeader = $this->parameters['HTTP_AUTHORIZATION'];
+} elseif (isset($this->parameters['REDIRECT_HTTP_AUTHORIZATION'])) {
+$authorizationHeader = $this->parameters['REDIRECT_HTTP_AUTHORIZATION'];
+}
+if ((null !== $authorizationHeader) && (0 === stripos($authorizationHeader,'basic'))) {
+$exploded = explode(':', base64_decode(substr($authorizationHeader, 6)));
+if (count($exploded) == 2) {
+list($headers['PHP_AUTH_USER'], $headers['PHP_AUTH_PW']) = $exploded;
+}
+}
+}
+if (isset($headers['PHP_AUTH_USER'])) {
+$headers['AUTHORIZATION'] ='Basic '.base64_encode($headers['PHP_AUTH_USER'].':'.$headers['PHP_AUTH_PW']);
+}
+return $headers;
+}
+}
+}
+namespace Symfony\Component\HttpFoundation\Session
 {
-if ($this->isAbsolutePath($name)) {
-if (!file_exists($name)) {
-throw new \InvalidArgumentException(sprintf('The file "%s" does not exist.', $name));
-}
-return $name;
-}
-$filepaths = array();
-if (null !== $currentPath && file_exists($file = $currentPath.DIRECTORY_SEPARATOR.$name)) {
-if (true === $first) {
-return $file;
-}
-$filepaths[] = $file;
-}
-foreach ($this->paths as $path) {
-if (file_exists($file = $path.DIRECTORY_SEPARATOR.$name)) {
-if (true === $first) {
-return $file;
-}
-$filepaths[] = $file;
-}
-}
-if (!$filepaths) {
-throw new \InvalidArgumentException(sprintf('The file "%s" does not exist (in: %s%s).', $name, null !== $currentPath ? $currentPath.', ':'', implode(', ', $this->paths)));
-}
-return array_values(array_unique($filepaths));
-}
-private function isAbsolutePath($file)
+use Symfony\Component\HttpFoundation\Session\Storage\MetadataBag;
+interface SessionInterface
 {
-if ($file[0] =='/'|| $file[0] =='\\'|| (strlen($file) > 3 && ctype_alpha($file[0])
-&& $file[1] ==':'&& ($file[2] =='\\'|| $file[2] =='/')
-)
-|| null !== parse_url($file, PHP_URL_SCHEME)
-) {
-return true;
+public function start();
+public function getId();
+public function setId($id);
+public function getName();
+public function setName($name);
+public function invalidate($lifetime = null);
+public function migrate($destroy = false, $lifetime = null);
+public function save();
+public function has($name);
+public function get($name, $default = null);
+public function set($name, $value);
+public function all();
+public function replace(array $attributes);
+public function remove($name);
+public function clear();
+public function isStarted();
+public function registerBag(SessionBagInterface $bag);
+public function getBag($name);
+public function getMetadataBag();
 }
-return false;
 }
-}
-}
-namespace Symfony\Component\EventDispatcher
+namespace Symfony\Component\HttpFoundation\Session
 {
-class Event
+use Symfony\Component\HttpFoundation\Session\Storage\SessionStorageInterface;
+use Symfony\Component\HttpFoundation\Session\Attribute\AttributeBag;
+use Symfony\Component\HttpFoundation\Session\Attribute\AttributeBagInterface;
+use Symfony\Component\HttpFoundation\Session\Flash\FlashBag;
+use Symfony\Component\HttpFoundation\Session\Flash\FlashBagInterface;
+use Symfony\Component\HttpFoundation\Session\SessionBagInterface;
+use Symfony\Component\HttpFoundation\Session\Storage\NativeSessionStorage;
+class Session implements SessionInterface, \IteratorAggregate, \Countable
 {
-private $propagationStopped = false;
-private $dispatcher;
-private $name;
-public function isPropagationStopped()
+protected $storage;
+private $flashName;
+private $attributeName;
+public function __construct(SessionStorageInterface $storage = null, AttributeBagInterface $attributes = null, FlashBagInterface $flashes = null)
 {
-return $this->propagationStopped;
+$this->storage = $storage ?: new NativeSessionStorage();
+$attributes = $attributes ?: new AttributeBag();
+$this->attributeName = $attributes->getName();
+$this->registerBag($attributes);
+$flashes = $flashes ?: new FlashBag();
+$this->flashName = $flashes->getName();
+$this->registerBag($flashes);
 }
-public function stopPropagation()
+public function start()
 {
-$this->propagationStopped = true;
+return $this->storage->start();
 }
-public function setDispatcher(EventDispatcherInterface $dispatcher)
+public function has($name)
 {
-$this->dispatcher = $dispatcher;
+return $this->storage->getBag($this->attributeName)->has($name);
 }
-public function getDispatcher()
+public function get($name, $default = null)
 {
-return $this->dispatcher;
+return $this->storage->getBag($this->attributeName)->get($name, $default);
+}
+public function set($name, $value)
+{
+$this->storage->getBag($this->attributeName)->set($name, $value);
+}
+public function all()
+{
+return $this->storage->getBag($this->attributeName)->all();
+}
+public function replace(array $attributes)
+{
+$this->storage->getBag($this->attributeName)->replace($attributes);
+}
+public function remove($name)
+{
+return $this->storage->getBag($this->attributeName)->remove($name);
+}
+public function clear()
+{
+$this->storage->getBag($this->attributeName)->clear();
+}
+public function isStarted()
+{
+return $this->storage->isStarted();
+}
+public function getIterator()
+{
+return new \ArrayIterator($this->storage->getBag($this->attributeName)->all());
+}
+public function count()
+{
+return count($this->storage->getBag($this->attributeName)->all());
+}
+public function invalidate($lifetime = null)
+{
+$this->storage->clear();
+return $this->migrate(true, $lifetime);
+}
+public function migrate($destroy = false, $lifetime = null)
+{
+return $this->storage->regenerate($destroy, $lifetime);
+}
+public function save()
+{
+$this->storage->save();
+}
+public function getId()
+{
+return $this->storage->getId();
+}
+public function setId($id)
+{
+$this->storage->setId($id);
 }
 public function getName()
 {
-return $this->name;
+return $this->storage->getName();
 }
 public function setName($name)
 {
-$this->name = $name;
+$this->storage->setName($name);
 }
-}
-}
-namespace Symfony\Component\EventDispatcher
+public function getMetadataBag()
 {
-interface EventDispatcherInterface
+return $this->storage->getMetadataBag();
+}
+public function registerBag(SessionBagInterface $bag)
 {
-public function dispatch($eventName, Event $event = null);
-public function addListener($eventName, $listener, $priority = 0);
-public function addSubscriber(EventSubscriberInterface $subscriber);
-public function removeListener($eventName, $listener);
-public function removeSubscriber(EventSubscriberInterface $subscriber);
-public function getListeners($eventName = null);
-public function hasListeners($eventName = null);
+$this->storage->registerBag($bag);
 }
-}
-namespace Symfony\Component\EventDispatcher
+public function getBag($name)
 {
-class EventDispatcher implements EventDispatcherInterface
+return $this->storage->getBag($name);
+}
+public function getFlashBag()
 {
-private $listeners = array();
-private $sorted = array();
-public function dispatch($eventName, Event $event = null)
+return $this->getBag($this->flashName);
+}
+public function getFlashes()
 {
-if (null === $event) {
-$event = new Event();
-}
-$event->setDispatcher($this);
-$event->setName($eventName);
-if (!isset($this->listeners[$eventName])) {
-return $event;
-}
-$this->doDispatch($this->getListeners($eventName), $eventName, $event);
-return $event;
-}
-public function getListeners($eventName = null)
-{
-if (null !== $eventName) {
-if (!isset($this->sorted[$eventName])) {
-$this->sortListeners($eventName);
-}
-return $this->sorted[$eventName];
-}
-foreach (array_keys($this->listeners) as $eventName) {
-if (!isset($this->sorted[$eventName])) {
-$this->sortListeners($eventName);
-}
-}
-return $this->sorted;
-}
-public function hasListeners($eventName = null)
-{
-return (Boolean) count($this->getListeners($eventName));
-}
-public function addListener($eventName, $listener, $priority = 0)
-{
-$this->listeners[$eventName][$priority][] = $listener;
-unset($this->sorted[$eventName]);
-}
-public function removeListener($eventName, $listener)
-{
-if (!isset($this->listeners[$eventName])) {
-return;
-}
-foreach ($this->listeners[$eventName] as $priority => $listeners) {
-if (false !== ($key = array_search($listener, $listeners, true))) {
-unset($this->listeners[$eventName][$priority][$key], $this->sorted[$eventName]);
-}
-}
-}
-public function addSubscriber(EventSubscriberInterface $subscriber)
-{
-foreach ($subscriber->getSubscribedEvents() as $eventName => $params) {
-if (is_string($params)) {
-$this->addListener($eventName, array($subscriber, $params));
-} elseif (is_string($params[0])) {
-$this->addListener($eventName, array($subscriber, $params[0]), isset($params[1]) ? $params[1] : 0);
+trigger_error('getFlashes() is deprecated since version 2.1 and will be removed in 2.3. Use the FlashBag instead.', E_USER_DEPRECATED);
+$all = $this->getBag($this->flashName)->all();
+$return = array();
+if ($all) {
+foreach ($all as $name => $array) {
+if (is_numeric(key($array))) {
+$return[$name] = reset($array);
 } else {
-foreach ($params as $listener) {
-$this->addListener($eventName, array($subscriber, $listener[0]), isset($listener[1]) ? $listener[1] : 0);
+$return[$name] = $array;
 }
 }
 }
+return $return;
 }
-public function removeSubscriber(EventSubscriberInterface $subscriber)
+public function setFlashes($values)
 {
-foreach ($subscriber->getSubscribedEvents() as $eventName => $params) {
-if (is_array($params) && is_array($params[0])) {
-foreach ($params as $listener) {
-$this->removeListener($eventName, array($subscriber, $listener[0]));
+trigger_error('setFlashes() is deprecated since version 2.1 and will be removed in 2.3. Use the FlashBag instead.', E_USER_DEPRECATED);
+foreach ($values as $name => $value) {
+$this->getBag($this->flashName)->set($name, $value);
 }
+}
+public function getFlash($name, $default = null)
+{
+trigger_error('getFlash() is deprecated since version 2.1 and will be removed in 2.3. Use the FlashBag instead.', E_USER_DEPRECATED);
+$return = $this->getBag($this->flashName)->get($name);
+return empty($return) ? $default : reset($return);
+}
+public function setFlash($name, $value)
+{
+trigger_error('setFlash() is deprecated since version 2.1 and will be removed in 2.3. Use the FlashBag instead.', E_USER_DEPRECATED);
+$this->getBag($this->flashName)->set($name, $value);
+}
+public function hasFlash($name)
+{
+trigger_error('hasFlash() is deprecated since version 2.1 and will be removed in 2.3. Use the FlashBag instead.', E_USER_DEPRECATED);
+return $this->getBag($this->flashName)->has($name);
+}
+public function removeFlash($name)
+{
+trigger_error('removeFlash() is deprecated since version 2.1 and will be removed in 2.3. Use the FlashBag instead.', E_USER_DEPRECATED);
+$this->getBag($this->flashName)->get($name);
+}
+public function clearFlashes()
+{
+trigger_error('clearFlashes() is deprecated since version 2.1 and will be removed in 2.3. Use the FlashBag instead.', E_USER_DEPRECATED);
+return $this->getBag($this->flashName)->clear();
+}
+}
+}
+namespace Symfony\Component\HttpFoundation\Session\Storage\Handler
+{
+if (version_compare(phpversion(),'5.4.0','>=')) {
+class NativeSessionHandler extends \SessionHandler {}
 } else {
-$this->removeListener($eventName, array($subscriber, is_string($params) ? $params : $params[0]));
+class NativeSessionHandler {}
 }
 }
-}
-protected function doDispatch($listeners, $eventName, Event $event)
+namespace Symfony\Component\HttpFoundation\Session\Storage\Handler
 {
-foreach ($listeners as $listener) {
-call_user_func($listener, $event);
-if ($event->isPropagationStopped()) {
-break;
-}
-}
-}
-private function sortListeners($eventName)
+class NativeFileSessionHandler extends NativeSessionHandler
 {
-$this->sorted[$eventName] = array();
-if (isset($this->listeners[$eventName])) {
-krsort($this->listeners[$eventName]);
-$this->sorted[$eventName] = call_user_func_array('array_merge', $this->listeners[$eventName]);
-}
-}
-}
-}
-namespace Symfony\Component\EventDispatcher
+public function __construct($savePath = null)
 {
-use Symfony\Component\DependencyInjection\ContainerInterface;
-class ContainerAwareEventDispatcher extends EventDispatcher
+if (null === $savePath) {
+$savePath = ini_get('session.save_path');
+}
+$baseDir = $savePath;
+if ($count = substr_count($savePath,';')) {
+if ($count > 2) {
+throw new \InvalidArgumentException(sprintf('Invalid argument $savePath \'%s\'', $savePath));
+}
+$baseDir = ltrim(strrchr($savePath,';'),';');
+}
+if ($baseDir && !is_dir($baseDir)) {
+mkdir($baseDir, 0777, true);
+}
+ini_set('session.save_path', $savePath);
+ini_set('session.save_handler','files');
+}
+}
+}
+namespace Symfony\Component\HttpFoundation\Session\Storage
 {
-private $container;
-private $listenerIds = array();
-private $listeners = array();
-public function __construct(ContainerInterface $container)
+use Symfony\Component\HttpFoundation\Session\SessionBagInterface;
+use Symfony\Component\HttpFoundation\Session\Storage\MetadataBag;
+interface SessionStorageInterface
 {
-$this->container = $container;
+public function start();
+public function isStarted();
+public function getId();
+public function setId($id);
+public function getName();
+public function setName($name);
+public function regenerate($destroy = false, $lifetime = null);
+public function save();
+public function clear();
+public function getBag($name);
+public function registerBag(SessionBagInterface $bag);
+public function getMetadataBag();
 }
-public function addListenerService($eventName, $callback, $priority = 0)
+}
+namespace Symfony\Component\HttpFoundation\Session\Storage
 {
-if (!is_array($callback) || 2 !== count($callback)) {
-throw new \InvalidArgumentException('Expected an array("service", "method") argument');
-}
-$this->listenerIds[$eventName][] = array($callback[0], $callback[1], $priority);
-}
-public function removeListener($eventName, $listener)
+use Symfony\Component\HttpFoundation\Session\SessionBagInterface;
+use Symfony\Component\HttpFoundation\Session\Storage\MetadataBag;
+use Symfony\Component\HttpFoundation\Session\Storage\Proxy\NativeProxy;
+use Symfony\Component\HttpFoundation\Session\Storage\Proxy\AbstractProxy;
+use Symfony\Component\HttpFoundation\Session\Storage\Proxy\SessionHandlerProxy;
+class NativeSessionStorage implements SessionStorageInterface
 {
-$this->lazyLoad($eventName);
-if (isset($this->listeners[$eventName])) {
-foreach ($this->listeners[$eventName] as $key => $l) {
-foreach ($this->listenerIds[$eventName] as $i => $args) {
-list($serviceId, $method, $priority) = $args;
-if ($key === $serviceId.'.'.$method) {
-if ($listener === array($l, $method)) {
-unset($this->listeners[$eventName][$key]);
-if (empty($this->listeners[$eventName])) {
-unset($this->listeners[$eventName]);
-}
-unset($this->listenerIds[$eventName][$i]);
-if (empty($this->listenerIds[$eventName])) {
-unset($this->listenerIds[$eventName]);
-}
-}
-}
-}
-}
-}
-parent::removeListener($eventName, $listener);
-}
-public function hasListeners($eventName = null)
+protected $bags;
+protected $started = false;
+protected $closed = false;
+protected $saveHandler;
+protected $metadataBag;
+public function __construct(array $options = array(), $handler = null, MetadataBag $metaBag = null)
 {
-if (null === $eventName) {
-return (Boolean) count($this->listenerIds) || (Boolean) count($this->listeners);
+ini_set('session.cache_limiter',''); ini_set('session.use_cookies', 1);
+if (version_compare(phpversion(),'5.4.0','>=')) {
+session_register_shutdown();
+} else {
+register_shutdown_function('session_write_close');
 }
-if (isset($this->listenerIds[$eventName])) {
+$this->setMetadataBag($metaBag);
+$this->setOptions($options);
+$this->setSaveHandler($handler);
+}
+public function getSaveHandler()
+{
+return $this->saveHandler;
+}
+public function start()
+{
+if ($this->started && !$this->closed) {
 return true;
 }
-return parent::hasListeners($eventName);
+if (!$this->started && !$this->closed && $this->saveHandler->isActive()
+&& $this->saveHandler->isSessionHandlerInterface()) {
+$this->loadSession();
+return true;
 }
-public function getListeners($eventName = null)
+if (ini_get('session.use_cookies') && headers_sent()) {
+throw new \RuntimeException('Failed to start the session because headers have already been sent.');
+}
+if (!session_start()) {
+throw new \RuntimeException('Failed to start the session');
+}
+$this->loadSession();
+if (!$this->saveHandler->isWrapper() && !$this->saveHandler->isSessionHandlerInterface()) {
+$this->saveHandler->setActive(false);
+}
+return true;
+}
+public function getId()
 {
-if (null === $eventName) {
-foreach (array_keys($this->listenerIds) as $serviceEventName) {
-$this->lazyLoad($serviceEventName);
+if (!$this->started) {
+return''; }
+return $this->saveHandler->getId();
 }
+public function setId($id)
+{
+$this->saveHandler->setId($id);
+}
+public function getName()
+{
+return $this->saveHandler->getName();
+}
+public function setName($name)
+{
+$this->saveHandler->setName($name);
+}
+public function regenerate($destroy = false, $lifetime = null)
+{
+if (null !== $lifetime) {
+ini_set('session.cookie_lifetime', $lifetime);
+}
+if ($destroy) {
+$this->metadataBag->stampNew();
+}
+return session_regenerate_id($destroy);
+}
+public function save()
+{
+session_write_close();
+if (!$this->saveHandler->isWrapper() && !$this->getSaveHandler()->isSessionHandlerInterface()) {
+$this->saveHandler->setActive(false);
+}
+$this->closed = true;
+}
+public function clear()
+{
+foreach ($this->bags as $bag) {
+$bag->clear();
+}
+$_SESSION = array();
+$this->loadSession();
+}
+public function registerBag(SessionBagInterface $bag)
+{
+$this->bags[$bag->getName()] = $bag;
+}
+public function getBag($name)
+{
+if (!isset($this->bags[$name])) {
+throw new \InvalidArgumentException(sprintf('The SessionBagInterface %s is not registered.', $name));
+}
+if ($this->saveHandler->isActive() && !$this->started) {
+$this->loadSession();
+} elseif (!$this->started) {
+$this->start();
+}
+return $this->bags[$name];
+}
+public function setMetadataBag(MetadataBag $metaBag = null)
+{
+if (null === $metaBag) {
+$metaBag = new MetadataBag();
+}
+$this->metadataBag = $metaBag;
+}
+public function getMetadataBag()
+{
+return $this->metadataBag;
+}
+public function isStarted()
+{
+return $this->started;
+}
+public function setOptions(array $options)
+{
+$validOptions = array_flip(array('cache_limiter','cookie_domain','cookie_httponly','cookie_lifetime','cookie_path','cookie_secure','entropy_file','entropy_length','gc_divisor','gc_maxlifetime','gc_probability','hash_bits_per_character','hash_function','name','referer_check','serialize_handler','use_cookies','use_only_cookies','use_trans_sid','upload_progress.enabled','upload_progress.cleanup','upload_progress.prefix','upload_progress.name','upload_progress.freq','upload_progress.min-freq','url_rewriter.tags',
+));
+foreach ($options as $key => $value) {
+if (isset($validOptions[$key])) {
+ini_set('session.'.$key, $value);
+}
+}
+}
+public function setSaveHandler($saveHandler = null)
+{
+if (!$saveHandler instanceof AbstractProxy && $saveHandler instanceof \SessionHandlerInterface) {
+$saveHandler = new SessionHandlerProxy($saveHandler);
+} elseif (!$saveHandler instanceof AbstractProxy) {
+$saveHandler = new NativeProxy();
+}
+$this->saveHandler = $saveHandler;
+if ($this->saveHandler instanceof \SessionHandlerInterface) {
+if (version_compare(phpversion(),'5.4.0','>=')) {
+session_set_save_handler($this->saveHandler, false);
 } else {
-$this->lazyLoad($eventName);
+session_set_save_handler(
+array($this->saveHandler,'open'),
+array($this->saveHandler,'close'),
+array($this->saveHandler,'read'),
+array($this->saveHandler,'write'),
+array($this->saveHandler,'destroy'),
+array($this->saveHandler,'gc')
+);
 }
-return parent::getListeners($eventName);
 }
-public function addSubscriberService($serviceId, $class)
+}
+protected function loadSession(array &$session = null)
 {
-foreach ($class::getSubscribedEvents() as $eventName => $params) {
-if (is_string($params)) {
-$this->listenerIds[$eventName][] = array($serviceId, $params, 0);
-} elseif (is_string($params[0])) {
-$this->listenerIds[$eventName][] = array($serviceId, $params[0], isset($params[1]) ? $params[1] : 0);
-} else {
-foreach ($params as $listener) {
-$this->listenerIds[$eventName][] = array($serviceId, $listener[0], isset($listener[1]) ? $listener[1] : 0);
+if (null === $session) {
+$session = &$_SESSION;
+}
+$bags = array_merge($this->bags, array($this->metadataBag));
+foreach ($bags as $bag) {
+$key = $bag->getStorageKey();
+$session[$key] = isset($session[$key]) ? $session[$key] : array();
+$bag->initialize($session[$key]);
+}
+$this->started = true;
+$this->closed = false;
 }
 }
 }
-}
-public function dispatch($eventName, Event $event = null)
+namespace Symfony\Component\HttpFoundation\Session\Storage\Proxy
 {
-$this->lazyLoad($eventName);
-return parent::dispatch($eventName, $event);
-}
-public function getContainer()
+abstract class AbstractProxy
 {
-return $this->container;
-}
-protected function lazyLoad($eventName)
+protected $wrapper = false;
+protected $active = false;
+protected $saveHandlerName;
+public function getSaveHandlerName()
 {
-if (isset($this->listenerIds[$eventName])) {
-foreach ($this->listenerIds[$eventName] as $args) {
-list($serviceId, $method, $priority) = $args;
-$listener = $this->container->get($serviceId);
-$key = $serviceId.'.'.$method;
-if (!isset($this->listeners[$eventName][$key])) {
-$this->addListener($eventName, array($listener, $method), $priority);
-} elseif ($listener !== $this->listeners[$eventName][$key]) {
-parent::removeListener($eventName, array($this->listeners[$eventName][$key], $method));
-$this->addListener($eventName, array($listener, $method), $priority);
+return $this->saveHandlerName;
 }
-$this->listeners[$eventName][$key] = $listener;
+public function isSessionHandlerInterface()
+{
+return ($this instanceof \SessionHandlerInterface);
+}
+public function isWrapper()
+{
+return $this->wrapper;
+}
+public function isActive()
+{
+return $this->active;
+}
+public function setActive($flag)
+{
+$this->active = (bool) $flag;
+}
+public function getId()
+{
+return session_id();
+}
+public function setId($id)
+{
+if ($this->isActive()) {
+throw new \LogicException('Cannot change the ID of an active session');
+}
+session_id($id);
+}
+public function getName()
+{
+return session_name();
+}
+public function setName($name)
+{
+if ($this->isActive()) {
+throw new \LogicException('Cannot change the name of an active session');
+}
+session_name($name);
 }
 }
+}
+namespace
+{
+interface SessionHandlerInterface
+{
+public function open($savePath, $sessionName);
+public function close();
+public function read($sessionId);
+public function write($sessionId, $data);
+public function destroy($sessionId);
+public function gc($lifetime);
+}
+}
+namespace Symfony\Component\HttpFoundation\Session\Storage\Proxy
+{
+class SessionHandlerProxy extends AbstractProxy implements \SessionHandlerInterface
+{
+protected $handler;
+public function __construct(\SessionHandlerInterface $handler)
+{
+$this->handler = $handler;
+$this->wrapper = ($handler instanceof \SessionHandler);
+$this->saveHandlerName = $this->wrapper ? ini_get('session.save_handler') :'user';
+}
+public function open($savePath, $sessionName)
+{
+$return = (bool) $this->handler->open($savePath, $sessionName);
+if (true === $return) {
+$this->active = true;
+}
+return $return;
+}
+public function close()
+{
+$this->active = false;
+return (bool) $this->handler->close();
+}
+public function read($id)
+{
+return (string) $this->handler->read($id);
+}
+public function write($id, $data)
+{
+return (bool) $this->handler->write($id, $data);
+}
+public function destroy($id)
+{
+return (bool) $this->handler->destroy($id);
+}
+public function gc($maxlifetime)
+{
+return (bool) $this->handler->gc($maxlifetime);
+}
+}
+}
+namespace Symfony\Component\HttpKernel\Config
+{
+use Symfony\Component\Config\FileLocator as BaseFileLocator;
+use Symfony\Component\HttpKernel\KernelInterface;
+class FileLocator extends BaseFileLocator
+{
+private $kernel;
+private $path;
+public function __construct(KernelInterface $kernel, $path = null, array $paths = array())
+{
+$this->kernel = $kernel;
+$this->path = $path;
+$paths[] = $path;
+parent::__construct($paths);
+}
+public function locate($file, $currentPath = null, $first = true)
+{
+if ('@'=== $file[0]) {
+return $this->kernel->locateResource($file, $this->path, $first);
+}
+return parent::locate($file, $currentPath, $first);
 }
 }
 }
@@ -3615,99 +12660,6 @@ public static function getSubscribedEvents()
 return array(
 KernelEvents::REQUEST => array(array('onKernelRequest', 32)),
 );
-}
-}
-}
-namespace Symfony\Component\HttpKernel\Controller
-{
-use Symfony\Component\HttpFoundation\Request;
-interface ControllerResolverInterface
-{
-public function getController(Request $request);
-public function getArguments(Request $request, $controller);
-}
-}
-namespace Symfony\Component\HttpKernel\Controller
-{
-use Psr\Log\LoggerInterface;
-use Symfony\Component\HttpFoundation\Request;
-class ControllerResolver implements ControllerResolverInterface
-{
-private $logger;
-public function __construct(LoggerInterface $logger = null)
-{
-$this->logger = $logger;
-}
-public function getController(Request $request)
-{
-if (!$controller = $request->attributes->get('_controller')) {
-if (null !== $this->logger) {
-$this->logger->warning('Unable to look for the controller as the "_controller" parameter is missing');
-}
-return false;
-}
-if (is_array($controller) || (is_object($controller) && method_exists($controller,'__invoke'))) {
-return $controller;
-}
-if (false === strpos($controller,':')) {
-if (method_exists($controller,'__invoke')) {
-return new $controller;
-} elseif (function_exists($controller)) {
-return $controller;
-}
-}
-list($controller, $method) = $this->createController($controller);
-if (!method_exists($controller, $method)) {
-throw new \InvalidArgumentException(sprintf('Method "%s::%s" does not exist.', get_class($controller), $method));
-}
-return array($controller, $method);
-}
-public function getArguments(Request $request, $controller)
-{
-if (is_array($controller)) {
-$r = new \ReflectionMethod($controller[0], $controller[1]);
-} elseif (is_object($controller) && !$controller instanceof \Closure) {
-$r = new \ReflectionObject($controller);
-$r = $r->getMethod('__invoke');
-} else {
-$r = new \ReflectionFunction($controller);
-}
-return $this->doGetArguments($request, $controller, $r->getParameters());
-}
-protected function doGetArguments(Request $request, $controller, array $parameters)
-{
-$attributes = $request->attributes->all();
-$arguments = array();
-foreach ($parameters as $param) {
-if (array_key_exists($param->name, $attributes)) {
-$arguments[] = $attributes[$param->name];
-} elseif ($param->getClass() && $param->getClass()->isInstance($request)) {
-$arguments[] = $request;
-} elseif ($param->isDefaultValueAvailable()) {
-$arguments[] = $param->getDefaultValue();
-} else {
-if (is_array($controller)) {
-$repr = sprintf('%s::%s()', get_class($controller[0]), $controller[1]);
-} elseif (is_object($controller)) {
-$repr = get_class($controller);
-} else {
-$repr = $controller;
-}
-throw new \RuntimeException(sprintf('Controller "%s" requires that you provide a value for the "$%s" argument (because there is no default value or because there is a non optional argument after this one).', $repr, $param->name));
-}
-}
-return $arguments;
-}
-protected function createController($controller)
-{
-if (false === strpos($controller,'::')) {
-throw new \InvalidArgumentException(sprintf('Unable to find controller "%s".', $controller));
-}
-list($class, $method) = explode('::', $controller, 2);
-if (!class_exists($class)) {
-throw new \InvalidArgumentException(sprintf('Class "%s" does not exist.', $class));
-}
-return array(new $class(), $method);
 }
 }
 }
@@ -3892,206 +12844,289 @@ const RESPONSE ='kernel.response';
 const TERMINATE ='kernel.terminate';
 }
 }
-namespace Symfony\Component\HttpKernel\Config
+namespace Symfony\Component\Routing\Generator
 {
-use Symfony\Component\Config\FileLocator as BaseFileLocator;
-use Symfony\Component\HttpKernel\KernelInterface;
-class FileLocator extends BaseFileLocator
+interface ConfigurableRequirementsInterface
 {
-private $kernel;
-private $path;
-public function __construct(KernelInterface $kernel, $path = null, array $paths = array())
+public function setStrictRequirements($enabled);
+public function isStrictRequirements();
+}
+}
+namespace Symfony\Component\Routing\Generator
 {
-$this->kernel = $kernel;
-$this->path = $path;
-$paths[] = $path;
-parent::__construct($paths);
-}
-public function locate($file, $currentPath = null, $first = true)
-{
-if ('@'=== $file[0]) {
-return $this->kernel->locateResource($file, $this->path, $first);
-}
-return parent::locate($file, $currentPath, $first);
-}
-}
-}
-namespace Symfony\Bundle\FrameworkBundle\Controller
-{
-use Symfony\Component\HttpKernel\KernelInterface;
-class ControllerNameParser
-{
-protected $kernel;
-public function __construct(KernelInterface $kernel)
-{
-$this->kernel = $kernel;
-}
-public function parse($controller)
-{
-if (3 != count($parts = explode(':', $controller))) {
-throw new \InvalidArgumentException(sprintf('The "%s" controller is not a valid a:b:c controller string.', $controller));
-}
-list($bundle, $controller, $action) = $parts;
-$controller = str_replace('/','\\', $controller);
-$bundles = array();
-foreach ($this->kernel->getBundle($bundle, false) as $b) {
-$try = $b->getNamespace().'\\Controller\\'.$controller.'Controller';
-if (class_exists($try)) {
-return $try.'::'.$action.'Action';
-}
-$bundles[] = $b->getName();
-$msg = sprintf('Unable to find controller "%s:%s" - class "%s" does not exist.', $bundle, $controller, $try);
-}
-if (count($bundles) > 1) {
-$msg = sprintf('Unable to find controller "%s:%s" in bundles %s.', $bundle, $controller, implode(', ', $bundles));
-}
-throw new \InvalidArgumentException($msg);
-}
-}
-}
-namespace Symfony\Bundle\FrameworkBundle\Controller
-{
+use Symfony\Component\Routing\RouteCollection;
+use Symfony\Component\Routing\RequestContext;
+use Symfony\Component\Routing\Exception\InvalidParameterException;
+use Symfony\Component\Routing\Exception\RouteNotFoundException;
+use Symfony\Component\Routing\Exception\MissingMandatoryParametersException;
 use Psr\Log\LoggerInterface;
-use Symfony\Component\HttpKernel\Controller\ControllerResolver as BaseControllerResolver;
-use Symfony\Component\DependencyInjection\ContainerInterface;
-use Symfony\Bundle\FrameworkBundle\Controller\ControllerNameParser;
-use Symfony\Component\DependencyInjection\ContainerAwareInterface;
-class ControllerResolver extends BaseControllerResolver
+class UrlGenerator implements UrlGeneratorInterface, ConfigurableRequirementsInterface
 {
-protected $container;
-protected $parser;
-public function __construct(ContainerInterface $container, ControllerNameParser $parser, LoggerInterface $logger = null)
+protected $routes;
+protected $context;
+protected $strictRequirements = true;
+protected $logger;
+protected $decodedChars = array('%2F'=>'/','%40'=>'@','%3A'=>':','%3B'=>';','%2C'=>',','%3D'=>'=','%2B'=>'+','%21'=>'!','%2A'=>'*','%7C'=>'|',
+);
+public function __construct(RouteCollection $routes, RequestContext $context, LoggerInterface $logger = null)
 {
-$this->container = $container;
-$this->parser = $parser;
-parent::__construct($logger);
+$this->routes = $routes;
+$this->context = $context;
+$this->logger = $logger;
 }
-protected function createController($controller)
+public function setContext(RequestContext $context)
 {
-if (false === strpos($controller,'::')) {
-$count = substr_count($controller,':');
-if (2 == $count) {
-$controller = $this->parser->parse($controller);
-} elseif (1 == $count) {
-list($service, $method) = explode(':', $controller, 2);
-return array($this->container->get($service), $method);
+$this->context = $context;
+}
+public function getContext()
+{
+return $this->context;
+}
+public function setStrictRequirements($enabled)
+{
+$this->strictRequirements = null === $enabled ? null : (Boolean) $enabled;
+}
+public function isStrictRequirements()
+{
+return $this->strictRequirements;
+}
+public function generate($name, $parameters = array(), $referenceType = self::ABSOLUTE_PATH)
+{
+if (null === $route = $this->routes->get($name)) {
+throw new RouteNotFoundException(sprintf('Unable to generate a URL for the named route "%s" as such route does not exist.', $name));
+}
+$compiledRoute = $route->compile();
+return $this->doGenerate($compiledRoute->getVariables(), $route->getDefaults(), $route->getRequirements(), $compiledRoute->getTokens(), $parameters, $name, $referenceType, $compiledRoute->getHostTokens());
+}
+protected function doGenerate($variables, $defaults, $requirements, $tokens, $parameters, $name, $referenceType, $hostTokens)
+{
+$variables = array_flip($variables);
+$mergedParams = array_replace($defaults, $this->context->getParameters(), $parameters);
+if ($diff = array_diff_key($variables, $mergedParams)) {
+throw new MissingMandatoryParametersException(sprintf('Some mandatory parameters are missing ("%s") to generate a URL for route "%s".', implode('", "', array_keys($diff)), $name));
+}
+$url ='';
+$optional = true;
+foreach ($tokens as $token) {
+if ('variable'=== $token[0]) {
+if (!$optional || !array_key_exists($token[3], $defaults) || null !== $mergedParams[$token[3]] && (string) $mergedParams[$token[3]] !== (string) $defaults[$token[3]]) {
+if (null !== $this->strictRequirements && !preg_match('#^'.$token[2].'$#', $mergedParams[$token[3]])) {
+$message = sprintf('Parameter "%s" for route "%s" must match "%s" ("%s" given) to generate a corresponding URL.', $token[3], $name, $token[2], $mergedParams[$token[3]]);
+if ($this->strictRequirements) {
+throw new InvalidParameterException($message);
+}
+if ($this->logger) {
+$this->logger->error($message);
+}
+return null;
+}
+$url = $token[1].$mergedParams[$token[3]].$url;
+$optional = false;
+}
 } else {
-throw new \LogicException(sprintf('Unable to parse the controller name "%s".', $controller));
+$url = $token[1].$url;
+$optional = false;
 }
 }
-list($class, $method) = explode('::', $controller, 2);
-if (!class_exists($class)) {
-throw new \InvalidArgumentException(sprintf('Class "%s" does not exist.', $class));
+if (''=== $url) {
+$url ='/';
 }
-$controller = new $class();
-if ($controller instanceof ContainerAwareInterface) {
-$controller->setContainer($this->container);
+$url = strtr(rawurlencode($url), $this->decodedChars);
+$url = strtr($url, array('/../'=>'/%2E%2E/','/./'=>'/%2E/'));
+if ('/..'=== substr($url, -3)) {
+$url = substr($url, 0, -2) .'%2E%2E';
+} elseif ('/.'=== substr($url, -2)) {
+$url = substr($url, 0, -1) .'%2E';
 }
-return array($controller, $method);
+$schemeAuthority ='';
+if ($host = $this->context->getHost()) {
+$scheme = $this->context->getScheme();
+if (isset($requirements['_scheme']) && ($req = strtolower($requirements['_scheme'])) && $scheme !== $req) {
+$referenceType = self::ABSOLUTE_URL;
+$scheme = $req;
+}
+if ($hostTokens) {
+$routeHost ='';
+foreach ($hostTokens as $token) {
+if ('variable'=== $token[0]) {
+if (null !== $this->strictRequirements && !preg_match('#^'.$token[2].'$#', $mergedParams[$token[3]])) {
+$message = sprintf('Parameter "%s" for route "%s" must match "%s" ("%s" given) to generate a corresponding URL.', $token[3], $name, $token[2], $mergedParams[$token[3]]);
+if ($this->strictRequirements) {
+throw new InvalidParameterException($message);
+}
+if ($this->logger) {
+$this->logger->error($message);
+}
+return null;
+}
+$routeHost = $token[1].$mergedParams[$token[3]].$routeHost;
+} else {
+$routeHost = $token[1].$routeHost;
+}
+}
+if ($routeHost !== $host) {
+$host = $routeHost;
+if (self::ABSOLUTE_URL !== $referenceType) {
+$referenceType = self::NETWORK_PATH;
 }
 }
 }
-namespace Symfony\Component\Security\Http
+if (self::ABSOLUTE_URL === $referenceType || self::NETWORK_PATH === $referenceType) {
+$port ='';
+if ('http'=== $scheme && 80 != $this->context->getHttpPort()) {
+$port =':'.$this->context->getHttpPort();
+} elseif ('https'=== $scheme && 443 != $this->context->getHttpsPort()) {
+$port =':'.$this->context->getHttpsPort();
+}
+$schemeAuthority = self::NETWORK_PATH === $referenceType ?'//': "$scheme://";
+$schemeAuthority .= $host.$port;
+}
+}
+if (self::RELATIVE_PATH === $referenceType) {
+$url = self::getRelativePath($this->context->getPathInfo(), $url);
+} else {
+$url = $schemeAuthority.$this->context->getBaseUrl().$url;
+}
+$extra = array_diff_key($parameters, $variables, $defaults);
+if ($extra && $query = http_build_query($extra,'','&')) {
+$url .='?'.$query;
+}
+return $url;
+}
+public static function getRelativePath($basePath, $targetPath)
 {
-use Symfony\Component\HttpKernel\HttpKernelInterface;
-use Symfony\Component\HttpKernel\KernelEvents;
-use Symfony\Component\HttpKernel\Event\GetResponseEvent;
-use Symfony\Component\EventDispatcher\EventDispatcherInterface;
-use Symfony\Component\EventDispatcher\EventSubscriberInterface;
-class Firewall implements EventSubscriberInterface
-{
-private $map;
-private $dispatcher;
-public function __construct(FirewallMapInterface $map, EventDispatcherInterface $dispatcher)
-{
-$this->map = $map;
-$this->dispatcher = $dispatcher;
+if ($basePath === $targetPath) {
+return'';
 }
-public function onKernelRequest(GetResponseEvent $event)
-{
-if (HttpKernelInterface::MASTER_REQUEST !== $event->getRequestType()) {
-return;
-}
-list($listeners, $exception) = $this->map->getListeners($event->getRequest());
-if (null !== $exception) {
-$exception->register($this->dispatcher);
-}
-foreach ($listeners as $listener) {
-$response = $listener->handle($event);
-if ($event->hasResponse()) {
+$sourceDirs = explode('/', isset($basePath[0]) &&'/'=== $basePath[0] ? substr($basePath, 1) : $basePath);
+$targetDirs = explode('/', isset($targetPath[0]) &&'/'=== $targetPath[0] ? substr($targetPath, 1) : $targetPath);
+array_pop($sourceDirs);
+$targetFile = array_pop($targetDirs);
+foreach ($sourceDirs as $i => $dir) {
+if (isset($targetDirs[$i]) && $dir === $targetDirs[$i]) {
+unset($sourceDirs[$i], $targetDirs[$i]);
+} else {
 break;
 }
 }
+$targetDirs[] = $targetFile;
+$path = str_repeat('../', count($sourceDirs)) . implode('/', $targetDirs);
+return''=== $path ||'/'=== $path[0]
+|| false !== ($colonPos = strpos($path,':')) && ($colonPos < ($slashPos = strpos($path,'/')) || false === $slashPos)
+? "./$path" : $path;
 }
-public static function getSubscribedEvents()
+}
+}
+namespace Symfony\Component\Routing
 {
-return array(KernelEvents::REQUEST => array('onKernelRequest', 8));
-}
-}
-}
-namespace Symfony\Component\Security\Core
+use Symfony\Component\HttpFoundation\Request;
+class RequestContext
 {
-use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
-interface SecurityContextInterface
+private $baseUrl;
+private $pathInfo;
+private $method;
+private $host;
+private $scheme;
+private $httpPort;
+private $httpsPort;
+private $parameters = array();
+public function __construct($baseUrl ='', $method ='GET', $host ='localhost', $scheme ='http', $httpPort = 80, $httpsPort = 443, $path ='/')
 {
-const ACCESS_DENIED_ERROR ='_security.403_error';
-const AUTHENTICATION_ERROR ='_security.last_error';
-const LAST_USERNAME ='_security.last_username';
-public function getToken();
-public function setToken(TokenInterface $token = null);
-public function isGranted($attributes, $object = null);
+$this->baseUrl = $baseUrl;
+$this->method = strtoupper($method);
+$this->host = $host;
+$this->scheme = strtolower($scheme);
+$this->httpPort = $httpPort;
+$this->httpsPort = $httpsPort;
+$this->pathInfo = $path;
 }
-}
-namespace Symfony\Component\Security\Core
+public function fromRequest(Request $request)
 {
-use Symfony\Component\Security\Core\Exception\AuthenticationCredentialsNotFoundException;
-use Symfony\Component\Security\Core\Authorization\AccessDecisionManagerInterface;
-use Symfony\Component\Security\Core\Authentication\AuthenticationManagerInterface;
-use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
-class SecurityContext implements SecurityContextInterface
+$this->setBaseUrl($request->getBaseUrl());
+$this->setPathInfo($request->getPathInfo());
+$this->setMethod($request->getMethod());
+$this->setHost($request->getHost());
+$this->setScheme($request->getScheme());
+$this->setHttpPort($request->isSecure() ? $this->httpPort : $request->getPort());
+$this->setHttpsPort($request->isSecure() ? $request->getPort() : $this->httpsPort);
+}
+public function getBaseUrl()
 {
-private $token;
-private $accessDecisionManager;
-private $authenticationManager;
-private $alwaysAuthenticate;
-public function __construct(AuthenticationManagerInterface $authenticationManager, AccessDecisionManagerInterface $accessDecisionManager, $alwaysAuthenticate = false)
+return $this->baseUrl;
+}
+public function setBaseUrl($baseUrl)
 {
-$this->authenticationManager = $authenticationManager;
-$this->accessDecisionManager = $accessDecisionManager;
-$this->alwaysAuthenticate = $alwaysAuthenticate;
+$this->baseUrl = $baseUrl;
 }
-final public function isGranted($attributes, $object = null)
+public function getPathInfo()
 {
-if (null === $this->token) {
-throw new AuthenticationCredentialsNotFoundException('The security context contains no authentication token. One possible reason may be that there is no firewall configured for this URL.');
+return $this->pathInfo;
 }
-if ($this->alwaysAuthenticate || !$this->token->isAuthenticated()) {
-$this->token = $this->authenticationManager->authenticate($this->token);
-}
-if (!is_array($attributes)) {
-$attributes = array($attributes);
-}
-return $this->accessDecisionManager->decide($this->token, $attributes, $object);
-}
-public function getToken()
+public function setPathInfo($pathInfo)
 {
-return $this->token;
+$this->pathInfo = $pathInfo;
 }
-public function setToken(TokenInterface $token = null)
+public function getMethod()
 {
-$this->token = $token;
+return $this->method;
 }
-}
-}
-namespace Symfony\Component\Security\Core\User
+public function setMethod($method)
 {
-use Symfony\Component\Security\Core\Exception\UsernameNotFoundException;
-use Symfony\Component\Security\Core\Exception\UnsupportedUserException;
-interface UserProviderInterface
+$this->method = strtoupper($method);
+}
+public function getHost()
 {
-public function loadUserByUsername($username);
-public function refreshUser(UserInterface $user);
-public function supportsClass($class);
+return $this->host;
+}
+public function setHost($host)
+{
+$this->host = $host;
+}
+public function getScheme()
+{
+return $this->scheme;
+}
+public function setScheme($scheme)
+{
+$this->scheme = strtolower($scheme);
+}
+public function getHttpPort()
+{
+return $this->httpPort;
+}
+public function setHttpPort($httpPort)
+{
+$this->httpPort = $httpPort;
+}
+public function getHttpsPort()
+{
+return $this->httpsPort;
+}
+public function setHttpsPort($httpsPort)
+{
+$this->httpsPort = $httpsPort;
+}
+public function getParameters()
+{
+return $this->parameters;
+}
+public function setParameters(array $parameters)
+{
+$this->parameters = $parameters;
+return $this;
+}
+public function getParameter($name)
+{
+return isset($this->parameters[$name]) ? $this->parameters[$name] : null;
+}
+public function hasParameter($name)
+{
+return array_key_exists($name, $this->parameters);
+}
+public function setParameter($name, $parameter)
+{
+$this->parameters[$name] = $parameter;
+}
 }
 }
 namespace Symfony\Component\Security\Core\Authentication
@@ -4310,126 +13345,136 @@ public function supportsClass($class);
 public function vote(TokenInterface $token, $object, array $attributes);
 }
 }
+namespace Symfony\Component\Security\Core
+{
+use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+interface SecurityContextInterface
+{
+const ACCESS_DENIED_ERROR ='_security.403_error';
+const AUTHENTICATION_ERROR ='_security.last_error';
+const LAST_USERNAME ='_security.last_username';
+public function getToken();
+public function setToken(TokenInterface $token = null);
+public function isGranted($attributes, $object = null);
+}
+}
+namespace Symfony\Component\Security\Core
+{
+use Symfony\Component\Security\Core\Exception\AuthenticationCredentialsNotFoundException;
+use Symfony\Component\Security\Core\Authorization\AccessDecisionManagerInterface;
+use Symfony\Component\Security\Core\Authentication\AuthenticationManagerInterface;
+use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+class SecurityContext implements SecurityContextInterface
+{
+private $token;
+private $accessDecisionManager;
+private $authenticationManager;
+private $alwaysAuthenticate;
+public function __construct(AuthenticationManagerInterface $authenticationManager, AccessDecisionManagerInterface $accessDecisionManager, $alwaysAuthenticate = false)
+{
+$this->authenticationManager = $authenticationManager;
+$this->accessDecisionManager = $accessDecisionManager;
+$this->alwaysAuthenticate = $alwaysAuthenticate;
+}
+final public function isGranted($attributes, $object = null)
+{
+if (null === $this->token) {
+throw new AuthenticationCredentialsNotFoundException('The security context contains no authentication token. One possible reason may be that there is no firewall configured for this URL.');
+}
+if ($this->alwaysAuthenticate || !$this->token->isAuthenticated()) {
+$this->token = $this->authenticationManager->authenticate($this->token);
+}
+if (!is_array($attributes)) {
+$attributes = array($attributes);
+}
+return $this->accessDecisionManager->decide($this->token, $attributes, $object);
+}
+public function getToken()
+{
+return $this->token;
+}
+public function setToken(TokenInterface $token = null)
+{
+$this->token = $token;
+}
+}
+}
+namespace Symfony\Component\Security\Core\User
+{
+use Symfony\Component\Security\Core\Exception\UsernameNotFoundException;
+use Symfony\Component\Security\Core\Exception\UnsupportedUserException;
+interface UserProviderInterface
+{
+public function loadUserByUsername($username);
+public function refreshUser(UserInterface $user);
+public function supportsClass($class);
+}
+}
 namespace Symfony\Component\Security\Http
 {
 use Symfony\Component\HttpFoundation\Request;
-interface FirewallMapInterface
+interface AccessMapInterface
 {
-public function getListeners(Request $request);
+public function getPatterns(Request $request);
 }
 }
-namespace Symfony\Bundle\SecurityBundle\Security
+namespace Symfony\Component\Security\Http
 {
-use Symfony\Component\Security\Http\FirewallMapInterface;
+use Symfony\Component\HttpFoundation\RequestMatcherInterface;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\DependencyInjection\ContainerInterface;
-class FirewallMap implements FirewallMapInterface
+class AccessMap implements AccessMapInterface
 {
-protected $container;
-protected $map;
-public function __construct(ContainerInterface $container, array $map)
+private $map = array();
+public function add(RequestMatcherInterface $requestMatcher, array $roles = array(), $channel = null)
 {
-$this->container = $container;
+$this->map[] = array($requestMatcher, $roles, $channel);
+}
+public function getPatterns(Request $request)
+{
+foreach ($this->map as $elements) {
+if (null === $elements[0] || $elements[0]->matches($request)) {
+return array($elements[1], $elements[2]);
+}
+}
+return array(null, null);
+}
+}
+}
+namespace Symfony\Component\Security\Http
+{
+use Symfony\Component\HttpKernel\HttpKernelInterface;
+use Symfony\Component\HttpKernel\KernelEvents;
+use Symfony\Component\HttpKernel\Event\GetResponseEvent;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+class Firewall implements EventSubscriberInterface
+{
+private $map;
+private $dispatcher;
+public function __construct(FirewallMapInterface $map, EventDispatcherInterface $dispatcher)
+{
 $this->map = $map;
+$this->dispatcher = $dispatcher;
 }
-public function getListeners(Request $request)
+public function onKernelRequest(GetResponseEvent $event)
 {
-foreach ($this->map as $contextId => $requestMatcher) {
-if (null === $requestMatcher || $requestMatcher->matches($request)) {
-return $this->container->get($contextId)->getContext();
+if (HttpKernelInterface::MASTER_REQUEST !== $event->getRequestType()) {
+return;
+}
+list($listeners, $exception) = $this->map->getListeners($event->getRequest());
+if (null !== $exception) {
+$exception->register($this->dispatcher);
+}
+foreach ($listeners as $listener) {
+$response = $listener->handle($event);
+if ($event->hasResponse()) {
+break;
 }
 }
-return array(array(), null);
 }
-}
-}
-namespace Symfony\Bundle\SecurityBundle\Security
+public static function getSubscribedEvents()
 {
-use Symfony\Component\Security\Http\Firewall\ExceptionListener;
-class FirewallContext
-{
-private $listeners;
-private $exceptionListener;
-public function __construct(array $listeners, ExceptionListener $exceptionListener = null)
-{
-$this->listeners = $listeners;
-$this->exceptionListener = $exceptionListener;
-}
-public function getContext()
-{
-return array($this->listeners, $this->exceptionListener);
-}
-}
-}
-namespace Symfony\Component\HttpFoundation
-{
-interface RequestMatcherInterface
-{
-public function matches(Request $request);
-}
-}
-namespace Symfony\Component\HttpFoundation
-{
-class RequestMatcher implements RequestMatcherInterface
-{
-private $path;
-private $host;
-private $methods = array();
-private $ip;
-private $attributes = array();
-public function __construct($path = null, $host = null, $methods = null, $ip = null, array $attributes = array())
-{
-$this->matchPath($path);
-$this->matchHost($host);
-$this->matchMethod($methods);
-$this->matchIp($ip);
-foreach ($attributes as $k => $v) {
-$this->matchAttribute($k, $v);
-}
-}
-public function matchHost($regexp)
-{
-$this->host = $regexp;
-}
-public function matchPath($regexp)
-{
-$this->path = $regexp;
-}
-public function matchIp($ip)
-{
-$this->ip = $ip;
-}
-public function matchMethod($method)
-{
-$this->methods = array_map('strtoupper', (array) $method);
-}
-public function matchAttribute($key, $regexp)
-{
-$this->attributes[$key] = $regexp;
-}
-public function matches(Request $request)
-{
-if ($this->methods && !in_array($request->getMethod(), $this->methods)) {
-return false;
-}
-foreach ($this->attributes as $key => $pattern) {
-if (!preg_match('#'.str_replace('#','\\#', $pattern).'#', $request->attributes->get($key))) {
-return false;
-}
-}
-if (null !== $this->path) {
-$path = str_replace('#','\\#', $this->path);
-if (!preg_match('#'.$path.'#', rawurldecode($request->getPathInfo()))) {
-return false;
-}
-}
-if (null !== $this->host && !preg_match('#'.str_replace('#','\\#', $this->host).'#i', $request->getHost())) {
-return false;
-}
-if (null !== $this->ip && !IpUtils::checkIp($request->getClientIp(), $this->ip)) {
-return false;
-}
-return true;
+return array(KernelEvents::REQUEST => array('onKernelRequest', 8));
 }
 }
 }
@@ -4437,7 +13482,7 @@ namespace
 {
 class Twig_Environment
 {
-const VERSION ='1.12.2';
+const VERSION ='1.12.3';
 protected $charset;
 protected $loader;
 protected $debug;
@@ -4784,15 +13829,15 @@ return $this->visitors;
 }
 public function addFilter($name, $filter = null)
 {
-if ($this->extensionInitialized) {
-throw new LogicException(sprintf('Unable to add filter "%s" as extensions have already been initialized.', $name));
-}
 if (!$name instanceof Twig_SimpleFilter && !($filter instanceof Twig_SimpleFilter || $filter instanceof Twig_FilterInterface)) {
 throw new LogicException('A filter must be an instance of Twig_FilterInterface or Twig_SimpleFilter');
 }
 if ($name instanceof Twig_SimpleFilter) {
 $filter = $name;
 $name = $filter->getName();
+}
+if ($this->extensionInitialized) {
+throw new LogicException(sprintf('Unable to add filter "%s" as extensions have already been initialized.', $name));
 }
 $this->staging->addFilter($name, $filter);
 }
@@ -4834,15 +13879,15 @@ return $this->filters;
 }
 public function addTest($name, $test = null)
 {
-if ($this->extensionInitialized) {
-throw new LogicException(sprintf('Unable to add test "%s" as extensions have already been initialized.', $name));
-}
 if (!$name instanceof Twig_SimpleTest && !($test instanceof Twig_SimpleTest || $test instanceof Twig_TestInterface)) {
 throw new LogicException('A test must be an instance of Twig_TestInterface or Twig_SimpleTest');
 }
 if ($name instanceof Twig_SimpleTest) {
 $test = $name;
 $name = $test->getName();
+}
+if ($this->extensionInitialized) {
+throw new LogicException(sprintf('Unable to add test "%s" as extensions have already been initialized.', $name));
 }
 $this->staging->addTest($name, $test);
 }
@@ -4865,15 +13910,15 @@ return false;
 }
 public function addFunction($name, $function = null)
 {
-if ($this->extensionInitialized) {
-throw new LogicException(sprintf('Unable to add function "%s" as extensions have already been initialized.', $name));
-}
 if (!$name instanceof Twig_SimpleFunction && !($function instanceof Twig_SimpleFunction || $function instanceof Twig_FunctionInterface)) {
 throw new LogicException('A function must be an instance of Twig_FunctionInterface or Twig_SimpleFunction');
 }
 if ($name instanceof Twig_SimpleFunction) {
 $function = $name;
 $name = $function->getName();
+}
+if ($this->extensionInitialized) {
+throw new LogicException(sprintf('Unable to add function "%s" as extensions have already been initialized.', $name));
 }
 $this->staging->addFunction($name, $function);
 }
@@ -5069,58 +14114,6 @@ throw new RuntimeException(sprintf('Failed to write cache file "%s".', $file));
 }
 namespace
 {
-interface Twig_ExtensionInterface
-{
-public function initRuntime(Twig_Environment $environment);
-public function getTokenParsers();
-public function getNodeVisitors();
-public function getFilters();
-public function getTests();
-public function getFunctions();
-public function getOperators();
-public function getGlobals();
-public function getName();
-}
-}
-namespace
-{
-abstract class Twig_Extension implements Twig_ExtensionInterface
-{
-public function initRuntime(Twig_Environment $environment)
-{
-}
-public function getTokenParsers()
-{
-return array();
-}
-public function getNodeVisitors()
-{
-return array();
-}
-public function getFilters()
-{
-return array();
-}
-public function getTests()
-{
-return array();
-}
-public function getFunctions()
-{
-return array();
-}
-public function getOperators()
-{
-return array();
-}
-public function getGlobals()
-{
-return array();
-}
-}
-}
-namespace
-{
 if (!defined('ENT_SUBSTITUTE')) {
 define('ENT_SUBSTITUTE', 8);
 }
@@ -5204,6 +14197,7 @@ new Twig_SimpleFilter('join','twig_join_filter'),
 new Twig_SimpleFilter('split','twig_split_filter'),
 new Twig_SimpleFilter('sort','twig_sort_filter'),
 new Twig_SimpleFilter('merge','twig_array_merge'),
+new Twig_SimpleFilter('batch','twig_array_batch'),
 new Twig_SimpleFilter('reverse','twig_reverse_filter', array('needs_environment'=> true)),
 new Twig_SimpleFilter('length','twig_length_filter', array('needs_environment'=> true)),
 new Twig_SimpleFilter('slice','twig_slice', array('needs_environment'=> true)),
@@ -5215,8 +14209,8 @@ new Twig_SimpleFilter('escape','twig_escape_filter', array('needs_environment'=>
 new Twig_SimpleFilter('e','twig_escape_filter', array('needs_environment'=> true,'is_safe_callback'=>'twig_escape_filter_is_safe')),
 );
 if (function_exists('mb_get_info')) {
-$filters['upper'] = new Twig_Filter_Function('twig_upper_filter', array('needs_environment'=> true));
-$filters['lower'] = new Twig_Filter_Function('twig_lower_filter', array('needs_environment'=> true));
+$filters[] = new Twig_SimpleFilter('upper','twig_upper_filter', array('needs_environment'=> true));
+$filters[] = new Twig_SimpleFilter('lower','twig_lower_filter', array('needs_environment'=> true));
 }
 return $filters;
 }
@@ -5393,6 +14387,9 @@ return number_format((float) $number, $decimal, $decimalPoint, $thousandSep);
 }
 function twig_urlencode_filter($url, $raw = false)
 {
+if (is_array($url)) {
+return http_build_query($url,'','&');
+}
 if ($raw) {
 return rawurlencode($url);
 }
@@ -5764,6 +14761,22 @@ $constant = get_class($object).'::'.$constant;
 }
 return constant($constant);
 }
+function twig_array_batch($items, $size, $fill = null)
+{
+if ($items instanceof Traversable) {
+$items = iterator_to_array($items, false);
+}
+$size = ceil($size);
+$result = array_chunk($items, $size, true);
+if (null !== $fill) {
+$last = count($result) - 1;
+$result[$last] = array_merge(
+$result[$last],
+array_fill(0, $size - count($result[$last]), $fill)
+);
+}
+return $result;
+}
 }
 namespace
 {
@@ -6098,1479 +15111,6 @@ return $ret;
 public static function clearCache()
 {
 self::$cache = array();
-}
-}
-}
-namespace Monolog\Formatter
-{
-interface FormatterInterface
-{
-public function format(array $record);
-public function formatBatch(array $records);
-}
-}
-namespace Monolog\Formatter
-{
-class NormalizerFormatter implements FormatterInterface
-{
-const SIMPLE_DATE ="Y-m-d H:i:s";
-protected $dateFormat;
-public function __construct($dateFormat = null)
-{
-$this->dateFormat = $dateFormat ?: static::SIMPLE_DATE;
-}
-public function format(array $record)
-{
-return $this->normalize($record);
-}
-public function formatBatch(array $records)
-{
-foreach ($records as $key => $record) {
-$records[$key] = $this->format($record);
-}
-return $records;
-}
-protected function normalize($data)
-{
-if (null === $data || is_scalar($data)) {
-return $data;
-}
-if (is_array($data) || $data instanceof \Traversable) {
-$normalized = array();
-foreach ($data as $key => $value) {
-$normalized[$key] = $this->normalize($value);
-}
-return $normalized;
-}
-if ($data instanceof \DateTime) {
-return $data->format($this->dateFormat);
-}
-if (is_object($data)) {
-return sprintf("[object] (%s: %s)", get_class($data), $this->toJson($data, true));
-}
-if (is_resource($data)) {
-return'[resource]';
-}
-return'[unknown('.gettype($data).')]';
-}
-protected function toJson($data, $ignoreErrors = false)
-{
-if ($ignoreErrors) {
-if (version_compare(PHP_VERSION,'5.4.0','>=')) {
-return @json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-}
-return @json_encode($data);
-}
-if (version_compare(PHP_VERSION,'5.4.0','>=')) {
-return json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-}
-return json_encode($data);
-}
-}
-}
-namespace Monolog\Formatter
-{
-class LineFormatter extends NormalizerFormatter
-{
-const SIMPLE_FORMAT ="[%datetime%] %channel%.%level_name%: %message% %context% %extra%\n";
-protected $format;
-public function __construct($format = null, $dateFormat = null)
-{
-$this->format = $format ?: static::SIMPLE_FORMAT;
-parent::__construct($dateFormat);
-}
-public function format(array $record)
-{
-$vars = parent::format($record);
-$output = $this->format;
-foreach ($vars['extra'] as $var => $val) {
-if (false !== strpos($output,'%extra.'.$var.'%')) {
-$output = str_replace('%extra.'.$var.'%', $this->convertToString($val), $output);
-unset($vars['extra'][$var]);
-}
-}
-foreach ($vars as $var => $val) {
-$output = str_replace('%'.$var.'%', $this->convertToString($val), $output);
-}
-return $output;
-}
-public function formatBatch(array $records)
-{
-$message ='';
-foreach ($records as $record) {
-$message .= $this->format($record);
-}
-return $message;
-}
-protected function normalize($data)
-{
-if (is_bool($data) || is_null($data)) {
-return var_export($data, true);
-}
-return parent::normalize($data);
-}
-protected function convertToString($data)
-{
-if (null === $data || is_scalar($data)) {
-return (string) $data;
-}
-$data = $this->normalize($data);
-if (version_compare(PHP_VERSION,'5.4.0','>=')) {
-return $this->toJson($data);
-}
-return str_replace('\\/','/', json_encode($data));
-}
-}
-}
-namespace Monolog\Handler
-{
-use Monolog\Formatter\FormatterInterface;
-interface HandlerInterface
-{
-public function isHandling(array $record);
-public function handle(array $record);
-public function handleBatch(array $records);
-public function pushProcessor($callback);
-public function popProcessor();
-public function setFormatter(FormatterInterface $formatter);
-public function getFormatter();
-}
-}
-namespace Monolog\Handler
-{
-use Monolog\Logger;
-use Monolog\Formatter\FormatterInterface;
-use Monolog\Formatter\LineFormatter;
-abstract class AbstractHandler implements HandlerInterface
-{
-protected $level = Logger::DEBUG;
-protected $bubble = false;
-protected $formatter;
-protected $processors = array();
-public function __construct($level = Logger::DEBUG, $bubble = true)
-{
-$this->level = $level;
-$this->bubble = $bubble;
-}
-public function isHandling(array $record)
-{
-return $record['level'] >= $this->level;
-}
-public function handleBatch(array $records)
-{
-foreach ($records as $record) {
-$this->handle($record);
-}
-}
-public function close()
-{
-}
-public function pushProcessor($callback)
-{
-if (!is_callable($callback)) {
-throw new \InvalidArgumentException('Processors must be valid callables (callback or object with an __invoke method), '.var_export($callback, true).' given');
-}
-array_unshift($this->processors, $callback);
-}
-public function popProcessor()
-{
-if (!$this->processors) {
-throw new \LogicException('You tried to pop from an empty processor stack.');
-}
-return array_shift($this->processors);
-}
-public function setFormatter(FormatterInterface $formatter)
-{
-$this->formatter = $formatter;
-}
-public function getFormatter()
-{
-if (!$this->formatter) {
-$this->formatter = $this->getDefaultFormatter();
-}
-return $this->formatter;
-}
-public function setLevel($level)
-{
-$this->level = $level;
-}
-public function getLevel()
-{
-return $this->level;
-}
-public function setBubble($bubble)
-{
-$this->bubble = $bubble;
-}
-public function getBubble()
-{
-return $this->bubble;
-}
-public function __destruct()
-{
-try {
-$this->close();
-} catch (\Exception $e) {
-}
-}
-protected function getDefaultFormatter()
-{
-return new LineFormatter();
-}
-}
-}
-namespace Monolog\Handler
-{
-abstract class AbstractProcessingHandler extends AbstractHandler
-{
-public function handle(array $record)
-{
-if ($record['level'] < $this->level) {
-return false;
-}
-$record = $this->processRecord($record);
-$record['formatted'] = $this->getFormatter()->format($record);
-$this->write($record);
-return false === $this->bubble;
-}
-abstract protected function write(array $record);
-protected function processRecord(array $record)
-{
-if ($this->processors) {
-foreach ($this->processors as $processor) {
-$record = call_user_func($processor, $record);
-}
-}
-return $record;
-}
-}
-}
-namespace Monolog\Handler
-{
-use Monolog\Logger;
-class StreamHandler extends AbstractProcessingHandler
-{
-protected $stream;
-protected $url;
-public function __construct($stream, $level = Logger::DEBUG, $bubble = true)
-{
-parent::__construct($level, $bubble);
-if (is_resource($stream)) {
-$this->stream = $stream;
-} else {
-$this->url = $stream;
-}
-}
-public function close()
-{
-if (is_resource($this->stream)) {
-fclose($this->stream);
-}
-$this->stream = null;
-}
-protected function write(array $record)
-{
-if (null === $this->stream) {
-if (!$this->url) {
-throw new \LogicException('Missing stream url, the stream can not be opened. This may be caused by a premature call to close().');
-}
-$errorMessage = null;
-set_error_handler(function ($code, $msg) use (&$errorMessage) {
-$errorMessage = preg_replace('{^fopen\(.*?\): }','', $msg);
-});
-$this->stream = fopen($this->url,'a');
-restore_error_handler();
-if (!is_resource($this->stream)) {
-$this->stream = null;
-throw new \UnexpectedValueException(sprintf('The stream or file "%s" could not be opened: '.$errorMessage, $this->url));
-}
-}
-fwrite($this->stream, (string) $record['formatted']);
-}
-}
-}
-namespace Monolog\Handler
-{
-use Monolog\Handler\FingersCrossed\ErrorLevelActivationStrategy;
-use Monolog\Handler\FingersCrossed\ActivationStrategyInterface;
-use Monolog\Logger;
-class FingersCrossedHandler extends AbstractHandler
-{
-protected $handler;
-protected $activationStrategy;
-protected $buffering = true;
-protected $bufferSize;
-protected $buffer = array();
-protected $stopBuffering;
-public function __construct($handler, $activationStrategy = null, $bufferSize = 0, $bubble = true, $stopBuffering = true)
-{
-if (null === $activationStrategy) {
-$activationStrategy = new ErrorLevelActivationStrategy(Logger::WARNING);
-}
-if (!$activationStrategy instanceof ActivationStrategyInterface) {
-$activationStrategy = new ErrorLevelActivationStrategy($activationStrategy);
-}
-$this->handler = $handler;
-$this->activationStrategy = $activationStrategy;
-$this->bufferSize = $bufferSize;
-$this->bubble = $bubble;
-$this->stopBuffering = $stopBuffering;
-}
-public function isHandling(array $record)
-{
-return true;
-}
-public function handle(array $record)
-{
-if ($this->buffering) {
-$this->buffer[] = $record;
-if ($this->bufferSize > 0 && count($this->buffer) > $this->bufferSize) {
-array_shift($this->buffer);
-}
-if ($this->activationStrategy->isHandlerActivated($record)) {
-if ($this->stopBuffering) {
-$this->buffering = false;
-}
-if (!$this->handler instanceof HandlerInterface) {
-if (!is_callable($this->handler)) {
-throw new \RuntimeException("The given handler (".json_encode($this->handler).") is not a callable nor a Monolog\Handler\HandlerInterface object");
-}
-$this->handler = call_user_func($this->handler, $record, $this);
-if (!$this->handler instanceof HandlerInterface) {
-throw new \RuntimeException("The factory callable should return a HandlerInterface");
-}
-}
-$this->handler->handleBatch($this->buffer);
-$this->buffer = array();
-}
-} else {
-$this->handler->handle($record);
-}
-return false === $this->bubble;
-}
-public function reset()
-{
-$this->buffering = true;
-}
-}
-}
-namespace Monolog\Handler
-{
-use Monolog\Logger;
-class TestHandler extends AbstractProcessingHandler
-{
-protected $records = array();
-protected $recordsByLevel = array();
-public function getRecords()
-{
-return $this->records;
-}
-public function hasEmergency($record)
-{
-return $this->hasRecord($record, Logger::EMERGENCY);
-}
-public function hasAlert($record)
-{
-return $this->hasRecord($record, Logger::ALERT);
-}
-public function hasCritical($record)
-{
-return $this->hasRecord($record, Logger::CRITICAL);
-}
-public function hasError($record)
-{
-return $this->hasRecord($record, Logger::ERROR);
-}
-public function hasWarning($record)
-{
-return $this->hasRecord($record, Logger::WARNING);
-}
-public function hasNotice($record)
-{
-return $this->hasRecord($record, Logger::NOTICE);
-}
-public function hasInfo($record)
-{
-return $this->hasRecord($record, Logger::INFO);
-}
-public function hasDebug($record)
-{
-return $this->hasRecord($record, Logger::DEBUG);
-}
-public function hasEmergencyRecords()
-{
-return isset($this->recordsByLevel[Logger::EMERGENCY]);
-}
-public function hasAlertRecords()
-{
-return isset($this->recordsByLevel[Logger::ALERT]);
-}
-public function hasCriticalRecords()
-{
-return isset($this->recordsByLevel[Logger::CRITICAL]);
-}
-public function hasErrorRecords()
-{
-return isset($this->recordsByLevel[Logger::ERROR]);
-}
-public function hasWarningRecords()
-{
-return isset($this->recordsByLevel[Logger::WARNING]);
-}
-public function hasNoticeRecords()
-{
-return isset($this->recordsByLevel[Logger::NOTICE]);
-}
-public function hasInfoRecords()
-{
-return isset($this->recordsByLevel[Logger::INFO]);
-}
-public function hasDebugRecords()
-{
-return isset($this->recordsByLevel[Logger::DEBUG]);
-}
-protected function hasRecord($record, $level)
-{
-if (!isset($this->recordsByLevel[$level])) {
-return false;
-}
-if (is_array($record)) {
-$record = $record['message'];
-}
-foreach ($this->recordsByLevel[$level] as $rec) {
-if ($rec['message'] === $record) {
-return true;
-}
-}
-return false;
-}
-protected function write(array $record)
-{
-$this->recordsByLevel[$record['level']][] = $record;
-$this->records[] = $record;
-}
-}
-}
-namespace Psr\Log
-{
-interface LoggerInterface
-{
-public function emergency($message, array $context = array());
-public function alert($message, array $context = array());
-public function critical($message, array $context = array());
-public function error($message, array $context = array());
-public function warning($message, array $context = array());
-public function notice($message, array $context = array());
-public function info($message, array $context = array());
-public function debug($message, array $context = array());
-public function log($level, $message, array $context = array());
-}
-}
-namespace Monolog
-{
-use Monolog\Handler\HandlerInterface;
-use Monolog\Handler\StreamHandler;
-use Psr\Log\LoggerInterface;
-use Psr\Log\InvalidArgumentException;
-class Logger implements LoggerInterface
-{
-const DEBUG = 100;
-const INFO = 200;
-const NOTICE = 250;
-const WARNING = 300;
-const ERROR = 400;
-const CRITICAL = 500;
-const ALERT = 550;
-const EMERGENCY = 600;
-protected static $levels = array(
-100 =>'DEBUG',
-200 =>'INFO',
-250 =>'NOTICE',
-300 =>'WARNING',
-400 =>'ERROR',
-500 =>'CRITICAL',
-550 =>'ALERT',
-600 =>'EMERGENCY',
-);
-protected static $timezone;
-protected $name;
-protected $handlers;
-protected $processors;
-public function __construct($name, array $handlers = array(), array $processors = array())
-{
-$this->name = $name;
-$this->handlers = $handlers;
-$this->processors = $processors;
-}
-public function getName()
-{
-return $this->name;
-}
-public function pushHandler(HandlerInterface $handler)
-{
-array_unshift($this->handlers, $handler);
-}
-public function popHandler()
-{
-if (!$this->handlers) {
-throw new \LogicException('You tried to pop from an empty handler stack.');
-}
-return array_shift($this->handlers);
-}
-public function pushProcessor($callback)
-{
-if (!is_callable($callback)) {
-throw new \InvalidArgumentException('Processors must be valid callables (callback or object with an __invoke method), '.var_export($callback, true).' given');
-}
-array_unshift($this->processors, $callback);
-}
-public function popProcessor()
-{
-if (!$this->processors) {
-throw new \LogicException('You tried to pop from an empty processor stack.');
-}
-return array_shift($this->processors);
-}
-public function addRecord($level, $message, array $context = array())
-{
-if (!$this->handlers) {
-$this->pushHandler(new StreamHandler('php://stderr', static::DEBUG));
-}
-if (!static::$timezone) {
-static::$timezone = new \DateTimeZone(date_default_timezone_get() ?:'UTC');
-}
-$record = array('message'=> (string) $message,'context'=> $context,'level'=> $level,'level_name'=> static::getLevelName($level),'channel'=> $this->name,'datetime'=> \DateTime::createFromFormat('U.u', sprintf('%.6F', microtime(true)), static::$timezone)->setTimezone(static::$timezone),'extra'=> array(),
-);
-$handlerKey = null;
-foreach ($this->handlers as $key => $handler) {
-if ($handler->isHandling($record)) {
-$handlerKey = $key;
-break;
-}
-}
-if (null === $handlerKey) {
-return false;
-}
-foreach ($this->processors as $processor) {
-$record = call_user_func($processor, $record);
-}
-while (isset($this->handlers[$handlerKey]) &&
-false === $this->handlers[$handlerKey]->handle($record)) {
-$handlerKey++;
-}
-return true;
-}
-public function addDebug($message, array $context = array())
-{
-return $this->addRecord(static::DEBUG, $message, $context);
-}
-public function addInfo($message, array $context = array())
-{
-return $this->addRecord(static::INFO, $message, $context);
-}
-public function addNotice($message, array $context = array())
-{
-return $this->addRecord(static::NOTICE, $message, $context);
-}
-public function addWarning($message, array $context = array())
-{
-return $this->addRecord(static::WARNING, $message, $context);
-}
-public function addError($message, array $context = array())
-{
-return $this->addRecord(static::ERROR, $message, $context);
-}
-public function addCritical($message, array $context = array())
-{
-return $this->addRecord(static::CRITICAL, $message, $context);
-}
-public function addAlert($message, array $context = array())
-{
-return $this->addRecord(static::ALERT, $message, $context);
-}
-public function addEmergency($message, array $context = array())
-{
-return $this->addRecord(static::EMERGENCY, $message, $context);
-}
-public static function getLevelName($level)
-{
-if (!isset(static::$levels[$level])) {
-throw new InvalidArgumentException('Level "'.$level.'" is not defined, use one of: '.implode(', ', array_keys(static::$levels)));
-}
-return static::$levels[$level];
-}
-public function isHandling($level)
-{
-$record = array('level'=> $level,
-);
-foreach ($this->handlers as $key => $handler) {
-if ($handler->isHandling($record)) {
-return true;
-}
-}
-return false;
-}
-public function log($level, $message, array $context = array())
-{
-if (is_string($level) && defined(__CLASS__.'::'.strtoupper($level))) {
-$level = constant(__CLASS__.'::'.strtoupper($level));
-}
-return $this->addRecord($level, $message, $context);
-}
-public function debug($message, array $context = array())
-{
-return $this->addRecord(static::DEBUG, $message, $context);
-}
-public function info($message, array $context = array())
-{
-return $this->addRecord(static::INFO, $message, $context);
-}
-public function notice($message, array $context = array())
-{
-return $this->addRecord(static::NOTICE, $message, $context);
-}
-public function warn($message, array $context = array())
-{
-return $this->addRecord(static::WARNING, $message, $context);
-}
-public function warning($message, array $context = array())
-{
-return $this->addRecord(static::WARNING, $message, $context);
-}
-public function err($message, array $context = array())
-{
-return $this->addRecord(static::ERROR, $message, $context);
-}
-public function error($message, array $context = array())
-{
-return $this->addRecord(static::ERROR, $message, $context);
-}
-public function crit($message, array $context = array())
-{
-return $this->addRecord(static::CRITICAL, $message, $context);
-}
-public function critical($message, array $context = array())
-{
-return $this->addRecord(static::CRITICAL, $message, $context);
-}
-public function alert($message, array $context = array())
-{
-return $this->addRecord(static::ALERT, $message, $context);
-}
-public function emerg($message, array $context = array())
-{
-return $this->addRecord(static::EMERGENCY, $message, $context);
-}
-public function emergency($message, array $context = array())
-{
-return $this->addRecord(static::EMERGENCY, $message, $context);
-}
-}
-}
-namespace Symfony\Component\HttpKernel\Log
-{
-use Psr\Log\LoggerInterface as PsrLogger;
-interface LoggerInterface extends PsrLogger
-{
-public function emerg($message, array $context = array());
-public function crit($message, array $context = array());
-public function err($message, array $context = array());
-public function warn($message, array $context = array());
-}
-}
-namespace Symfony\Component\HttpKernel\Log
-{
-interface DebugLoggerInterface
-{
-public function getLogs();
-public function countErrors();
-}
-}
-namespace Symfony\Bridge\Monolog
-{
-use Monolog\Logger as BaseLogger;
-use Symfony\Component\HttpKernel\Log\LoggerInterface;
-use Symfony\Component\HttpKernel\Log\DebugLoggerInterface;
-class Logger extends BaseLogger implements LoggerInterface, DebugLoggerInterface
-{
-public function emerg($message, array $context = array())
-{
-return parent::addRecord(BaseLogger::EMERGENCY, $message, $context);
-}
-public function crit($message, array $context = array())
-{
-return parent::addRecord(BaseLogger::CRITICAL, $message, $context);
-}
-public function err($message, array $context = array())
-{
-return parent::addRecord(BaseLogger::ERROR, $message, $context);
-}
-public function warn($message, array $context = array())
-{
-return parent::addRecord(BaseLogger::WARNING, $message, $context);
-}
-public function getLogs()
-{
-if ($logger = $this->getDebugLogger()) {
-return $logger->getLogs();
-}
-}
-public function countErrors()
-{
-if ($logger = $this->getDebugLogger()) {
-return $logger->countErrors();
-}
-}
-private function getDebugLogger()
-{
-foreach ($this->handlers as $handler) {
-if ($handler instanceof DebugLoggerInterface) {
-return $handler;
-}
-}
-}
-}
-}
-namespace Symfony\Bridge\Monolog\Handler
-{
-use Monolog\Logger;
-use Monolog\Handler\TestHandler;
-use Symfony\Component\HttpKernel\Log\DebugLoggerInterface;
-class DebugHandler extends TestHandler implements DebugLoggerInterface
-{
-public function getLogs()
-{
-$records = array();
-foreach ($this->records as $record) {
-$records[] = array('timestamp'=> $record['datetime']->getTimestamp(),'message'=> $record['message'],'priority'=> $record['level'],'priorityName'=> $record['level_name'],'context'=> $record['context'],
-);
-}
-return $records;
-}
-public function countErrors()
-{
-$cnt = 0;
-$levels = array(Logger::ERROR, Logger::CRITICAL, Logger::ALERT, Logger::EMERGENCY);
-foreach ($levels as $level) {
-if (isset($this->recordsByLevel[$level])) {
-$cnt += count($this->recordsByLevel[$level]);
-}
-}
-return $cnt;
-}
-}
-}
-namespace Monolog\Handler\FingersCrossed
-{
-interface ActivationStrategyInterface
-{
-public function isHandlerActivated(array $record);
-}
-}
-namespace Monolog\Handler\FingersCrossed
-{
-class ErrorLevelActivationStrategy implements ActivationStrategyInterface
-{
-private $actionLevel;
-public function __construct($actionLevel)
-{
-$this->actionLevel = $actionLevel;
-}
-public function isHandlerActivated(array $record)
-{
-return $record['level'] >= $this->actionLevel;
-}
-}
-}
-namespace Sensio\Bundle\FrameworkExtraBundle\EventListener
-{
-use Doctrine\Common\Annotations\Reader;
-use Symfony\Component\HttpKernel\Event\FilterControllerEvent;
-use Sensio\Bundle\FrameworkExtraBundle\Configuration\ConfigurationInterface;
-use Doctrine\Common\Util\ClassUtils;
-class ControllerListener
-{
-protected $reader;
-public function __construct(Reader $reader)
-{
-$this->reader = $reader;
-}
-public function onKernelController(FilterControllerEvent $event)
-{
-if (!is_array($controller = $event->getController())) {
-return;
-}
-$className = class_exists('Doctrine\Common\Util\ClassUtils') ? ClassUtils::getClass($controller[0]) : get_class($controller[0]);
-$object = new \ReflectionClass($className);
-$method = $object->getMethod($controller[1]);
-$classConfigurations = $this->getConfigurations($this->reader->getClassAnnotations($object));
-$methodConfigurations = $this->getConfigurations($this->reader->getMethodAnnotations($method));
-$configurations = array();
-foreach (array_merge(array_keys($classConfigurations), array_keys($methodConfigurations)) as $key) {
-if (!array_key_exists($key, $classConfigurations)) {
-$configurations[$key] = $methodConfigurations[$key];
-} elseif (!array_key_exists($key, $methodConfigurations)) {
-$configurations[$key] = $classConfigurations[$key];
-} else {
-if (is_array($classConfigurations[$key])) {
-if (!is_array($methodConfigurations[$key])) {
-throw new \UnexpectedValueException('Configurations should both be an array or both not be an array');
-}
-$configurations[$key] = array_merge($classConfigurations[$key], $methodConfigurations[$key]);
-} else {
-$configurations[$key] = $methodConfigurations[$key];
-}
-}
-}
-$request = $event->getRequest();
-foreach ($configurations as $key => $attributes) {
-$request->attributes->set($key, $attributes);
-}
-}
-protected function getConfigurations(array $annotations)
-{
-$configurations = array();
-foreach ($annotations as $configuration) {
-if ($configuration instanceof ConfigurationInterface) {
-if ($configuration->allowArray()) {
-$configurations['_'.$configuration->getAliasName()][] = $configuration;
-} else {
-$configurations['_'.$configuration->getAliasName()] = $configuration;
-}
-}
-}
-return $configurations;
-}
-}
-}
-namespace Sensio\Bundle\FrameworkExtraBundle\Configuration
-{
-interface ConfigurationInterface
-{
-function getAliasName();
-function allowArray();
-}
-}
-namespace Sensio\Bundle\FrameworkExtraBundle\Configuration
-{
-abstract class ConfigurationAnnotation implements ConfigurationInterface
-{
-public function __construct(array $values)
-{
-foreach ($values as $k => $v) {
-if (!method_exists($this, $name ='set'.$k)) {
-throw new \RuntimeException(sprintf('Unknown key "%s" for annotation "@%s".', $k, get_class($this)));
-}
-$this->$name($v);
-}
-}
-}
-}
-namespace Sensio\Bundle\FrameworkExtraBundle\Configuration
-{
-class ParamConverter extends ConfigurationAnnotation
-{
-protected $name;
-protected $class;
-protected $options = array();
-protected $optional = false;
-protected $converter;
-public function getName()
-{
-return $this->name;
-}
-public function setValue($name)
-{
-$this->setName($name);
-}
-public function setName($name)
-{
-$this->name = $name;
-}
-public function getClass()
-{
-return $this->class;
-}
-public function setClass($class)
-{
-$this->class = $class;
-}
-public function getOptions()
-{
-return $this->options;
-}
-public function setOptions($options)
-{
-$this->options = $options;
-}
-public function setIsOptional($optional)
-{
-$this->optional = (Boolean) $optional;
-}
-public function isOptional()
-{
-return $this->optional;
-}
-public function getConverter()
-{
-return $this->converter;
-}
-public function setConverter($converter)
-{
-$this->converter = $converter;
-}
-public function getAliasName()
-{
-return'converters';
-}
-public function allowArray()
-{
-return true;
-}
-}
-}
-namespace Sensio\Bundle\FrameworkExtraBundle\EventListener
-{
-use Sensio\Bundle\FrameworkExtraBundle\Configuration\ParamConverter;
-use Sensio\Bundle\FrameworkExtraBundle\Request\ParamConverter\ParamConverterManager;
-use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpKernel\Event\FilterControllerEvent;
-class ParamConverterListener
-{
-protected $manager;
-public function __construct(ParamConverterManager $manager)
-{
-$this->manager = $manager;
-}
-public function onKernelController(FilterControllerEvent $event)
-{
-$controller = $event->getController();
-$request = $event->getRequest();
-$configurations = array();
-if ($configuration = $request->attributes->get('_converters')) {
-foreach (is_array($configuration) ? $configuration : array($configuration) as $configuration) {
-$configurations[$configuration->getName()] = $configuration;
-}
-}
-if (is_array($controller)) {
-$r = new \ReflectionMethod($controller[0], $controller[1]);
-} else {
-$r = new \ReflectionFunction($controller);
-}
-foreach ($r->getParameters() as $param) {
-if (!$param->getClass() || $param->getClass()->isInstance($request)) {
-continue;
-}
-$name = $param->getName();
-if (!isset($configurations[$name])) {
-$configuration = new ParamConverter(array());
-$configuration->setName($name);
-$configuration->setClass($param->getClass()->getName());
-$configurations[$name] = $configuration;
-} elseif (null === $configurations[$name]->getClass()) {
-$configurations[$name]->setClass($param->getClass()->getName());
-}
-$configurations[$name]->setIsOptional($param->isOptional());
-}
-$this->manager->apply($request, $configurations);
-}
-}
-}
-namespace Sensio\Bundle\FrameworkExtraBundle\Request\ParamConverter
-{
-use Sensio\Bundle\FrameworkExtraBundle\Configuration\ConfigurationInterface;
-use Symfony\Component\HttpFoundation\Request;
-interface ParamConverterInterface
-{
-function apply(Request $request, ConfigurationInterface $configuration);
-function supports(ConfigurationInterface $configuration);
-}
-}
-namespace Sensio\Bundle\FrameworkExtraBundle\Request\ParamConverter
-{
-use Sensio\Bundle\FrameworkExtraBundle\Configuration\ConfigurationInterface;
-use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use DateTime;
-class DateTimeParamConverter implements ParamConverterInterface
-{
-public function apply(Request $request, ConfigurationInterface $configuration)
-{
-$param = $configuration->getName();
-if (!$request->attributes->has($param)) {
-return false;
-}
-$options = $configuration->getOptions();
-$value = $request->attributes->get($param);
-$date = isset($options['format'])
-? DateTime::createFromFormat($options['format'], $value)
-: new DateTime($value);
-if (!$date) {
-throw new NotFoundHttpException('Invalid date given.');
-}
-$request->attributes->set($param, $date);
-return true;
-}
-public function supports(ConfigurationInterface $configuration)
-{
-if (null === $configuration->getClass()) {
-return false;
-}
-return"DateTime"=== $configuration->getClass();
-}
-}
-}
-namespace Sensio\Bundle\FrameworkExtraBundle\Request\ParamConverter
-{
-use Sensio\Bundle\FrameworkExtraBundle\Configuration\ConfigurationInterface;
-use Sensio\Bundle\FrameworkExtraBundle\Configuration\ParamConverter;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpFoundation\Request;
-use Doctrine\Common\Persistence\ManagerRegistry;
-class DoctrineParamConverter implements ParamConverterInterface
-{
-protected $registry;
-public function __construct(ManagerRegistry $registry = null)
-{
-$this->registry = $registry;
-}
-public function apply(Request $request, ConfigurationInterface $configuration)
-{
-$name = $configuration->getName();
-$class = $configuration->getClass();
-$options = $this->getOptions($configuration);
-if (null === $request->attributes->get($name, false)) {
-$configuration->setIsOptional(true);
-}
-if (false === $object = $this->find($class, $request, $options, $name)) {
-if (false === $object = $this->findOneBy($class, $request, $options)) {
-if ($configuration->isOptional()) {
-$object = null;
-} else {
-throw new \LogicException('Unable to guess how to get a Doctrine instance from the request information.');
-}
-}
-}
-if (null === $object && false === $configuration->isOptional()) {
-throw new NotFoundHttpException(sprintf('%s object not found.', $class));
-}
-$request->attributes->set($name, $object);
-return true;
-}
-protected function find($class, Request $request, $options, $name)
-{
-if ($options['mapping'] || $options['exclude']) {
-return false;
-}
-$id = $this->getIdentifier($request, $options, $name);
-if (false === $id || null === $id) {
-return false;
-}
-if (isset($options['repository_method'])) {
-$method = $options['repository_method'];
-} else {
-$method ='find';
-}
-return $this->getManager($options['entity_manager'], $class)->getRepository($class)->$method($id);
-}
-protected function getIdentifier(Request $request, $options, $name)
-{
-if (isset($options['id'])) {
-if (!is_array($options['id'])) {
-$name = $options['id'];
-} elseif (is_array($options['id'])) {
-$id = array();
-foreach ($options['id'] as $field) {
-$id[$field] = $request->attributes->get($field);
-}
-return $id;
-}
-}
-if ($request->attributes->has($name)) {
-return $request->attributes->get($name);
-}
-if ($request->attributes->has('id')) {
-return $request->attributes->get('id');
-}
-return false;
-}
-protected function findOneBy($class, Request $request, $options)
-{
-if (!$options['mapping']) {
-$keys = $request->attributes->keys();
-$options['mapping'] = $keys ? array_combine($keys, $keys) : array();
-}
-foreach ($options['exclude'] as $exclude) {
-unset($options['mapping'][$exclude]);
-}
-if (!$options['mapping']) {
-return false;
-}
-$criteria = array();
-$em = $this->getManager($options['entity_manager'], $class);
-$metadata = $em->getClassMetadata($class);
-foreach ($options['mapping'] as $attribute => $field) {
-if ($metadata->hasField($field) || ($metadata->hasAssociation($field) && $metadata->isSingleValuedAssociation($field))) {
-$criteria[$field] = $request->attributes->get($attribute);
-}
-}
-if (!$criteria) {
-return false;
-}
-if (isset($options['repository_method'])) {
-$method = $options['repository_method'];
-} else {
-$method ='findOneBy';
-}
-return $em->getRepository($class)->$method($criteria);
-}
-public function supports(ConfigurationInterface $configuration)
-{
-if (!$configuration instanceof ParamConverter) {
-return false;
-}
-if (null === $this->registry || !count($this->registry->getManagers())) {
-return false;
-}
-if (null === $configuration->getClass()) {
-return false;
-}
-$options = $this->getOptions($configuration);
-$em = $this->getManager($options['entity_manager'], $configuration->getClass());
-if (null === $em) {
-return false;
-}
-return ! $em->getMetadataFactory()->isTransient($configuration->getClass());
-}
-protected function getOptions(ConfigurationInterface $configuration)
-{
-return array_replace(array('entity_manager'=> null,'exclude'=> array(),'mapping'=> array(),
-), $configuration->getOptions());
-}
-private function getManager($name, $class)
-{
-if (null === $name) {
-return $this->registry->getManagerForClass($class);
-}
-return $this->registry->getManager($name);
-}
-}
-}
-namespace Sensio\Bundle\FrameworkExtraBundle\Request\ParamConverter
-{
-use Symfony\Component\HttpFoundation\Request;
-class ParamConverterManager
-{
-protected $converters = array();
-protected $namedConverters = array();
-public function apply(Request $request, $configurations)
-{
-if (is_object($configurations)) {
-$configurations = array($configurations);
-}
-foreach ($configurations as $configuration) {
-$this->applyConverter($request, $configuration);
-}
-}
-protected function applyConverter(Request $request, $configuration)
-{
-$value = $request->attributes->get($configuration->getName());
-$className = $configuration->getClass();
-if (is_object($value) && $value instanceof $className) {
-return;
-}
-if ($converterName = $configuration->getConverter()) {
-if (!isset($this->namedConverters[$converterName])) {
-throw new \RuntimeException(sprintf("No converter named '%s' found for conversion of parameter '%s'.",
-$converterName, $configuration->getName()
-));
-}
-$converter = $this->namedConverters[$converterName];
-if (!$converter->supports($configuration)) {
-throw new \RuntimeException(sprintf("Converter '%s' does not support conversion of parameter '%s'.",
-$converterName, $configuration->getName()
-));
-}
-$converter->apply($request, $configuration);
-return;
-}
-foreach ($this->all() as $converter) {
-if ($converter->supports($configuration)) {
-if ($converter->apply($request, $configuration)) {
-return;
-}
-}
-}
-}
-public function add(ParamConverterInterface $converter, $priority = 0, $name = null)
-{
-if ($priority !== null) {
-if (!isset($this->converters[$priority])) {
-$this->converters[$priority] = array();
-}
-$this->converters[$priority][] = $converter;
-}
-if (null !== $name) {
-$this->namedConverters[$name] = $converter;
-}
-}
-public function all()
-{
-krsort($this->converters);
-$converters = array();
-foreach ($this->converters as $all) {
-$converters = array_merge($converters, $all);
-}
-return $converters;
-}
-}
-}
-namespace Sensio\Bundle\FrameworkExtraBundle\EventListener
-{
-use Symfony\Component\DependencyInjection\ContainerInterface;
-use Symfony\Component\HttpKernel\Event\FilterControllerEvent;
-use Symfony\Component\HttpKernel\Event\GetResponseForControllerResultEvent;
-use Symfony\Component\HttpFoundation\StreamedResponse;
-use Sensio\Bundle\FrameworkExtraBundle\Configuration\Template;
-class TemplateListener
-{
-protected $container;
-public function __construct(ContainerInterface $container)
-{
-$this->container = $container;
-}
-public function onKernelController(FilterControllerEvent $event)
-{
-if (!is_array($controller = $event->getController())) {
-return;
-}
-$request = $event->getRequest();
-if (!$configuration = $request->attributes->get('_template')) {
-return;
-}
-if (!$configuration->getTemplate()) {
-$guesser = $this->container->get('sensio_framework_extra.view.guesser');
-$configuration->setTemplate($guesser->guessTemplateName($controller, $request, $configuration->getEngine()));
-}
-$request->attributes->set('_template', $configuration->getTemplate());
-$request->attributes->set('_template_vars', $configuration->getVars());
-$request->attributes->set('_template_streamable', $configuration->isStreamable());
-if (!$configuration->getVars()) {
-$r = new \ReflectionObject($controller[0]);
-$vars = array();
-foreach ($r->getMethod($controller[1])->getParameters() as $param) {
-$vars[] = $param->getName();
-}
-$request->attributes->set('_template_default_vars', $vars);
-}
-}
-public function onKernelView(GetResponseForControllerResultEvent $event)
-{
-$request = $event->getRequest();
-$parameters = $event->getControllerResult();
-$templating = $this->container->get('templating');
-if (null === $parameters) {
-if (!$vars = $request->attributes->get('_template_vars')) {
-if (!$vars = $request->attributes->get('_template_default_vars')) {
-return;
-}
-}
-$parameters = array();
-foreach ($vars as $var) {
-$parameters[$var] = $request->attributes->get($var);
-}
-}
-if (!is_array($parameters)) {
-return $parameters;
-}
-if (!$template = $request->attributes->get('_template')) {
-return $parameters;
-}
-if (!$request->attributes->get('_template_streamable')) {
-$event->setResponse($templating->renderResponse($template, $parameters));
-} else {
-$callback = function () use ($templating, $template, $parameters) {
-return $templating->stream($template, $parameters);
-};
-$event->setResponse(new StreamedResponse($callback));
-}
-}
-}
-}
-namespace Sensio\Bundle\FrameworkExtraBundle\EventListener
-{
-use Symfony\Component\HttpKernel\Event\FilterResponseEvent;
-use Symfony\Component\HttpFoundation\Response;
-class CacheListener
-{
-public function onKernelResponse(FilterResponseEvent $event)
-{
-if (!$configuration = $event->getRequest()->attributes->get('_cache')) {
-return;
-}
-$response = $event->getResponse();
-if (!$response->isSuccessful()) {
-return;
-}
-if (null !== $configuration->getSMaxAge()) {
-$response->setSharedMaxAge($configuration->getSMaxAge());
-}
-if (null !== $configuration->getMaxAge()) {
-$response->setMaxAge($configuration->getMaxAge());
-}
-if (null !== $configuration->getExpires()) {
-$date = \DateTime::createFromFormat('U', strtotime($configuration->getExpires()), new \DateTimeZone('UTC'));
-$response->setExpires($date);
-}
-if (null !== $configuration->getVary()) {
-$response->setVary($configuration->getVary());
-}
-if ($configuration->isPublic()) {
-$response->setPublic();
-}
-$event->setResponse($response);
-}
-}
-}
-namespace JMS\DiExtraBundle\HttpKernel
-{
-use Metadata\ClassHierarchyMetadata;
-use JMS\DiExtraBundle\Metadata\ClassMetadata;
-use CG\Core\DefaultNamingStrategy;
-use CG\Proxy\Enhancer;
-use JMS\AopBundle\DependencyInjection\Compiler\PointcutMatchingPass;
-use JMS\DiExtraBundle\Generator\DefinitionInjectorGenerator;
-use JMS\DiExtraBundle\Generator\LookupMethodClassGenerator;
-use JMS\DiExtraBundle\DependencyInjection\Dumper\PhpDumper;
-use Metadata\MetadataFactory;
-use Symfony\Component\DependencyInjection\Compiler\InlineServiceDefinitionsPass;
-use Symfony\Component\DependencyInjection\ContainerAwareInterface;
-use Symfony\Component\DependencyInjection\Compiler\ResolveDefinitionTemplatesPass;
-use Symfony\Component\DependencyInjection\Parameter;
-use Symfony\Component\DependencyInjection\Reference;
-use Symfony\Component\DependencyInjection\Definition;
-use Symfony\Component\Config\Resource\FileResource;
-use Symfony\Component\DependencyInjection\ContainerBuilder;
-use Symfony\Component\Config\ConfigCache;
-use Symfony\Bundle\FrameworkBundle\Controller\ControllerResolver as BaseControllerResolver;
-class ControllerResolver extends BaseControllerResolver
-{
-protected function createController($controller)
-{
-if (false === $pos = strpos($controller,'::')) {
-$count = substr_count($controller,':');
-if (2 == $count) {
-$controller = $this->parser->parse($controller);
-$pos = strpos($controller,'::');
-} elseif (1 == $count) {
-list($service, $method) = explode(':', $controller);
-return array($this->container->get($service), $method);
-} else {
-throw new \LogicException(sprintf('Unable to parse the controller name "%s".', $controller));
-}
-}
-$class = substr($controller, 0, $pos);
-$method = substr($controller, $pos+2);
-if (!class_exists($class)) {
-throw new \InvalidArgumentException(sprintf('Class "%s" does not exist.', $class));
-}
-$injector = $this->createInjector($class);
-$controller = call_user_func($injector, $this->container);
-if ($controller instanceof ContainerAwareInterface) {
-$controller->setContainer($this->container);
-}
-return array($controller, $method);
-}
-public function createInjector($class)
-{
-$filename = $this->container->getParameter('jms_di_extra.cache_dir').'/controller_injectors/'.str_replace('\\','', $class).'.php';
-$cache = new ConfigCache($filename, $this->container->getParameter('kernel.debug'));
-if (!$cache->isFresh()) {
-$metadata = $this->container->get('jms_di_extra.metadata.metadata_factory')->getMetadataForClass($class);
-if (null === $metadata) {
-$metadata = new ClassHierarchyMetadata();
-$metadata->addClassMetadata(new ClassMetadata($class));
-}
-if (null !== $metadata->getOutsideClassMetadata()->id
-&& 0 !== strpos($metadata->getOutsideClassMetadata()->id,'_jms_di_extra.unnamed.service')) {
-return;
-}
-$this->prepareContainer($cache, $filename, $metadata, $class);
-}
-if ( ! class_exists($class.'__JMSInjector', false)) {
-require $filename;
-}
-return array($class.'__JMSInjector','inject');
-}
-private function prepareContainer($cache, $containerFilename, $metadata, $className)
-{
-$container = new ContainerBuilder();
-$container->setParameter('jms_aop.cache_dir', $this->container->getParameter('jms_di_extra.cache_dir'));
-$def = $container
-->register('jms_aop.interceptor_loader','JMS\AopBundle\Aop\InterceptorLoader')
-->addArgument(new Reference('service_container'))
-->setPublic(false)
-;
-$ref = $metadata->getOutsideClassMetadata()->reflection;
-while ($ref && false !== $filename = $ref->getFilename()) {
-$container->addResource(new FileResource($filename));
-$ref = $ref->getParentClass();
-}
-$definitions = $this->container->get('jms_di_extra.metadata.converter')->convert($metadata);
-$serviceIds = $parameters = array();
-$controllerDef = array_pop($definitions);
-$container->setDefinition('controller', $controllerDef);
-foreach ($definitions as $id => $def) {
-$container->setDefinition($id, $def);
-}
-$this->generateLookupMethods($controllerDef, $metadata);
-$config = $container->getCompilerPassConfig();
-$config->setOptimizationPasses(array());
-$config->setRemovingPasses(array());
-$config->addPass(new ResolveDefinitionTemplatesPass());
-$config->addPass(new PointcutMatchingPass($this->container->get('jms_aop.pointcut_container')->getPointcuts()));
-$config->addPass(new InlineServiceDefinitionsPass());
-$container->compile();
-if (!file_exists($dir = dirname($containerFilename))) {
-if (false === @mkdir($dir, 0777, true)) {
-throw new \RuntimeException(sprintf('Could not create directory "%s".', $dir));
-}
-}
-static $generator;
-if (null === $generator) {
-$generator = new DefinitionInjectorGenerator();
-}
-$cache->write($generator->generate($container->getDefinition('controller'), $className), $container->getResources());
-}
-private function generateLookupMethods($def, $metadata)
-{
-$found = false;
-foreach ($metadata->classMetadata as $cMetadata) {
-if (!empty($cMetadata->lookupMethods)) {
-$found = true;
-break;
-}
-}
-if (!$found) {
-return;
-}
-$generator = new LookupMethodClassGenerator($metadata);
-$outerClass = $metadata->getOutsideClassMetadata()->reflection;
-if ($file = $def->getFile()) {
-$generator->setRequiredFile($file);
-}
-$enhancer = new Enhancer(
-$outerClass,
-array(),
-array(
-$generator,
-)
-);
-$filename = $this->container->getParameter('jms_di_extra.cache_dir').'/lookup_method_classes/'.str_replace('\\','-', $outerClass->name).'.php';
-$enhancer->writeClass($filename);
-$def->setFile($filename);
-$def->setClass($enhancer->getClassName($outerClass));
-$def->addMethodCall('__jmsDiExtra_setContainer', array(new Reference('service_container')));
 }
 }
 }
