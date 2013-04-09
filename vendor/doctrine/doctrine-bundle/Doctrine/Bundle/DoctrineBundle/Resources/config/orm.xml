@@ -83,7 +83,6 @@
         <!-- The configurator cannot be a private service -->
         <service id="doctrine.orm.manager_configurator.abstract" class="%doctrine.orm.manager_configurator.class%" abstract="true">
             <argument type="collection" />
-            <argument type="collection" />
         </service>
 
         <!-- validator -->

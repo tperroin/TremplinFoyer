@@ -62,7 +62,7 @@ class EmailValidator extends ConstraintValidator
     /**
      * Check DNS Records for MX type.
      *
-     * @param string $host Host
+     * @param string $host Hostname
      *
      * @return Boolean
      */
@@ -74,7 +74,7 @@ class EmailValidator extends ConstraintValidator
     /**
      * Check if one of MX, A or AAAA DNS RR exists.
      *
-     * @param string $host Host
+     * @param string $host Hostname
      *
      * @return Boolean
      */

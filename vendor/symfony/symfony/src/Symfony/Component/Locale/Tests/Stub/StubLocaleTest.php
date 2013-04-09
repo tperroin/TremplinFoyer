@@ -11,6 +11,7 @@
 
 namespace Symfony\Component\Locale\Tests\Stub;
 
+use Symfony\Component\Locale\Locale;
 use Symfony\Component\Locale\Stub\StubLocale;
 use Symfony\Component\Locale\Tests\TestCase as LocaleTestCase;
 
@@ -21,7 +22,7 @@ class StubLocaleTest extends LocaleTestCase
      */
     public function testGetDisplayCountriesWithUnsupportedLocale()
     {
-        StubLocale::getDisplayCountries('pt_BR');
+        $countries = StubLocale::getDisplayCountries('pt_BR');
     }
 
     public function testGetDisplayCountries()
@@ -41,7 +42,7 @@ class StubLocaleTest extends LocaleTestCase
      */
     public function testGetDisplayLanguagesWithUnsupportedLocale()
     {
-        StubLocale::getDisplayLanguages('pt_BR');
+        $countries = StubLocale::getDisplayLanguages('pt_BR');
     }
 
     public function testGetDisplayLanguages()
@@ -61,7 +62,7 @@ class StubLocaleTest extends LocaleTestCase
      */
     public function testGetCurrenciesDataWithUnsupportedLocale()
     {
-        StubLocale::getCurrenciesData('pt_BR');
+        $currencies = StubLocale::getCurrenciesData('pt_BR');
     }
 
     public function testGetCurrenciesData()
@@ -96,7 +97,7 @@ class StubLocaleTest extends LocaleTestCase
      */
     public function testGetDisplayLocalesWithUnsupportedLocale()
     {
-        StubLocale::getDisplayLocales('pt');
+        $locales = StubLocale::getDisplayLocales('pt');
     }
 
     public function testGetDisplayLocales()
@@ -112,7 +113,7 @@ class StubLocaleTest extends LocaleTestCase
     }
 
     /**
-     * @expectedException \Symfony\Component\Locale\Exception\MethodNotImplementedException
+     * @expectedException Symfony\Component\Locale\Exception\MethodNotImplementedException
      */
     public function testAcceptFromHttp()
     {
@@ -120,7 +121,7 @@ class StubLocaleTest extends LocaleTestCase
     }
 
     /**
-     * @expectedException \Symfony\Component\Locale\Exception\MethodNotImplementedException
+     * @expectedException Symfony\Component\Locale\Exception\MethodNotImplementedException
      */
     public function testComposeLocale()
     {
@@ -133,7 +134,7 @@ class StubLocaleTest extends LocaleTestCase
     }
 
     /**
-     * @expectedException \Symfony\Component\Locale\Exception\MethodNotImplementedException
+     * @expectedException Symfony\Component\Locale\Exception\MethodNotImplementedException
      */
     public function testFilterMatches()
     {
@@ -141,7 +142,7 @@ class StubLocaleTest extends LocaleTestCase
     }
 
     /**
-     * @expectedException \Symfony\Component\Locale\Exception\MethodNotImplementedException
+     * @expectedException Symfony\Component\Locale\Exception\MethodNotImplementedException
      */
     public function testGetAllVariants()
     {
@@ -154,7 +155,7 @@ class StubLocaleTest extends LocaleTestCase
     }
 
     /**
-     * @expectedException \Symfony\Component\Locale\Exception\MethodNotImplementedException
+     * @expectedException Symfony\Component\Locale\Exception\MethodNotImplementedException
      */
     public function testGetDisplayLanguage()
     {
@@ -162,7 +163,7 @@ class StubLocaleTest extends LocaleTestCase
     }
 
     /**
-     * @expectedException \Symfony\Component\Locale\Exception\MethodNotImplementedException
+     * @expectedException Symfony\Component\Locale\Exception\MethodNotImplementedException
      */
     public function testGetDisplayName()
     {
@@ -170,7 +171,7 @@ class StubLocaleTest extends LocaleTestCase
     }
 
     /**
-     * @expectedException \Symfony\Component\Locale\Exception\MethodNotImplementedException
+     * @expectedException Symfony\Component\Locale\Exception\MethodNotImplementedException
      */
     public function testGetDisplayRegion()
     {
@@ -178,7 +179,7 @@ class StubLocaleTest extends LocaleTestCase
     }
 
     /**
-     * @expectedException \Symfony\Component\Locale\Exception\MethodNotImplementedException
+     * @expectedException Symfony\Component\Locale\Exception\MethodNotImplementedException
      */
     public function testGetDisplayScript()
     {
@@ -186,7 +187,7 @@ class StubLocaleTest extends LocaleTestCase
     }
 
     /**
-     * @expectedException \Symfony\Component\Locale\Exception\MethodNotImplementedException
+     * @expectedException Symfony\Component\Locale\Exception\MethodNotImplementedException
      */
     public function testGetDisplayVariant()
     {
@@ -194,7 +195,7 @@ class StubLocaleTest extends LocaleTestCase
     }
 
     /**
-     * @expectedException \Symfony\Component\Locale\Exception\MethodNotImplementedException
+     * @expectedException Symfony\Component\Locale\Exception\MethodNotImplementedException
      */
     public function testGetKeywords()
     {
@@ -202,7 +203,7 @@ class StubLocaleTest extends LocaleTestCase
     }
 
     /**
-     * @expectedException \Symfony\Component\Locale\Exception\MethodNotImplementedException
+     * @expectedException Symfony\Component\Locale\Exception\MethodNotImplementedException
      */
     public function testGetPrimaryLanguage()
     {
@@ -210,7 +211,7 @@ class StubLocaleTest extends LocaleTestCase
     }
 
     /**
-     * @expectedException \Symfony\Component\Locale\Exception\MethodNotImplementedException
+     * @expectedException Symfony\Component\Locale\Exception\MethodNotImplementedException
      */
     public function testGetRegion()
     {
@@ -218,7 +219,7 @@ class StubLocaleTest extends LocaleTestCase
     }
 
     /**
-     * @expectedException \Symfony\Component\Locale\Exception\MethodNotImplementedException
+     * @expectedException Symfony\Component\Locale\Exception\MethodNotImplementedException
      */
     public function testGetScript()
     {
@@ -226,7 +227,7 @@ class StubLocaleTest extends LocaleTestCase
     }
 
     /**
-     * @expectedException \Symfony\Component\Locale\Exception\MethodNotImplementedException
+     * @expectedException Symfony\Component\Locale\Exception\MethodNotImplementedException
      */
     public function testLookup()
     {
@@ -238,7 +239,7 @@ class StubLocaleTest extends LocaleTestCase
     }
 
     /**
-     * @expectedException \Symfony\Component\Locale\Exception\MethodNotImplementedException
+     * @expectedException Symfony\Component\Locale\Exception\MethodNotImplementedException
      */
     public function testParseLocale()
     {
@@ -246,7 +247,7 @@ class StubLocaleTest extends LocaleTestCase
     }
 
     /**
-     * @expectedException \Symfony\Component\Locale\Exception\MethodNotImplementedException
+     * @expectedException Symfony\Component\Locale\Exception\MethodNotImplementedException
      */
     public function testSetDefault()
     {

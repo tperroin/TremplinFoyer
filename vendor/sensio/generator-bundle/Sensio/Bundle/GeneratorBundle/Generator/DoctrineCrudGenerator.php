@@ -56,7 +56,7 @@ class DoctrineCrudGenerator extends Generator
      *
      * @throws \RuntimeException
      */
-    public function generate(BundleInterface $bundle, $entity, ClassMetadataInfo $metadata, $format, $routePrefix, $needWriteActions, $forceOverwrite)
+    public function generate(BundleInterface $bundle, $entity, ClassMetadataInfo $metadata, $format, $routePrefix, $needWriteActions)
     {
         $this->routePrefix = $routePrefix;
         $this->routeNamePrefix = str_replace('/', '_', $routePrefix);
@@ -75,7 +75,7 @@ class DoctrineCrudGenerator extends Generator
         $this->metadata = $metadata;
         $this->setFormat($format);
 
-        $this->generateControllerClass($forceOverwrite);
+        $this->generateControllerClass();
 
         $dir = sprintf('%s/Resources/views/%s', $this->bundle->getPath(), str_replace('\\', '/', $this->entity));
 
@@ -125,7 +125,7 @@ class DoctrineCrudGenerator extends Generator
      * Generates the routing configuration.
      *
      */
-    protected function generateConfiguration()
+    private function generateConfiguration()
     {
         if (!in_array($this->format, array('yml', 'xml', 'php'))) {
             return;
@@ -138,7 +138,7 @@ class DoctrineCrudGenerator extends Generator
             $this->format
         );
 
-        $this->renderFile($this->skeletonDir, 'config/routing.'.$this->format.'.twig', $target, array(
+        $this->renderFile($this->skeletonDir, 'config/routing.'.$this->format, $target, array(
             'actions'           => $this->actions,
             'route_prefix'      => $this->routePrefix,
             'route_name_prefix' => $this->routeNamePrefix,
@@ -151,7 +151,7 @@ class DoctrineCrudGenerator extends Generator
      * Generates the controller class only.
      *
      */
-    protected function generateControllerClass($forceOverwrite)
+    private function generateControllerClass()
     {
         $dir = $this->bundle->getPath();
 
@@ -166,11 +166,11 @@ class DoctrineCrudGenerator extends Generator
             $entityClass
         );
 
-        if (!$forceOverwrite && file_exists($target)) {
+        if (file_exists($target)) {
             throw new \RuntimeException('Unable to generate the controller as it already exists.');
         }
 
-        $this->renderFile($this->skeletonDir, 'controller.php.twig', $target, array(
+        $this->renderFile($this->skeletonDir, 'controller.php', $target, array(
             'actions'           => $this->actions,
             'route_prefix'      => $this->routePrefix,
             'route_name_prefix' => $this->routeNamePrefix,
@@ -188,7 +188,7 @@ class DoctrineCrudGenerator extends Generator
      * Generates the functional test class only.
      *
      */
-    protected function generateTestClass()
+    private function generateTestClass()
     {
         $parts = explode('\\', $this->entity);
         $entityClass = array_pop($parts);
@@ -197,7 +197,7 @@ class DoctrineCrudGenerator extends Generator
         $dir    = $this->bundle->getPath() .'/Tests/Controller';
         $target = $dir .'/'. str_replace('\\', '/', $entityNamespace).'/'. $entityClass .'ControllerTest.php';
 
-        $this->renderFile($this->skeletonDir, 'tests/test.php.twig', $target, array(
+        $this->renderFile($this->skeletonDir, 'tests/test.php', $target, array(
             'route_prefix'      => $this->routePrefix,
             'route_name_prefix' => $this->routeNamePrefix,
             'entity'            => $this->entity,
@@ -215,9 +215,9 @@ class DoctrineCrudGenerator extends Generator
      *
      * @param string $dir The path to the folder that hosts templates in the bundle
      */
-    protected function generateIndexView($dir)
+    private function generateIndexView($dir)
     {
-        $this->renderFile($this->skeletonDir, 'views/index.html.twig.twig', $dir.'/index.html.twig', array(
+        $this->renderFile($this->skeletonDir, 'views/index.html.twig', $dir.'/index.html.twig', array(
             'dir'               => $this->skeletonDir,
             'entity'            => $this->entity,
             'fields'            => $this->metadata->fieldMappings,
@@ -233,9 +233,9 @@ class DoctrineCrudGenerator extends Generator
      *
      * @param string $dir The path to the folder that hosts templates in the bundle
      */
-    protected function generateShowView($dir)
+    private function generateShowView($dir)
     {
-        $this->renderFile($this->skeletonDir, 'views/show.html.twig.twig', $dir.'/show.html.twig', array(
+        $this->renderFile($this->skeletonDir, 'views/show.html.twig', $dir.'/show.html.twig', array(
             'dir'               => $this->skeletonDir,
             'entity'            => $this->entity,
             'fields'            => $this->metadata->fieldMappings,
@@ -250,9 +250,9 @@ class DoctrineCrudGenerator extends Generator
      *
      * @param string $dir The path to the folder that hosts templates in the bundle
      */
-    protected function generateNewView($dir)
+    private function generateNewView($dir)
     {
-        $this->renderFile($this->skeletonDir, 'views/new.html.twig.twig', $dir.'/new.html.twig', array(
+        $this->renderFile($this->skeletonDir, 'views/new.html.twig', $dir.'/new.html.twig', array(
             'dir'               => $this->skeletonDir,
             'route_prefix'      => $this->routePrefix,
             'route_name_prefix' => $this->routeNamePrefix,
@@ -266,9 +266,9 @@ class DoctrineCrudGenerator extends Generator
      *
      * @param string $dir The path to the folder that hosts templates in the bundle
      */
-    protected function generateEditView($dir)
+    private function generateEditView($dir)
     {
-        $this->renderFile($this->skeletonDir, 'views/edit.html.twig.twig', $dir.'/edit.html.twig', array(
+        $this->renderFile($this->skeletonDir, 'views/edit.html.twig', $dir.'/edit.html.twig', array(
             'dir'               => $this->skeletonDir,
             'route_prefix'      => $this->routePrefix,
             'route_name_prefix' => $this->routeNamePrefix,
@@ -282,7 +282,7 @@ class DoctrineCrudGenerator extends Generator
      *
      * @return array
      */
-    protected function getRecordActions()
+    private function getRecordActions()
     {
         return array_filter($this->actions, function($item) {
             return in_array($item, array('show', 'edit'));

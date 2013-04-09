@@ -1,6 +1,6 @@
 <?php
 
-/* @WebProfiler/Profiler/toolbar.html.twig */
+/* WebProfilerBundle:Profiler:toolbar.html.twig */
 class __TwigTemplate_9c719eae71a4143aa3d4915a06bb17b7 extends Twig_Template
 {
     public function __construct(Twig_Environment $env)
@@ -21,90 +21,44 @@ class __TwigTemplate_9c719eae71a4143aa3d4915a06bb17b7 extends Twig_Template
         // line 2
         if (("normal" != $this->getContext($context, "position"))) {
             // line 3
-            echo "    <div id=\"sfMiniToolbar-";
-            echo twig_escape_filter($this->env, $this->getContext($context, "token"), "html", null, true);
-            echo "\" class=\"sf-minitoolbar\">
-        <a href=\"javascript:void(0);\" title=\"Show Symfony toolbar\" onclick=\"
-            var elem = this.parentNode;
-            if (elem.style.display == 'none') {
-                document.getElementById('sfToolbarMainContent-";
-            // line 7
-            echo twig_escape_filter($this->env, $this->getContext($context, "token"), "html", null, true);
-            echo "').style.display = 'none';
-                document.getElementById('sfToolbarClearer-";
-            // line 8
-            echo twig_escape_filter($this->env, $this->getContext($context, "token"), "html", null, true);
-            echo "').style.display = 'none';
-                elem.style.display = 'block';
-            } else {
-                document.getElementById('sfToolbarMainContent-";
-            // line 11
-            echo twig_escape_filter($this->env, $this->getContext($context, "token"), "html", null, true);
-            echo "').style.display = 'block';
-                document.getElementById('sfToolbarClearer-";
-            // line 12
-            echo twig_escape_filter($this->env, $this->getContext($context, "token"), "html", null, true);
-            echo "').style.display = 'block';
-                elem.style.display = 'none'
-            }
-
-            Sfjs.setPreference('toolbar/displayState', 'block');
-        \">
-            <img width=\"26\" height=\"28\" alt=\"Symfony\" src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABoAAAAcCAMAAABIzV/hAAACZFBMVEUwLjL///////////////////////////////////////////////////////////////////+Eg4b///+Ni46Xlpj///////////+op6n///////////////////////////////////////////////////////////9ZWFv///////9qaWz///////+mpaf///////////////9ZWFv///////////////9PTVH///91dHb////////////////////g4OD///9NTE+Ih4r///////+Ni47///////92dHeRkJLk5OTLy8xlY2b///////+cm53///////+5ubr////o6Oj////////U1NT///9DQURsa22rq6ysq61hX2L///+LioxTUVVBP0NEQkZpZ2rGxsf///9ram3////s7O2SkZNfXmFxcHKmpae4uLnKysuXlpiop6l3dXiIh4pYVlmrq6ycm52trK7Nzc48Oj5dW158e36dnJ49Oz/Pz9BiYGPAv8BDQUTQz9BVU1aioaNHRUnBwcJXVVk6ODxJR0t3dnmko6U8Oj6lpKY9Oz+0tLXDwsRQTlF7en1QTlHi4eJhX2LFxcZTUVViYGNwb3J+fX83NTlFQ0dUUlW4t7icm524uLk8Oj5YVlmPjpBLSU2enZ9aWVw/PkFBP0NdW153dnk0MjZQTlE1MzdQT1JdXF9ram15eHqGhYdDQkV5eHo2NThEQkZRUFNFQ0dta244NjpGREhTUVU5NztUUlVhX2JubG9HRUlVU1ZiYGM7OTxIRkk7OT1IR0o8Oj4wLjI9Oz8YdG13AAAAynRSTlMAAAEDBAUGCgsMDQ4QEhMUGRobGx0gISIkJiYnKCktLi8wMjM0NTk6Ozw+P0NFSEpLTE5PUFBTWlteXmBiZGVmaWxtcHBxc3R0dnl5fX+BgoOGi46Pj5CRmZqanZ6eoKeoq6ytsLCwsrO0tbe5urq8vL+/wsTFx8jJycvLy8vM0NHR0tLU1NfX2NnZ2trc3N3d3eHh4uLl5ebm5ubn5+fo6urt7e3u7vDx8/Pz9PT19fX19fX29vf39/j4+fn5+vr6+vv7+/z8/f3+yR5EtwAAAbVJREFUeNpl0mVXVFEYhuF3zhkOFqMjYmCi2MUYYKGIYiJ2YCd2t4IBFqgoKjZ2jg3igI2KyO2f8sTMngGvj/te71r7wyMuk4jofZccAihcMzJKXDYnuYcVotyeYKiktV5LA0faaE7S4s7TyMsBupnMcoH/vO6gmanJaiLV1Py+Xwn5zc0fjCbSi2LI2QdkGdLyFBG+rHwMzz4BD7wyGEfFk8pfsD2TkGmyFNvFHfDj55v02VD6DcteOYylatY8oG7boA2QV4vlklzB8tU3/DIwo+dWv58guY5tRcLMtwSGdi1DkTvAn9Jqsgbu4kafRBqlV4sDFCWuIjdhMsp7yQU49rB28/QPLOu2DuWqLMfmfw6M716GskdGVRMSGDKRsEzpvZ+Qs0lFKDd94s2oArh2F7K3oNQt6ChGr5x6+Dx3J7d2E3Ygqam4PCkngRNnngYIO5cWq4lLb5t+vJ6GiifFR1nbMNqP3fSOCN8PZnQynEW5W/nmHy0PXv79eHpRSjsjtEOtWZcRc9YXlNx7VFKwceGYHjG6s0Ob3iK+X3LqlKnjkvt39rjD6w3W6BhvrCdaVw//ADrWicJIvtkmAAAAAElFTkSuQmCC\"/>
-        </a>
-    </div>
-    <style type=\"text/css\">
-        ";
-            // line 22
-            $this->env->loadTemplate("@WebProfiler/Profiler/toolbar.css.twig")->display(array_merge($context, array("position" => $this->getContext($context, "position"), "floatable" => true)));
-            // line 23
-            echo "    </style>
-    <div id=\"sfToolbarClearer-";
-            // line 24
-            echo twig_escape_filter($this->env, $this->getContext($context, "token"), "html", null, true);
-            echo "\" style=\"clear: both; height: 38px;\"></div>
+            echo "    ";
+            $this->env->loadTemplate("WebProfilerBundle:Profiler:toolbar_style.html.twig")->display(array_merge($context, array("position" => $this->getContext($context, "position"), "floatable" => true)));
+            // line 4
+            echo "    <div style=\"clear: both; height: 38px;\"></div>
 ";
         }
-        // line 26
+        // line 6
         echo "
-<div id=\"sfToolbarMainContent-";
-        // line 27
-        echo twig_escape_filter($this->env, $this->getContext($context, "token"), "html", null, true);
-        echo "\" class=\"sf-toolbarreset\">
+<div class=\"sf-toolbarreset\">
     ";
-        // line 28
+        // line 8
         $context['_parent'] = (array) $context;
         $context['_seq'] = twig_ensure_traversable($this->getContext($context, "templates"));
         foreach ($context['_seq'] as $context["name"] => $context["template"]) {
-            // line 29
+            // line 9
             echo "        ";
             echo twig_escape_filter($this->env, $this->getAttribute($this->getContext($context, "template"), "renderblock", array(0 => "toolbar", 1 => array("collector" => $this->getAttribute($this->getContext($context, "profile"), "getcollector", array(0 => $this->getContext($context, "name")), "method"), "profiler_url" => $this->getContext($context, "profiler_url"), "token" => $this->getAttribute($this->getContext($context, "profile"), "token"), "name" => $this->getContext($context, "name"))), "method"), "html", null, true);
-            // line 35
+            // line 15
             echo "
     ";
         }
         $_parent = $context['_parent'];
         unset($context['_seq'], $context['_iterated'], $context['name'], $context['template'], $context['_parent'], $context['loop']);
         $context = array_merge($_parent, array_intersect_key($context, $_parent));
-        // line 37
+        // line 17
         echo "
     ";
-        // line 38
+        // line 18
         if (("normal" != $this->getContext($context, "position"))) {
-            // line 39
+            // line 19
             echo "        <a class=\"hide-button\" title=\"Close Toolbar\" onclick=\"
             var p = this.parentNode;
             p.style.display = 'none';
             (p.previousElementSibling || p.previousSibling).style.display = 'none';
-            document.getElementById('sfMiniToolbar-";
-            // line 43
-            echo twig_escape_filter($this->env, $this->getContext($context, "token"), "html", null, true);
-            echo "').style.display = 'block';
-            Sfjs.setPreference('toolbar/displayState', 'none');
         \"></a>
     ";
         }
-        // line 47
+        // line 25
         echo "</div>
 <!-- END of Symfony2 Web Debug Toolbar -->
 ";
@@ -112,7 +66,7 @@ class __TwigTemplate_9c719eae71a4143aa3d4915a06bb17b7 extends Twig_Template
 
     public function getTemplateName()
     {
-        return "@WebProfiler/Profiler/toolbar.html.twig";
+        return "WebProfilerBundle:Profiler:toolbar.html.twig";
     }
 
     public function isTraitable()
@@ -122,6 +76,6 @@ class __TwigTemplate_9c719eae71a4143aa3d4915a06bb17b7 extends Twig_Template
 
     public function getDebugInfo()
     {
-        return array (  24 => 3,  19 => 1,  152 => 64,  137 => 60,  94 => 38,  77 => 28,  480 => 162,  474 => 161,  469 => 158,  461 => 155,  457 => 153,  453 => 151,  444 => 149,  440 => 148,  437 => 147,  435 => 146,  430 => 144,  427 => 143,  423 => 142,  413 => 134,  407 => 131,  402 => 130,  398 => 129,  387 => 122,  384 => 121,  381 => 120,  379 => 119,  368 => 112,  365 => 111,  360 => 109,  337 => 103,  314 => 99,  294 => 90,  268 => 85,  264 => 84,  252 => 80,  247 => 78,  241 => 77,  220 => 70,  214 => 69,  208 => 68,  169 => 60,  132 => 51,  128 => 49,  93 => 38,  71 => 17,  183 => 70,  160 => 66,  135 => 47,  126 => 51,  114 => 42,  78 => 21,  203 => 78,  189 => 71,  149 => 51,  144 => 62,  133 => 42,  95 => 39,  86 => 33,  48 => 8,  57 => 11,  51 => 10,  34 => 4,  31 => 3,  791 => 473,  788 => 472,  777 => 470,  773 => 469,  769 => 467,  756 => 466,  730 => 461,  727 => 460,  708 => 458,  691 => 457,  687 => 455,  683 => 454,  679 => 453,  675 => 452,  671 => 451,  667 => 450,  663 => 449,  660 => 448,  658 => 447,  641 => 446,  630 => 445,  615 => 440,  610 => 438,  606 => 437,  603 => 436,  601 => 435,  587 => 434,  550 => 399,  532 => 396,  515 => 395,  512 => 394,  510 => 393,  505 => 391,  500 => 389,  196 => 92,  182 => 66,  176 => 64,  173 => 70,  170 => 84,  163 => 82,  68 => 22,  62 => 27,  28 => 3,  344 => 119,  332 => 116,  321 => 112,  318 => 111,  315 => 110,  309 => 97,  306 => 107,  300 => 105,  297 => 104,  291 => 102,  283 => 88,  278 => 86,  274 => 97,  263 => 95,  258 => 81,  224 => 71,  136 => 71,  122 => 43,  117 => 47,  112 => 35,  109 => 44,  104 => 32,  85 => 25,  75 => 23,  58 => 25,  44 => 10,  178 => 66,  175 => 65,  161 => 63,  158 => 80,  154 => 54,  125 => 44,  121 => 50,  118 => 49,  87 => 41,  49 => 14,  46 => 12,  27 => 3,  91 => 33,  63 => 18,  385 => 160,  382 => 159,  374 => 116,  367 => 156,  363 => 155,  359 => 153,  357 => 152,  354 => 151,  351 => 150,  349 => 149,  339 => 146,  336 => 145,  330 => 141,  324 => 113,  322 => 101,  317 => 135,  311 => 131,  308 => 130,  303 => 106,  292 => 121,  289 => 120,  286 => 119,  284 => 118,  279 => 115,  277 => 114,  272 => 111,  270 => 110,  265 => 96,  261 => 105,  255 => 93,  249 => 100,  244 => 136,  242 => 96,  237 => 93,  231 => 83,  228 => 88,  225 => 87,  223 => 86,  218 => 83,  212 => 78,  206 => 77,  204 => 76,  199 => 67,  193 => 73,  190 => 76,  187 => 70,  180 => 63,  174 => 65,  171 => 61,  166 => 56,  159 => 53,  151 => 57,  148 => 63,  143 => 56,  140 => 55,  107 => 36,  103 => 37,  100 => 40,  97 => 39,  88 => 25,  82 => 22,  76 => 28,  61 => 23,  39 => 6,  36 => 8,  79 => 21,  72 => 27,  69 => 26,  54 => 14,  47 => 9,  42 => 11,  40 => 11,  37 => 10,  22 => 2,  246 => 32,  164 => 67,  157 => 56,  145 => 74,  139 => 50,  131 => 45,  120 => 40,  115 => 39,  111 => 45,  108 => 47,  106 => 33,  101 => 43,  98 => 31,  92 => 33,  83 => 35,  80 => 29,  74 => 14,  66 => 11,  60 => 13,  55 => 24,  52 => 12,  50 => 10,  41 => 19,  32 => 7,  29 => 3,  409 => 132,  400 => 180,  396 => 179,  393 => 126,  388 => 177,  386 => 176,  378 => 170,  376 => 158,  369 => 165,  362 => 110,  355 => 106,  348 => 153,  341 => 105,  334 => 145,  327 => 114,  312 => 98,  305 => 95,  298 => 91,  293 => 118,  288 => 101,  285 => 89,  276 => 113,  273 => 112,  271 => 111,  262 => 104,  259 => 103,  251 => 101,  248 => 96,  243 => 92,  240 => 92,  235 => 74,  229 => 73,  221 => 85,  219 => 84,  209 => 82,  202 => 77,  195 => 71,  191 => 67,  188 => 90,  185 => 74,  177 => 65,  172 => 64,  168 => 66,  165 => 64,  162 => 62,  156 => 65,  153 => 77,  150 => 55,  147 => 58,  141 => 61,  134 => 54,  130 => 41,  123 => 50,  119 => 42,  116 => 36,  113 => 48,  105 => 34,  102 => 41,  99 => 30,  96 => 37,  90 => 37,  84 => 28,  81 => 23,  73 => 19,  70 => 20,  67 => 15,  64 => 24,  59 => 22,  53 => 12,  45 => 8,  43 => 12,  38 => 6,  35 => 5,  33 => 4,  30 => 3,);
+        return array (  24 => 3,  19 => 1,  173 => 70,  156 => 65,  94 => 38,  479 => 162,  473 => 161,  468 => 158,  460 => 155,  456 => 153,  452 => 151,  443 => 149,  439 => 148,  436 => 147,  434 => 146,  429 => 144,  426 => 143,  422 => 142,  412 => 134,  408 => 132,  406 => 131,  401 => 130,  397 => 129,  392 => 126,  386 => 122,  383 => 121,  380 => 120,  378 => 119,  373 => 116,  367 => 112,  364 => 111,  361 => 110,  359 => 109,  336 => 103,  321 => 101,  313 => 99,  304 => 95,  297 => 91,  293 => 90,  284 => 89,  277 => 86,  267 => 85,  263 => 84,  257 => 81,  251 => 80,  246 => 78,  223 => 71,  219 => 70,  213 => 69,  181 => 66,  168 => 60,  144 => 62,  141 => 61,  126 => 51,  114 => 42,  109 => 44,  78 => 21,  157 => 56,  136 => 44,  133 => 43,  57 => 11,  34 => 4,  31 => 6,  786 => 466,  783 => 465,  772 => 463,  768 => 462,  764 => 460,  751 => 459,  725 => 454,  722 => 453,  703 => 451,  686 => 450,  682 => 448,  678 => 447,  674 => 446,  670 => 445,  666 => 444,  662 => 443,  659 => 442,  657 => 441,  640 => 440,  629 => 439,  614 => 434,  609 => 432,  605 => 431,  602 => 430,  588 => 429,  556 => 399,  538 => 396,  521 => 395,  518 => 394,  516 => 393,  511 => 391,  506 => 389,  250 => 136,  194 => 90,  179 => 85,  161 => 79,  159 => 78,  146 => 58,  142 => 56,  137 => 60,  124 => 59,  117 => 47,  99 => 43,  85 => 25,  53 => 22,  45 => 8,  28 => 3,  205 => 93,  178 => 66,  176 => 65,  170 => 61,  160 => 66,  132 => 47,  102 => 41,  90 => 28,  81 => 22,  204 => 71,  191 => 70,  185 => 68,  167 => 64,  164 => 67,  153 => 54,  147 => 55,  138 => 45,  134 => 54,  127 => 52,  122 => 43,  95 => 34,  91 => 40,  87 => 34,  84 => 28,  49 => 17,  27 => 4,  77 => 28,  71 => 17,  68 => 22,  62 => 25,  58 => 16,  56 => 23,  44 => 10,  388 => 160,  385 => 159,  379 => 158,  377 => 157,  370 => 156,  366 => 155,  362 => 153,  360 => 152,  357 => 151,  354 => 106,  352 => 149,  344 => 147,  342 => 146,  339 => 145,  330 => 140,  327 => 139,  320 => 135,  314 => 131,  311 => 98,  308 => 97,  306 => 128,  301 => 125,  292 => 120,  289 => 119,  287 => 118,  282 => 88,  280 => 114,  275 => 111,  273 => 110,  268 => 107,  264 => 105,  258 => 103,  254 => 101,  247 => 97,  240 => 77,  234 => 74,  231 => 88,  226 => 86,  221 => 83,  215 => 79,  212 => 78,  209 => 73,  207 => 68,  202 => 92,  196 => 69,  193 => 68,  190 => 67,  188 => 87,  183 => 63,  177 => 59,  174 => 67,  171 => 62,  169 => 82,  162 => 57,  143 => 48,  130 => 42,  107 => 36,  103 => 37,  97 => 39,  88 => 39,  82 => 19,  79 => 23,  76 => 17,  73 => 19,  67 => 15,  61 => 18,  47 => 9,  36 => 5,  70 => 20,  63 => 16,  46 => 7,  39 => 9,  22 => 2,  163 => 59,  155 => 58,  152 => 64,  149 => 48,  145 => 57,  139 => 55,  123 => 50,  120 => 50,  115 => 44,  111 => 45,  108 => 31,  106 => 36,  101 => 32,  98 => 31,  96 => 31,  92 => 33,  80 => 29,  74 => 32,  64 => 14,  55 => 9,  52 => 18,  50 => 10,  43 => 9,  41 => 8,  37 => 8,  32 => 4,  29 => 3,  356 => 163,  347 => 160,  343 => 159,  340 => 105,  335 => 157,  333 => 141,  325 => 138,  323 => 149,  316 => 145,  309 => 141,  302 => 137,  295 => 121,  288 => 129,  281 => 125,  274 => 121,  259 => 109,  252 => 100,  245 => 96,  238 => 97,  228 => 73,  225 => 88,  217 => 83,  214 => 82,  211 => 81,  206 => 78,  203 => 77,  198 => 67,  192 => 72,  184 => 70,  182 => 86,  172 => 64,  165 => 58,  158 => 56,  154 => 75,  151 => 53,  148 => 63,  140 => 42,  135 => 47,  131 => 51,  128 => 50,  125 => 44,  119 => 42,  116 => 35,  113 => 40,  110 => 50,  104 => 35,  100 => 40,  93 => 28,  89 => 26,  86 => 33,  83 => 28,  75 => 23,  72 => 22,  69 => 20,  66 => 28,  60 => 13,  54 => 19,  51 => 10,  48 => 8,  42 => 15,  38 => 6,  35 => 8,  33 => 4,  30 => 3,);
     }
 }

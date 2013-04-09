@@ -13,6 +13,7 @@ namespace Symfony\Bundle\TwigBundle;
 
 use Symfony\Bridge\Twig\TwigEngine as BaseEngine;
 use Symfony\Bundle\FrameworkBundle\Templating\EngineInterface;
+use Symfony\Bundle\FrameworkBundle\Templating\GlobalVariables;
 use Symfony\Bundle\FrameworkBundle\Templating\TemplateReference;
 use Symfony\Component\Templating\TemplateNameParserInterface;
 use Symfony\Component\HttpFoundation\Response;
@@ -33,12 +34,17 @@ class TwigEngine extends BaseEngine implements EngineInterface
      * @param \Twig_Environment           $environment A \Twig_Environment instance
      * @param TemplateNameParserInterface $parser      A TemplateNameParserInterface instance
      * @param FileLocatorInterface        $locator     A FileLocatorInterface instance
+     * @param GlobalVariables|null        $globals     A GlobalVariables instance or null
      */
-    public function __construct(\Twig_Environment $environment, TemplateNameParserInterface $parser, FileLocatorInterface $locator)
+    public function __construct(\Twig_Environment $environment, TemplateNameParserInterface $parser, FileLocatorInterface $locator, GlobalVariables $globals = null)
     {
         parent::__construct($environment, $parser);
 
         $this->locator = $locator;
+
+        if (null !== $globals) {
+            $environment->addGlobal('app', $globals);
+        }
     }
 
     public function setDefaultEscapingStrategy($strategy)
@@ -71,7 +77,6 @@ class TwigEngine extends BaseEngine implements EngineInterface
      *
      * @throws \InvalidArgumentException if the template does not exist
      * @throws \RuntimeException         if the template cannot be rendered
-     * @throws \Twig_Error
      */
     public function render($name, array $parameters = array())
     {

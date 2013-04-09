@@ -18,7 +18,7 @@ abstract class AbstractTableLayoutTest extends AbstractLayoutTest
     public function testRow()
     {
         $form = $this->factory->createNamed('name', 'text');
-        $form->addError(new FormError('[trans]Error![/trans]'));
+        $form->addError(new FormError('Error!'));
         $view = $form->createView();
         $html = $this->renderRow($view);
 
@@ -34,25 +34,6 @@ abstract class AbstractTableLayoutTest extends AbstractLayoutTest
                     [count(./li)=1]
                 /following-sibling::input[@id="name"]
             ]
-    ]
-'
-        );
-    }
-
-    public function testLabelIsNotRenderedWhenSetToFalse()
-    {
-        $form = $this->factory->createNamed('name', 'text', null, array(
-            'label' => false
-        ));
-        $html = $this->renderRow($form->createView());
-
-        $this->assertMatchesXpath($html,
-'/tr
-    [
-        ./td
-            [count(//label)=0]
-        /following-sibling::td
-            [./input[@id="name"]]
     ]
 '
         );
@@ -91,7 +72,7 @@ abstract class AbstractTableLayoutTest extends AbstractLayoutTest
     public function testRepeatedRowWithErrors()
     {
         $form = $this->factory->createNamed('name', 'repeated');
-        $form->addError(new FormError('[trans]Error![/trans]'));
+        $form->addError(new FormError('Error!'));
         $view = $form->createView();
         $html = $this->renderRow($view);
 
@@ -250,7 +231,7 @@ abstract class AbstractTableLayoutTest extends AbstractLayoutTest
             )
             ->getForm();
 
-        $form->get('child')->addError(new FormError('[trans]Error![/trans]'));
+        $form->get('child')->addError(new FormError('Error!'));
 
         $this->assertWidgetMatchesXpath($form->createView(), array(),
 '/table

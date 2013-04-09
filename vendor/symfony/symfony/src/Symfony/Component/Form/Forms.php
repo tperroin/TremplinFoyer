@@ -12,6 +12,7 @@
 namespace Symfony\Component\Form;
 
 use Symfony\Component\Form\Extension\Core\CoreExtension;
+use Symfony\Component\Form\Extension\HttpFoundation\HttpFoundationExtension;
 
 /**
  * Entry point of the Form component.

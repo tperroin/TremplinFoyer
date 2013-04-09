@@ -23,7 +23,7 @@ use Symfony\Component\Validator\Exception\ValidatorException;
 abstract class ConstraintValidator implements ConstraintValidatorInterface
 {
     /**
-     * @var ExecutionContextInterface
+     * @var ExecutionContext
      */
     protected $context;
 
@@ -44,7 +44,7 @@ abstract class ConstraintValidator implements ConstraintValidatorInterface
     /**
      * {@inheritDoc}
      */
-    public function initialize(ExecutionContextInterface $context)
+    public function initialize(ExecutionContext $context)
     {
         $this->context = $context;
         $this->messageTemplate = '';
@@ -58,8 +58,6 @@ abstract class ConstraintValidator implements ConstraintValidatorInterface
      */
     public function getMessageTemplate()
     {
-        trigger_error('getMessageTemplate() is deprecated since version 2.1 and will be removed in 2.3.', E_USER_DEPRECATED);
-
         return $this->messageTemplate;
     }
 
@@ -70,8 +68,6 @@ abstract class ConstraintValidator implements ConstraintValidatorInterface
      */
     public function getMessageParameters()
     {
-        trigger_error('getMessageParameters() is deprecated since version 2.1 and will be removed in 2.3.', E_USER_DEPRECATED);
-
         return $this->messageParameters;
     }
 
@@ -82,8 +78,6 @@ abstract class ConstraintValidator implements ConstraintValidatorInterface
      */
     protected function setMessage($template, array $parameters = array())
     {
-        trigger_error('setMessage() is deprecated since version 2.1 and will be removed in 2.3.', E_USER_DEPRECATED);
-
         $this->messageTemplate = $template;
         $this->messageParameters = $parameters;
 
@@ -103,8 +97,6 @@ abstract class ConstraintValidator implements ConstraintValidatorInterface
      */
     public function validate($value, Constraint $constraint)
     {
-        trigger_error('isValid() is deprecated since version 2.1 and will be removed in 2.3. Implement validate() instead.', E_USER_DEPRECATED);
-
         return $this->isValid($value, $constraint);
     }
 

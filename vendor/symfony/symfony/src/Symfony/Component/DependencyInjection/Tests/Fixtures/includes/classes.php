@@ -7,23 +7,10 @@ function sc_configure($instance)
 
 class BarClass
 {
-    protected $baz;
-
-    public function setBaz(BazClass $baz)
-    {
-        $this->baz = $baz;
-    }
 }
 
 class BazClass
 {
-    protected $foo;
-
-    public function setFoo(Foo $foo)
-    {
-        $this->foo = $foo;
-    }
-
     public function configure($instance)
     {
         $instance->configure();

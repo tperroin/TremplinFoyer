@@ -30,12 +30,9 @@ class AnnotatedRouteControllerLoader extends AnnotationClassLoader
      * Configures the _controller default parameter and eventually the _method
      * requirement of a given Route instance.
      *
-     * @param Route             $route  A route instance
-     * @param \ReflectionClass  $class  A ReflectionClass instance
-     * @param \ReflectionMethod $method A ReflectionClass method
-     * @param mixed             $annot  The annotation class instance
-     *
-     * @throws \LogicException When the service option is specified on a method
+     * @param Route            $route  A Route instance
+     * @param ReflectionClass  $class  A ReflectionClass instance
+     * @param ReflectionMethod $method A ReflectionClass method
      */
     protected function configureRoute(Route $route, \ReflectionClass $class, \ReflectionMethod $method, $annot)
     {
@@ -51,8 +48,6 @@ class AnnotatedRouteControllerLoader extends AnnotationClassLoader
         foreach ($this->reader->getMethodAnnotations($method) as $configuration) {
             if ($configuration instanceof Method) {
                 $route->setRequirement('_method', implode('|', $configuration->getMethods()));
-            } elseif ($configuration instanceof FrameworkExtraBundleRoute && $configuration->getService()) {
-                throw new \LogicException('The service option can only be specified at class level.');
             }
         }
     }
@@ -60,10 +55,9 @@ class AnnotatedRouteControllerLoader extends AnnotationClassLoader
     /**
      * Makes the default route name more sane by removing common keywords.
      *
-     * @param  \ReflectionClass  $class  A ReflectionClass instance
-     * @param  \ReflectionMethod $method A ReflectionMethod instance
-     *
-     * @return string The default route name
+     * @param ReflectionClass  $class  A ReflectionClass instance
+     * @param ReflectionMethod $method A ReflectionMethod instance
+     * @return string
      */
     protected function getDefaultRouteName(\ReflectionClass $class, \ReflectionMethod $method)
     {

@@ -22,7 +22,7 @@ use Symfony\Component\Security\Core\Exception\CookieTheftException;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Cookie;
-use Psr\Log\LoggerInterface;
+use Symfony\Component\HttpKernel\Log\LoggerInterface;
 
 /**
  * Base class implementing the RememberMeServicesInterface
@@ -47,8 +47,6 @@ abstract class AbstractRememberMeServices implements RememberMeServicesInterface
      * @param string          $providerKey
      * @param array           $options
      * @param LoggerInterface $logger
-     *
-     * @throws \InvalidArgumentException
      */
     public function __construct(array $userProviders, $key, $providerKey, array $options = array(), LoggerInterface $logger = null)
     {
@@ -91,9 +89,7 @@ abstract class AbstractRememberMeServices implements RememberMeServicesInterface
      *
      * @param Request $request
      *
-     * @return TokenInterface|null
-     *
-     * @throws CookieTheftException
+     * @return TokenInterface
      */
     final public function autoLogin(Request $request)
     {
@@ -129,7 +125,7 @@ abstract class AbstractRememberMeServices implements RememberMeServicesInterface
             }
         } catch (UnsupportedUserException $unSupported) {
             if (null !== $this->logger) {
-                $this->logger->warning('User class for remember-me cookie not supported.');
+                $this->logger->warn('User class for remember-me cookie not supported.');
             }
         } catch (AuthenticationException $invalid) {
             if (null !== $this->logger) {
@@ -176,9 +172,6 @@ abstract class AbstractRememberMeServices implements RememberMeServicesInterface
      */
     final public function loginSuccess(Request $request, Response $response, TokenInterface $token)
     {
-        // Make sure any old remember-me cookies are cancelled
-        $this->cancelCookie($request);
-
         if (!$token->getUser() instanceof UserInterface) {
             if (null !== $this->logger) {
                 $this->logger->debug('Remember-me ignores token since it does not contain a UserInterface implementation.');
@@ -198,12 +191,6 @@ abstract class AbstractRememberMeServices implements RememberMeServicesInterface
         if (null !== $this->logger) {
             $this->logger->debug('Remember-me was requested; setting cookie.');
         }
-
-        // Remove attribute from request that sets a NULL cookie.
-        // It was set by $this->cancelCookie()
-        // (cancelCookie does other things too for some RememberMeServices
-        // so we should still call it at the start of this method)
-        $request->attributes->remove(self::COOKIE_ATTR_NAME);
 
         $this->onLoginSuccess($request, $response, $token);
     }

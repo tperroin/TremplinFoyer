@@ -11,8 +11,6 @@
 
 namespace Symfony\Component\Config;
 
-use Symfony\Component\Config\Resource\ResourceInterface;
-
 /**
  * ConfigCache manages PHP cache files.
  *
@@ -85,8 +83,8 @@ class ConfigCache
     /**
      * Writes cache.
      *
-     * @param string              $content  The content to write in the cache
-     * @param ResourceInterface[] $metadata An array of ResourceInterface instances
+     * @param string $content  The content to write in the cache
+     * @param array  $metadata An array of ResourceInterface instances
      *
      * @throws \RuntimeException When cache file can't be wrote
      */
@@ -101,7 +99,7 @@ class ConfigCache
             throw new \RuntimeException(sprintf('Unable to write in the %s directory', $dir));
         }
 
-        $tmpFile = tempnam($dir, basename($this->file));
+        $tmpFile = tempnam(dirname($this->file), basename($this->file));
         if (false !== @file_put_contents($tmpFile, $content) && @rename($tmpFile, $this->file)) {
             @chmod($this->file, 0666 & ~umask());
         } else {
@@ -110,7 +108,7 @@ class ConfigCache
 
         if (null !== $metadata && true === $this->debug) {
             $file = $this->file.'.meta';
-            $tmpFile = tempnam($dir, basename($file));
+            $tmpFile = tempnam(dirname($file), basename($file));
             if (false !== @file_put_contents($tmpFile, serialize($metadata)) && @rename($tmpFile, $file)) {
                 @chmod($file, 0666 & ~umask());
             }

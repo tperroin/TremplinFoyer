@@ -107,46 +107,18 @@ class NumberToLocalizedStringTransformer implements DataTransformerInterface
             throw new TransformationFailedException('"NaN" is not a valid number');
         }
 
-        $position = 0;
         $formatter = $this->getNumberFormatter();
-        $groupSep = $formatter->getSymbol(\NumberFormatter::GROUPING_SEPARATOR_SYMBOL);
-        $decSep = $formatter->getSymbol(\NumberFormatter::DECIMAL_SEPARATOR_SYMBOL);
-
-        if ('.' !== $decSep && (!$this->grouping || '.' !== $groupSep)) {
-            $value = str_replace('.', $decSep, $value);
-        }
-
-        if (',' !== $decSep && (!$this->grouping || ',' !== $groupSep)) {
-            $value = str_replace(',', $decSep, $value);
-        }
-
-        $result = $formatter->parse($value, \NumberFormatter::TYPE_DOUBLE, $position);
+        $value = $formatter->parse($value);
 
         if (intl_is_failure($formatter->getErrorCode())) {
             throw new TransformationFailedException($formatter->getErrorMessage());
         }
 
-        if ($result >= INF || $result <= -INF) {
+        if ($value >= INF || $value <= -INF) {
             throw new TransformationFailedException('I don\'t have a clear idea what infinity looks like');
         }
 
-        // After parsing, position holds the index of the character where the
-        // parsing stopped
-        if ($position < strlen($value)) {
-            // Check if there are unrecognized characters at the end of the
-            // number
-            $remainder = substr($value, $position);
-
-            // Remove all whitespace characters
-            if ('' !== preg_replace('/[\s\xc2\xa0]*/', '', $remainder)) {
-                throw new TransformationFailedException(
-                    sprintf('The number contains unrecognized characters: "%s"',
-                        $remainder
-                    ));
-            }
-        }
-
-        return $result;
+        return $value;
     }
 
     /**

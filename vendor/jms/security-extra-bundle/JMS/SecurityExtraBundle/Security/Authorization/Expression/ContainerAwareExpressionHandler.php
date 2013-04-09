@@ -41,7 +41,6 @@ class ContainerAwareExpressionHandler implements ExpressionHandlerInterface
         return array(
             'container' => $this->container,
             'token'     => $token,
-            'user'      => $token->getUser(),
             'object'    => $object,
         );
     }

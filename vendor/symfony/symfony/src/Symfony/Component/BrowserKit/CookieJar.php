@@ -109,11 +109,7 @@ class CookieJar
         }
 
         foreach ($cookies as $cookie) {
-            try {
-                $this->set(Cookie::fromString($cookie, $uri));
-            } catch (\InvalidArgumentException $e) {
-                // invalid cookies are just ignored
-            }
+            $this->set(Cookie::fromString($cookie, $uri));
         }
     }
 
@@ -131,7 +127,7 @@ class CookieJar
     /**
      * Returns not yet expired cookies.
      *
-     * @return Cookie[] An array of cookies
+     * @return array An array of cookies
      */
     public function all()
     {

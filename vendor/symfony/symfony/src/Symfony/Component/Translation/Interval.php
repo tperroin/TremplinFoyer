@@ -38,10 +38,6 @@ class Interval
      *
      * @param integer $number   A number
      * @param string  $interval An interval
-     *
-     * @return Boolean
-     *
-     * @throws \InvalidArgumentException
      */
     public static function test($number, $interval)
     {
@@ -79,16 +75,16 @@ class Interval
     {
         return <<<EOF
         ({\s*
-            (\-?\d+(\.\d+)?[\s*,\s*\-?\d+(\.\d+)?]*)
+            (\-?\d+[\s*,\s*\-?\d+]*)
         \s*})
 
             |
 
         (?P<left_delimiter>[\[\]])
             \s*
-            (?P<left>-Inf|\-?\d+(\.\d+)?)
+            (?P<left>-Inf|\-?\d+)
             \s*,\s*
-            (?P<right>\+?Inf|\-?\d+(\.\d+)?)
+            (?P<right>\+?Inf|\-?\d+)
             \s*
         (?P<right_delimiter>[\[\]])
 EOF;
@@ -102,6 +98,6 @@ EOF;
             return -log(0);
         }
 
-        return (float) $number;
+        return (int) $number;
     }
 }

@@ -59,17 +59,11 @@ class FileFormField extends FormField
         if (null !== $value && is_readable($value)) {
             $error = UPLOAD_ERR_OK;
             $size = filesize($value);
-            $info = pathinfo($value);
-            $name = $info['basename'];
+            $name = basename($value);
 
             // copy to a tmp location
-            $tmp = sys_get_temp_dir().'/'.sha1(uniqid(mt_rand(), true));
-            if (array_key_exists('extension', $info)) {
-                $tmp .= '.'.$info['extension'];
-            }
-            if (is_file($tmp)) {
-                unlink($tmp);
-            }
+            $tmp = tempnam(sys_get_temp_dir(), 'upload');
+            unlink($tmp);
             copy($value, $tmp);
             $value = $tmp;
         } else {
@@ -80,16 +74,6 @@ class FileFormField extends FormField
         }
 
         $this->value = array('name' => $name, 'type' => '', 'tmp_name' => $value, 'error' => $error, 'size' => $size);
-    }
-
-    /**
-     * Sets path to the file as string for simulating HTTP request
-     *
-     * @param string $path The path to the file
-     */
-    public function setFilePath($path)
-    {
-        parent::setValue($path);
     }
 
     /**

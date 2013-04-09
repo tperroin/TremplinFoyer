@@ -17,7 +17,7 @@ use Symfony\Component\Form\CallbackTransformer;
 use Symfony\Component\Form\Form;
 use Symfony\Component\Form\FormConfigBuilder;
 use Symfony\Component\Form\FormError;
-use Symfony\Component\PropertyAccess\PropertyPath;
+use Symfony\Component\Form\Util\PropertyPath;
 use Symfony\Component\Validator\ConstraintViolation;
 
 /**
@@ -49,11 +49,6 @@ class ViolationMapperTest extends \PHPUnit_Framework_TestCase
     private $message;
 
     /**
-     * @var string
-     */
-    private $messageTemplate;
-
-    /**
      * @var array
      */
     private $params;
@@ -67,7 +62,6 @@ class ViolationMapperTest extends \PHPUnit_Framework_TestCase
         $this->dispatcher = $this->getMock('Symfony\Component\EventDispatcher\EventDispatcherInterface');
         $this->mapper = new ViolationMapper();
         $this->message = 'Message';
-        $this->messageTemplate = 'Message template';
         $this->params = array('foo' => 'bar');
     }
 
@@ -107,7 +101,7 @@ class ViolationMapperTest extends \PHPUnit_Framework_TestCase
      */
     protected function getConstraintViolation($propertyPath)
     {
-        return new ConstraintViolation($this->message, $this->messageTemplate, $this->params, null, $propertyPath, null);
+        return new ConstraintViolation($this->message, $this->params, null, $propertyPath, null);
     }
 
     /**
@@ -115,7 +109,7 @@ class ViolationMapperTest extends \PHPUnit_Framework_TestCase
      */
     protected function getFormError()
     {
-        return new FormError($this->message, $this->messageTemplate, $this->params);
+        return new FormError($this->message, $this->params);
     }
 
     public function testMapToVirtualFormIfDataDoesNotMatch()
@@ -233,6 +227,7 @@ class ViolationMapperTest extends \PHPUnit_Framework_TestCase
     {
         // The mapping must be deterministic! If a child has the property path "[street]",
         // "data[street]" should be mapped, but "data.street" should not!
+
         return array(
             // mapping target, child name, its property path, grand child name, its property path, violation path
             array(self::LEVEL_0, 'address', 'address', 'street', 'street', ''),
@@ -240,7 +235,6 @@ class ViolationMapperTest extends \PHPUnit_Framework_TestCase
 
             array(self::LEVEL_2, 'address', 'address', 'street', 'street', 'children[address].children[street].data'),
             array(self::LEVEL_2, 'address', 'address', 'street', 'street', 'children[address].children[street].data.prop'),
-            array(self::LEVEL_1, 'address', 'address', 'street', 'street', 'children[address].data'),
             array(self::LEVEL_2, 'address', 'address', 'street', 'street', 'children[address].data.street'),
             array(self::LEVEL_2, 'address', 'address', 'street', 'street', 'children[address].data.street.prop'),
             array(self::LEVEL_1, 'address', 'address', 'street', 'street', 'children[address].data[street]'),
@@ -256,7 +250,6 @@ class ViolationMapperTest extends \PHPUnit_Framework_TestCase
 
             array(self::LEVEL_2, 'address', 'address', 'street', '[street]', 'children[address].children[street].data'),
             array(self::LEVEL_2, 'address', 'address', 'street', '[street]', 'children[address].children[street].data.prop'),
-            array(self::LEVEL_1, 'address', 'address', 'street', '[street]', 'children[address].data'),
             array(self::LEVEL_1, 'address', 'address', 'street', '[street]', 'children[address].data.street'),
             array(self::LEVEL_1, 'address', 'address', 'street', '[street]', 'children[address].data.street.prop'),
             array(self::LEVEL_2, 'address', 'address', 'street', '[street]', 'children[address].data[street]'),
@@ -272,7 +265,6 @@ class ViolationMapperTest extends \PHPUnit_Framework_TestCase
 
             array(self::LEVEL_2, 'address', '[address]', 'street', 'street', 'children[address].children[street].data'),
             array(self::LEVEL_2, 'address', '[address]', 'street', 'street', 'children[address].children[street].data.prop'),
-            array(self::LEVEL_1, 'address', '[address]', 'street', 'street', 'children[address].data'),
             array(self::LEVEL_2, 'address', '[address]', 'street', 'street', 'children[address].data.street'),
             array(self::LEVEL_2, 'address', '[address]', 'street', 'street', 'children[address].data.street.prop'),
             array(self::LEVEL_1, 'address', '[address]', 'street', 'street', 'children[address].data[street]'),
@@ -288,7 +280,6 @@ class ViolationMapperTest extends \PHPUnit_Framework_TestCase
 
             array(self::LEVEL_2, 'address', '[address]', 'street', '[street]', 'children[address].children[street].data'),
             array(self::LEVEL_2, 'address', '[address]', 'street', '[street]', 'children[address].children[street].data.prop'),
-            array(self::LEVEL_1, 'address', '[address]', 'street', '[street]', 'children[address].data'),
             array(self::LEVEL_1, 'address', '[address]', 'street', '[street]', 'children[address].data.street'),
             array(self::LEVEL_1, 'address', '[address]', 'street', '[street]', 'children[address].data.street.prop'),
             array(self::LEVEL_2, 'address', '[address]', 'street', '[street]', 'children[address].data[street]'),
@@ -304,7 +295,6 @@ class ViolationMapperTest extends \PHPUnit_Framework_TestCase
 
             array(self::LEVEL_2, 'address', 'person.address', 'street', 'street', 'children[address].children[street].data'),
             array(self::LEVEL_2, 'address', 'person.address', 'street', 'street', 'children[address].children[street].data.prop'),
-            array(self::LEVEL_1, 'address', 'person.address', 'street', 'street', 'children[address].data'),
             array(self::LEVEL_2, 'address', 'person.address', 'street', 'street', 'children[address].data.street'),
             array(self::LEVEL_2, 'address', 'person.address', 'street', 'street', 'children[address].data.street.prop'),
             array(self::LEVEL_1, 'address', 'person.address', 'street', 'street', 'children[address].data[street]'),
@@ -328,7 +318,6 @@ class ViolationMapperTest extends \PHPUnit_Framework_TestCase
 
             array(self::LEVEL_2, 'address', 'person.address', 'street', '[street]', 'children[address].children[street].data'),
             array(self::LEVEL_2, 'address', 'person.address', 'street', '[street]', 'children[address].children[street].data.prop'),
-            array(self::LEVEL_1, 'address', 'person.address', 'street', '[street]', 'children[address].data'),
             array(self::LEVEL_1, 'address', 'person.address', 'street', '[street]', 'children[address].data.street'),
             array(self::LEVEL_1, 'address', 'person.address', 'street', '[street]', 'children[address].data.street.prop'),
             array(self::LEVEL_2, 'address', 'person.address', 'street', '[street]', 'children[address].data[street]'),
@@ -352,7 +341,6 @@ class ViolationMapperTest extends \PHPUnit_Framework_TestCase
 
             array(self::LEVEL_2, 'address', 'person[address]', 'street', 'street', 'children[address].children[street].data'),
             array(self::LEVEL_2, 'address', 'person[address]', 'street', 'street', 'children[address].children[street].data.prop'),
-            array(self::LEVEL_1, 'address', 'person[address]', 'street', 'street', 'children[address].data'),
             array(self::LEVEL_2, 'address', 'person[address]', 'street', 'street', 'children[address].data.street'),
             array(self::LEVEL_2, 'address', 'person[address]', 'street', 'street', 'children[address].data.street.prop'),
             array(self::LEVEL_1, 'address', 'person[address]', 'street', 'street', 'children[address].data[street]'),
@@ -376,7 +364,6 @@ class ViolationMapperTest extends \PHPUnit_Framework_TestCase
 
             array(self::LEVEL_2, 'address', 'person[address]', 'street', '[street]', 'children[address].children[street].data'),
             array(self::LEVEL_2, 'address', 'person[address]', 'street', '[street]', 'children[address].children[street].data.prop'),
-            array(self::LEVEL_1, 'address', 'person[address]', 'street', '[street]', 'children[address].data'),
             array(self::LEVEL_1, 'address', 'person[address]', 'street', '[street]', 'children[address].data.street'),
             array(self::LEVEL_1, 'address', 'person[address]', 'street', '[street]', 'children[address].data.street.prop'),
             array(self::LEVEL_2, 'address', 'person[address]', 'street', '[street]', 'children[address].data[street]'),
@@ -400,7 +387,6 @@ class ViolationMapperTest extends \PHPUnit_Framework_TestCase
 
             array(self::LEVEL_2, 'address', '[person].address', 'street', 'street', 'children[address].children[street].data'),
             array(self::LEVEL_2, 'address', '[person].address', 'street', 'street', 'children[address].children[street].data.prop'),
-            array(self::LEVEL_1, 'address', '[person].address', 'street', 'street', 'children[address].data'),
             array(self::LEVEL_2, 'address', '[person].address', 'street', 'street', 'children[address].data.street'),
             array(self::LEVEL_2, 'address', '[person].address', 'street', 'street', 'children[address].data.street.prop'),
             array(self::LEVEL_1, 'address', '[person].address', 'street', 'street', 'children[address].data[street]'),
@@ -424,7 +410,6 @@ class ViolationMapperTest extends \PHPUnit_Framework_TestCase
 
             array(self::LEVEL_2, 'address', '[person].address', 'street', '[street]', 'children[address].children[street].data'),
             array(self::LEVEL_2, 'address', '[person].address', 'street', '[street]', 'children[address].children[street].data.prop'),
-            array(self::LEVEL_1, 'address', '[person].address', 'street', '[street]', 'children[address].data'),
             array(self::LEVEL_1, 'address', '[person].address', 'street', '[street]', 'children[address].data.street'),
             array(self::LEVEL_1, 'address', '[person].address', 'street', '[street]', 'children[address].data.street.prop'),
             array(self::LEVEL_2, 'address', '[person].address', 'street', '[street]', 'children[address].data[street]'),
@@ -448,8 +433,6 @@ class ViolationMapperTest extends \PHPUnit_Framework_TestCase
 
             array(self::LEVEL_2, 'address', '[person][address]', 'street', 'street', 'children[address].children[street].data'),
             array(self::LEVEL_2, 'address', '[person][address]', 'street', 'street', 'children[address].children[street].data.prop'),
-            array(self::LEVEL_1, 'address', '[person][address]', 'street', 'street', 'children[address]'),
-            array(self::LEVEL_1, 'address', '[person][address]', 'street', 'street', 'children[address].data'),
             array(self::LEVEL_2, 'address', '[person][address]', 'street', 'street', 'children[address].data.street'),
             array(self::LEVEL_2, 'address', '[person][address]', 'street', 'street', 'children[address].data.street.prop'),
             array(self::LEVEL_1, 'address', '[person][address]', 'street', 'street', 'children[address].data[street]'),
@@ -473,7 +456,6 @@ class ViolationMapperTest extends \PHPUnit_Framework_TestCase
 
             array(self::LEVEL_2, 'address', '[person][address]', 'street', '[street]', 'children[address].children[street].data'),
             array(self::LEVEL_2, 'address', '[person][address]', 'street', '[street]', 'children[address].children[street].data.prop'),
-            array(self::LEVEL_1, 'address', '[person][address]', 'street', '[street]', 'children[address].data'),
             array(self::LEVEL_1, 'address', '[person][address]', 'street', '[street]', 'children[address].data.street'),
             array(self::LEVEL_1, 'address', '[person][address]', 'street', '[street]', 'children[address].data.street.prop'),
             array(self::LEVEL_2, 'address', '[person][address]', 'street', '[street]', 'children[address].data[street]'),
@@ -497,13 +479,10 @@ class ViolationMapperTest extends \PHPUnit_Framework_TestCase
 
             array(self::LEVEL_2, 'address', 'address', 'street', 'office.street', 'children[address].children[street].data'),
             array(self::LEVEL_2, 'address', 'address', 'street', 'office.street', 'children[address].children[street].data.prop'),
-            array(self::LEVEL_1, 'address', 'address', 'street', 'office.street', 'children[address].data'),
-            array(self::LEVEL_1, 'address', 'address', 'street', 'office.street', 'children[address].data.office'),
             array(self::LEVEL_2, 'address', 'address', 'street', 'office.street', 'children[address].data.office.street'),
             array(self::LEVEL_2, 'address', 'address', 'street', 'office.street', 'children[address].data.office.street.prop'),
             array(self::LEVEL_1, 'address', 'address', 'street', 'office.street', 'children[address].data.office[street]'),
             array(self::LEVEL_1, 'address', 'address', 'street', 'office.street', 'children[address].data.office[street].prop'),
-            array(self::LEVEL_1, 'address', 'address', 'street', 'office.street', 'children[address].data[office]'),
             array(self::LEVEL_1, 'address', 'address', 'street', 'office.street', 'children[address].data[office].street'),
             array(self::LEVEL_1, 'address', 'address', 'street', 'office.street', 'children[address].data[office].street.prop'),
             array(self::LEVEL_1, 'address', 'address', 'street', 'office.street', 'children[address].data[office][street]'),
@@ -527,13 +506,10 @@ class ViolationMapperTest extends \PHPUnit_Framework_TestCase
 
             array(self::LEVEL_2, 'address', '[address]', 'street', 'office.street', 'children[address].children[street].data'),
             array(self::LEVEL_2, 'address', '[address]', 'street', 'office.street', 'children[address].children[street].data.prop'),
-            array(self::LEVEL_1, 'address', '[address]', 'street', 'office.street', 'children[address].data'),
-            array(self::LEVEL_1, 'address', '[address]', 'street', 'office.street', 'children[address].data.office'),
             array(self::LEVEL_2, 'address', '[address]', 'street', 'office.street', 'children[address].data.office.street'),
             array(self::LEVEL_2, 'address', '[address]', 'street', 'office.street', 'children[address].data.office.street.prop'),
             array(self::LEVEL_1, 'address', '[address]', 'street', 'office.street', 'children[address].data.office[street]'),
             array(self::LEVEL_1, 'address', '[address]', 'street', 'office.street', 'children[address].data.office[street].prop'),
-            array(self::LEVEL_1, 'address', '[address]', 'street', 'office.street', 'children[address].data[office]'),
             array(self::LEVEL_1, 'address', '[address]', 'street', 'office.street', 'children[address].data[office].street'),
             array(self::LEVEL_1, 'address', '[address]', 'street', 'office.street', 'children[address].data[office].street.prop'),
             array(self::LEVEL_1, 'address', '[address]', 'street', 'office.street', 'children[address].data[office][street]'),
@@ -557,13 +533,10 @@ class ViolationMapperTest extends \PHPUnit_Framework_TestCase
 
             array(self::LEVEL_2, 'address', 'address', 'street', 'office[street]', 'children[address].children[street].data'),
             array(self::LEVEL_2, 'address', 'address', 'street', 'office[street]', 'children[address].children[street].data.prop'),
-            array(self::LEVEL_1, 'address', 'address', 'street', 'office[street]', 'children[address].data'),
-            array(self::LEVEL_1, 'address', 'address', 'street', 'office[street]', 'children[address].data.office'),
             array(self::LEVEL_1, 'address', 'address', 'street', 'office[street]', 'children[address].data.office.street'),
             array(self::LEVEL_1, 'address', 'address', 'street', 'office[street]', 'children[address].data.office.street.prop'),
             array(self::LEVEL_2, 'address', 'address', 'street', 'office[street]', 'children[address].data.office[street]'),
             array(self::LEVEL_2, 'address', 'address', 'street', 'office[street]', 'children[address].data.office[street].prop'),
-            array(self::LEVEL_1, 'address', 'address', 'street', 'office[street]', 'children[address].data[office]'),
             array(self::LEVEL_1, 'address', 'address', 'street', 'office[street]', 'children[address].data[office].street'),
             array(self::LEVEL_1, 'address', 'address', 'street', 'office[street]', 'children[address].data[office].street.prop'),
             array(self::LEVEL_1, 'address', 'address', 'street', 'office[street]', 'children[address].data[office][street]'),
@@ -591,7 +564,6 @@ class ViolationMapperTest extends \PHPUnit_Framework_TestCase
             array(self::LEVEL_1, 'address', '[address]', 'street', 'office[street]', 'children[address].data.office.street.prop'),
             array(self::LEVEL_2, 'address', '[address]', 'street', 'office[street]', 'children[address].data.office[street]'),
             array(self::LEVEL_2, 'address', '[address]', 'street', 'office[street]', 'children[address].data.office[street].prop'),
-            array(self::LEVEL_1, 'address', '[address]', 'street', 'office[street]', 'children[address].data[office]'),
             array(self::LEVEL_1, 'address', '[address]', 'street', 'office[street]', 'children[address].data[office].street'),
             array(self::LEVEL_1, 'address', '[address]', 'street', 'office[street]', 'children[address].data[office].street.prop'),
             array(self::LEVEL_1, 'address', '[address]', 'street', 'office[street]', 'children[address].data[office][street]'),
@@ -615,13 +587,10 @@ class ViolationMapperTest extends \PHPUnit_Framework_TestCase
 
             array(self::LEVEL_2, 'address', 'address', 'street', '[office].street', 'children[address].children[street].data'),
             array(self::LEVEL_2, 'address', 'address', 'street', '[office].street', 'children[address].children[street].data.prop'),
-            array(self::LEVEL_1, 'address', 'address', 'street', '[office].street', 'children[address].data'),
-            array(self::LEVEL_1, 'address', 'address', 'street', '[office].street', 'children[address].data.office'),
             array(self::LEVEL_1, 'address', 'address', 'street', '[office].street', 'children[address].data.office.street'),
             array(self::LEVEL_1, 'address', 'address', 'street', '[office].street', 'children[address].data.office.street.prop'),
             array(self::LEVEL_1, 'address', 'address', 'street', '[office].street', 'children[address].data.office[street]'),
             array(self::LEVEL_1, 'address', 'address', 'street', '[office].street', 'children[address].data.office[street].prop'),
-            array(self::LEVEL_1, 'address', 'address', 'street', '[office].street', 'children[address].data[office]'),
             array(self::LEVEL_2, 'address', 'address', 'street', '[office].street', 'children[address].data[office].street'),
             array(self::LEVEL_2, 'address', 'address', 'street', '[office].street', 'children[address].data[office].street.prop'),
             array(self::LEVEL_1, 'address', 'address', 'street', '[office].street', 'children[address].data[office][street]'),
@@ -645,13 +614,10 @@ class ViolationMapperTest extends \PHPUnit_Framework_TestCase
 
             array(self::LEVEL_2, 'address', '[address]', 'street', '[office].street', 'children[address].children[street].data'),
             array(self::LEVEL_2, 'address', '[address]', 'street', '[office].street', 'children[address].children[street].data.prop'),
-            array(self::LEVEL_1, 'address', '[address]', 'street', '[office].street', 'children[address].data'),
-            array(self::LEVEL_1, 'address', '[address]', 'street', '[office].street', 'children[address].data.office'),
             array(self::LEVEL_1, 'address', '[address]', 'street', '[office].street', 'children[address].data.office.street'),
             array(self::LEVEL_1, 'address', '[address]', 'street', '[office].street', 'children[address].data.office.street.prop'),
             array(self::LEVEL_1, 'address', '[address]', 'street', '[office].street', 'children[address].data.office[street]'),
             array(self::LEVEL_1, 'address', '[address]', 'street', '[office].street', 'children[address].data.office[street].prop'),
-            array(self::LEVEL_1, 'address', '[address]', 'street', '[office].street', 'children[address].data[office]'),
             array(self::LEVEL_2, 'address', '[address]', 'street', '[office].street', 'children[address].data[office].street'),
             array(self::LEVEL_2, 'address', '[address]', 'street', '[office].street', 'children[address].data[office].street.prop'),
             array(self::LEVEL_1, 'address', '[address]', 'street', '[office].street', 'children[address].data[office][street]'),
@@ -675,13 +641,10 @@ class ViolationMapperTest extends \PHPUnit_Framework_TestCase
 
             array(self::LEVEL_2, 'address', 'address', 'street', '[office][street]', 'children[address].children[street].data'),
             array(self::LEVEL_2, 'address', 'address', 'street', '[office][street]', 'children[address].children[street].data.prop'),
-            array(self::LEVEL_1, 'address', 'address', 'street', '[office][street]', 'children[address].data'),
-            array(self::LEVEL_1, 'address', 'address', 'street', '[office][street]', 'children[address].data.office'),
             array(self::LEVEL_1, 'address', 'address', 'street', '[office][street]', 'children[address].data.office.street'),
             array(self::LEVEL_1, 'address', 'address', 'street', '[office][street]', 'children[address].data.office.street.prop'),
             array(self::LEVEL_1, 'address', 'address', 'street', '[office][street]', 'children[address].data.office[street]'),
             array(self::LEVEL_1, 'address', 'address', 'street', '[office][street]', 'children[address].data.office[street].prop'),
-            array(self::LEVEL_1, 'address', 'address', 'street', '[office][street]', 'children[address].data[office]'),
             array(self::LEVEL_1, 'address', 'address', 'street', '[office][street]', 'children[address].data[office].street'),
             array(self::LEVEL_1, 'address', 'address', 'street', '[office][street]', 'children[address].data[office].street.prop'),
             array(self::LEVEL_2, 'address', 'address', 'street', '[office][street]', 'children[address].data[office][street]'),
@@ -705,13 +668,10 @@ class ViolationMapperTest extends \PHPUnit_Framework_TestCase
 
             array(self::LEVEL_2, 'address', '[address]', 'street', '[office][street]', 'children[address].children[street].data'),
             array(self::LEVEL_2, 'address', '[address]', 'street', '[office][street]', 'children[address].children[street].data.prop'),
-            array(self::LEVEL_1, 'address', '[address]', 'street', '[office][street]', 'children[address].data'),
-            array(self::LEVEL_1, 'address', '[address]', 'street', '[office][street]', 'children[address].data.office'),
             array(self::LEVEL_1, 'address', '[address]', 'street', '[office][street]', 'children[address].data.office.street'),
             array(self::LEVEL_1, 'address', '[address]', 'street', '[office][street]', 'children[address].data.office.street.prop'),
             array(self::LEVEL_1, 'address', '[address]', 'street', '[office][street]', 'children[address].data.office[street]'),
             array(self::LEVEL_1, 'address', '[address]', 'street', '[office][street]', 'children[address].data.office[street].prop'),
-            array(self::LEVEL_1, 'address', '[address]', 'street', '[office][street]', 'children[address].data[office]'),
             array(self::LEVEL_1, 'address', '[address]', 'street', '[office][street]', 'children[address].data[office].street'),
             array(self::LEVEL_1, 'address', '[address]', 'street', '[office][street]', 'children[address].data[office].street.prop'),
             array(self::LEVEL_2, 'address', '[address]', 'street', '[office][street]', 'children[address].data[office][street]'),
@@ -1265,6 +1225,7 @@ class ViolationMapperTest extends \PHPUnit_Framework_TestCase
         // 1) the error actually maps to an existing child and
         // 2) the property path of that child (relative to the form providing
         //    the mapping) matches the left side of the mapping
+
         return array(
             // mapping target, map from, map to, child name, its property path, grand child name, its property path, violation path
             array(self::LEVEL_1, 'foo', 'address', 'foo', 'foo', 'address', 'address', 'street', 'street', 'children[foo].children[street].data'),

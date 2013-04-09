@@ -18,8 +18,16 @@
 
 namespace JMS\SecurityExtraBundle\Security\Authorization\Expression;
 
-final class ExpressionLexer extends \JMS\Parser\AbstractLexer
+use JMS\SecurityExtraBundle\Exception\InvalidArgumentException;
+
+final class ExpressionLexer
 {
+    public $token;
+    public $lookahead;
+
+    private $tokens;
+    private $pointer;
+
     const T_STRING = 1;
     const T_IDENTIFIER = 2;
     const T_NONE = 3;
@@ -38,51 +46,89 @@ final class ExpressionLexer extends \JMS\Parser\AbstractLexer
     const T_IS_EQUAL = 16;
     const T_NOT = 17;
 
-    protected function getRegex()
+    public static function getLiteral($type)
     {
-        return '/(#?[a-z][a-z0-9]*|\'(?:[^\']|(?<=\\\\)\')*\'|"(?:[^"]|(?<=\\\\)")*"|&&|\|\||==)|\s+|(.)/i';
-    }
+        static $constants;
 
-    protected function determineTypeAndValue($value)
-    {
-        $type = self::T_NONE;
-
-        if ("'" === $value[0] || '"' === $value[0]) {
-            $type = self::T_STRING;
-            $value = substr($value, 1, -1);
-        } elseif (',' === $value) {
-            $type = self::T_COMMA;
-        } elseif ('(' === $value) {
-            $type = self::T_OPEN_PARENTHESIS;
-        } elseif (')' === $value) {
-            $type = self::T_CLOSE_PARENTHESIS;
-        } elseif ('[' === $value) {
-            $type = self::T_OPEN_BRACKET;
-        } elseif (']' === $value) {
-            $type = self::T_CLOSE_BRACKET;
-        } elseif ('{' === $value) {
-            $type = self::T_OPEN_BRACE;
-        } elseif ('}' === $value) {
-            $type = self::T_CLOSE_BRACE;
-        } elseif ('&&' === $value || 'and' === strtolower($value)) {
-            $type = self::T_AND;
-        } elseif ('||' === $value || 'or' === strtolower($value)) {
-            $type = self::T_OR;
-        } elseif ('!' === $value || 'not' === strtolower($value)) {
-            $type = self::T_NOT;
-        } elseif (':' === $value) {
-            $type = self::T_COLON;
-        } elseif ('.' === $value) {
-            $type = self::T_OBJECT_OPERATOR;
-        } elseif ('==' === $value) {
-            $type = self::T_IS_EQUAL;
-        } elseif ('#' === $value[0]) {
-            $type = self::T_PARAMETER;
-            $value = substr($value, 1);
-        } elseif (ctype_alpha($value)) {
-            $type = self::T_IDENTIFIER;
+        if (null === $constants) {
+            $ref = new \ReflectionClass(get_called_class());
+            $constants = $ref->getConstants();
         }
 
-        return array($type, $value);
+        if (false === $literal = array_search($type, $constants, true)) {
+            throw new InvalidArgumentException(sprintf('There is no token of value "%s".', $type));
+        }
+
+        return $literal;
+    }
+
+    public function initialize($input)
+    {
+        static $pattern = '/(#?[a-z][a-z0-9]*|\'(?:[^\']|(?<=\\\\)\')*\'|"(?:[^"]|(?<=\\\\)")*"|&&|\|\||==)|\s+|(.)/i';
+
+        $parts = preg_split($pattern, $input, -1, PREG_SPLIT_OFFSET_CAPTURE
+            | PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
+
+        $tokens = array();
+        foreach ($parts as $part) {
+            list($value, $position) = $part;
+            $type = self::T_NONE;
+
+            if ("'" === $value[0] || '"' === $value[0]) {
+                $type = self::T_STRING;
+                $value = substr($value, 1, -1);
+            } elseif (',' === $value) {
+                $type = self::T_COMMA;
+            } elseif ('(' === $value) {
+                $type = self::T_OPEN_PARENTHESIS;
+            } elseif (')' === $value) {
+                $type = self::T_CLOSE_PARENTHESIS;
+            } elseif ('[' === $value) {
+                $type = self::T_OPEN_BRACKET;
+            } elseif (']' === $value) {
+                $type = self::T_CLOSE_BRACKET;
+            } elseif ('{' === $value) {
+                $type = self::T_OPEN_BRACE;
+            } elseif ('}' === $value) {
+                $type = self::T_CLOSE_BRACE;
+            } elseif ('&&' === $value || 'and' === strtolower($value)) {
+                $type = self::T_AND;
+            } elseif ('||' === $value || 'or' === strtolower($value)) {
+                $type = self::T_OR;
+            } elseif ('!' === $value || 'not' === strtolower($value)) {
+                $type = self::T_NOT;
+            } elseif (':' === $value) {
+                $type = self::T_COLON;
+            } elseif ('.' === $value) {
+                $type = self::T_OBJECT_OPERATOR;
+            } elseif ('==' === $value) {
+                $type = self::T_IS_EQUAL;
+            } elseif ('#' === $value[0]) {
+                $type = self::T_PARAMETER;
+                $value = substr($value, 1);
+            } elseif (ctype_alpha($value)) {
+                $type = self::T_IDENTIFIER;
+            }
+
+            $tokens[] = array(
+                'type'  => $type,
+                'value' => $value,
+                'position' => $position,
+            );
+        }
+
+        $this->tokens = $tokens;
+        $this->pointer = -1;
+        $this->next();
+    }
+
+    public function next()
+    {
+        $this->pointer += 1;
+        $this->token = $this->lookahead;
+        $this->lookahead = isset($this->tokens[$this->pointer]) ?
+            $this->tokens[$this->pointer] : null;
+
+        return $this->lookahead !== null;
     }
 }

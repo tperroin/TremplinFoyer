@@ -11,9 +11,6 @@
 
 namespace Symfony\Component\Process;
 
-use Symfony\Component\Process\Exception\InvalidArgumentException;
-use Symfony\Component\Process\Exception\LogicException;
-
 /**
  * Process builder.
  *
@@ -48,24 +45,10 @@ class ProcessBuilder
      * Adds an unescaped argument to the command string.
      *
      * @param string $argument A command argument
-     *
-     * @return ProcessBuilder
      */
     public function add($argument)
     {
         $this->arguments[] = $argument;
-
-        return $this;
-    }
-
-    /**
-     * @param array $arguments
-     *
-     * @return ProcessBuilder
-     */
-    public function setArguments(array $arguments)
-    {
-        $this->arguments = $arguments;
 
         return $this;
     }
@@ -104,10 +87,6 @@ class ProcessBuilder
      * To disable the timeout, set this value to null.
      *
      * @param integer|null
-     *
-     * @return ProcessBuilder
-     *
-     * @throws InvalidArgumentException
      */
     public function setTimeout($timeout)
     {
@@ -120,7 +99,7 @@ class ProcessBuilder
         $timeout = (integer) $timeout;
 
         if ($timeout < 0) {
-            throw new InvalidArgumentException('The timeout value must be a valid positive integer.');
+            throw new \InvalidArgumentException('The timeout value must be a valid positive integer.');
         }
 
         $this->timeout = $timeout;
@@ -138,7 +117,7 @@ class ProcessBuilder
     public function getProcess()
     {
         if (!count($this->arguments)) {
-            throw new LogicException('You must add() command arguments before calling getProcess().');
+            throw new \LogicException('You must add() command arguments before calling getProcess().');
         }
 
         $options = $this->options;

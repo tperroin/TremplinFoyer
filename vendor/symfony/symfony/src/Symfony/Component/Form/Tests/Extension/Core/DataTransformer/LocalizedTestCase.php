@@ -11,7 +11,7 @@
 
 namespace Symfony\Component\Form\Tests\Extension\Core\DataTransformer;
 
-abstract class LocalizedTestCase extends \PHPUnit_Framework_TestCase
+class LocalizedTestCase extends \PHPUnit_Framework_TestCase
 {
     protected static $icuVersion = null;
 

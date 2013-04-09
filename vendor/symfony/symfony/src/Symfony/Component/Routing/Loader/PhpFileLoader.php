@@ -11,9 +11,8 @@
 
 namespace Symfony\Component\Routing\Loader;
 
-use Symfony\Component\Config\Loader\FileLoader;
 use Symfony\Component\Config\Resource\FileResource;
-use Symfony\Component\Routing\RouteCollection;
+use Symfony\Component\Config\Loader\FileLoader;
 
 /**
  * PhpFileLoader loads routes from a PHP file.
@@ -29,10 +28,8 @@ class PhpFileLoader extends FileLoader
     /**
      * Loads a PHP file.
      *
-     * @param string      $file A PHP file path
-     * @param string|null $type The resource type
-     *
-     * @return RouteCollection A RouteCollection instance
+     * @param mixed  $file A PHP file path
+     * @param string $type The resource type
      *
      * @api
      */

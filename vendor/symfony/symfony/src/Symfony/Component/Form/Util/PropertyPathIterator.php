@@ -11,26 +11,45 @@
 
 namespace Symfony\Component\Form\Util;
 
-use Symfony\Component\PropertyAccess\PropertyPathIterator as BasePropertyPathIterator;
-
 /**
- * Alias for {@link \Symfony\Component\PropertyAccess\PropertyPathIterator}.
+ * Traverses a property path and provides additional methods to find out
+ * information about the current element
  *
  * @author Bernhard Schussek <bschussek@gmail.com>
- *
- * @deprecated deprecated since version 2.2, to be removed in 2.3. Use
- *             {@link \Symfony\Component\PropertyAccess\PropertyPathIterator}
- *             instead.
  */
-class PropertyPathIterator extends BasePropertyPathIterator
+class PropertyPathIterator extends \ArrayIterator implements PropertyPathIteratorInterface
 {
+    /**
+     * The traversed property path
+     * @var PropertyPathInterface
+     */
+    protected $path;
+
+    /**
+     * Constructor.
+     *
+     * @param PropertyPathInterface $path The property path to traverse
+     */
+    public function __construct(PropertyPathInterface $path)
+    {
+        parent::__construct($path->getElements());
+
+        $this->path = $path;
+    }
+
     /**
      * {@inheritdoc}
      */
-    public function __construct($propertyPath)
+    public function isIndex()
     {
-        parent::__construct($propertyPath);
+        return $this->path->isIndex($this->key());
+    }
 
-        trigger_error('\Symfony\Component\Form\Util\PropertyPathIterator is deprecated since version 2.2 and will be removed in 2.3. Use \Symfony\Component\PropertyAccess\PropertyPathIterator instead.', E_USER_DEPRECATED);
+    /**
+     * {@inheritdoc}
+     */
+    public function isProperty()
+    {
+        return $this->path->isProperty($this->key());
     }
 }

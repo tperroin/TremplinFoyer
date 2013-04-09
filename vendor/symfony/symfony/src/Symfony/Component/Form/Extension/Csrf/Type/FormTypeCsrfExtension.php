@@ -38,8 +38,8 @@ class FormTypeCsrfExtension extends AbstractTypeExtension
     /**
      * Adds a CSRF field to the form when the CSRF protection is enabled.
      *
-     * @param FormBuilderInterface $builder The form builder
-     * @param array                $options The options
+     * @param FormBuilder $builder The form builder
+     * @param array       $options The options
      */
     public function buildForm(FormBuilderInterface $builder, array $options)
     {

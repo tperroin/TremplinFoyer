@@ -33,7 +33,6 @@ class ArrayNodeDefinition extends NodeDefinition implements ParentNodeDefinition
     protected $addDefaults;
     protected $addDefaultChildren;
     protected $nodeBuilder;
-    protected $normalizeKeys;
 
     /**
      * {@inheritDoc}
@@ -51,7 +50,6 @@ class ArrayNodeDefinition extends NodeDefinition implements ParentNodeDefinition
         $this->performDeepMerging = true;
         $this->nullEquivalent = array();
         $this->trueEquivalent = array();
-        $this->normalizeKeys = true;
     }
 
     /**
@@ -212,66 +210,6 @@ class ArrayNodeDefinition extends NodeDefinition implements ParentNodeDefinition
     }
 
     /**
-     * Adds an "enabled" boolean to enable the current section.
-     *
-     * By default, the section is disabled. If any configuration is specified then
-     * the node will be automatically enabled:
-     *
-     * enableableArrayNode: {enabled: true, ...}   # The config is enabled & default values get overridden
-     * enableableArrayNode: ~                      # The config is enabled & use the default values
-     * enableableArrayNode: true                   # The config is enabled & use the default values
-     * enableableArrayNode: {other: value, ...}    # The config is enabled & default values get overridden
-     * enableableArrayNode: {enabled: false, ...}  # The config is disabled
-     * enableableArrayNode: false                  # The config is disabled
-     *
-     * @return ArrayNodeDefinition
-     */
-    public function canBeEnabled()
-    {
-        $this
-            ->addDefaultsIfNotSet()
-            ->treatFalseLike(array('enabled' => false))
-            ->treatTrueLike(array('enabled' => true))
-            ->treatNullLike(array('enabled' => true))
-            ->beforeNormalization()
-                ->ifArray()
-                ->then(function($v) {
-                    $v['enabled'] = isset($v['enabled']) ? $v['enabled'] : true;
-
-                    return $v;
-                })
-            ->end()
-            ->children()
-                ->booleanNode('enabled')
-                    ->defaultFalse()
-        ;
-
-        return $this;
-    }
-
-    /**
-     * Adds an "enabled" boolean to enable the current section.
-     *
-     * By default, the section is enabled.
-     *
-     * @return ArrayNodeDefinition
-     */
-    public function canBeDisabled()
-    {
-        $this
-            ->addDefaultsIfNotSet()
-            ->treatFalseLike(array('enabled' => false))
-            ->treatTrueLike(array('enabled' => true))
-            ->treatNullLike(array('enabled' => true))
-            ->children()
-                ->booleanNode('enabled')
-                    ->defaultTrue()
-        ;
-
-        return $this;
-    }
-
-    /**
      * Disables the deep merging of the node.
      *
      * @return ArrayNodeDefinition
@@ -296,20 +234,6 @@ class ArrayNodeDefinition extends NodeDefinition implements ParentNodeDefinition
     public function ignoreExtraKeys()
     {
         $this->ignoreExtraKeys = true;
-
-        return $this;
-    }
-
-    /**
-     * Sets key normalization.
-     *
-     * @param Boolean $bool Whether to enable key normalization
-     *
-     * @return ArrayNodeDefinition
-     */
-    public function normalizeKeys($bool)
-    {
-        $this->normalizeKeys = (Boolean) $bool;
 
         return $this;
     }
@@ -401,7 +325,6 @@ class ArrayNodeDefinition extends NodeDefinition implements ParentNodeDefinition
         $node->setPerformDeepMerging($this->performDeepMerging);
         $node->setRequired($this->required);
         $node->setIgnoreExtraKeys($this->ignoreExtraKeys);
-        $node->setNormalizeKeys($this->normalizeKeys);
 
         if (null !== $this->normalization) {
             $node->setNormalizationClosures($this->normalization->before);
@@ -423,9 +346,9 @@ class ArrayNodeDefinition extends NodeDefinition implements ParentNodeDefinition
     /**
      * Validate the configuration of a concrete node.
      *
-     * @param ArrayNode $node The related node
+     * @param NodeInterface $node The related node
      *
-     * @throws InvalidDefinitionException
+     * @throws InvalidDefinitionException When an error is detected in the configuration
      */
     protected function validateConcreteNode(ArrayNode $node)
     {
@@ -459,9 +382,9 @@ class ArrayNodeDefinition extends NodeDefinition implements ParentNodeDefinition
     /**
      * Validate the configuration of a prototype node.
      *
-     * @param PrototypedArrayNode $node The related node
+     * @param NodeInterface $node The related node
      *
-     * @throws InvalidDefinitionException
+     * @throws InvalidDefinitionException When an error is detected in the configuration
      */
     protected function validatePrototypeNode(PrototypedArrayNode $node)
     {

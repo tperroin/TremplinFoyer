@@ -42,38 +42,28 @@ namespace Symfony\Component\ClassLoader;
 class ApcClassLoader
 {
     private $prefix;
-
-    /**
-     * The class loader object being decorated.
-     *
-     * @var \Symfony\Component\ClassLoader\ClassLoader
-     *   A class loader object that implements the findFile() method.
-     */
-    protected $decorated;
+    private $classFinder;
 
     /**
      * Constructor.
      *
-     * @param string $prefix      The APC namespace prefix to use.
-     * @param object $decorated   A class loader object that implements the findFile() method.
-     *
-     * @throws \RuntimeException
-     * @throws \InvalidArgumentException
+     * @param string $prefix      A prefix to create a namespace in APC
+     * @param object $classFinder An object that implements findFile() method.
      *
      * @api
      */
-    public function __construct($prefix, $decorated)
+    public function __construct($prefix, $classFinder)
     {
         if (!extension_loaded('apc')) {
             throw new \RuntimeException('Unable to use ApcClassLoader as APC is not enabled.');
         }
 
-        if (!method_exists($decorated, 'findFile')) {
+        if (!method_exists($classFinder, 'findFile')) {
             throw new \InvalidArgumentException('The class finder must implement a "findFile" method.');
         }
 
         $this->prefix = $prefix;
-        $this->decorated = $decorated;
+        $this->classFinder = $classFinder;
     }
 
     /**
@@ -120,18 +110,9 @@ class ApcClassLoader
     public function findFile($class)
     {
         if (false === $file = apc_fetch($this->prefix.$class)) {
-            apc_store($this->prefix.$class, $file = $this->decorated->findFile($class));
+            apc_store($this->prefix.$class, $file = $this->classFinder->findFile($class));
         }
 
         return $file;
     }
-
-    /**
-     * Passes through all unknown calls onto the decorated object.
-     */
-    public function __call($method, $args)
-    {
-        return call_user_func_array(array($this->decorated, $method), $args);
-    }
-
 }

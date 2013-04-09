@@ -17,7 +17,7 @@ class DoctrineCrudGeneratorTest extends GeneratorTest
 {
     public function testGenerateYamlFull()
     {
-        $this->getGenerator()->generate($this->getBundle(), 'Post', $this->getMetadata(), 'yml', '/post', true, true);
+        $this->getGenerator()->generate($this->getBundle(), 'Post', $this->getMetadata(), 'yml', '/post', true);
 
         $files = array(
             'Controller/PostController.php',
@@ -54,7 +54,7 @@ class DoctrineCrudGeneratorTest extends GeneratorTest
 
     public function testGenerateXml()
     {
-        $this->getGenerator()->generate($this->getBundle(), 'Post', $this->getMetadata(), 'xml', '/post', false, true);
+        $this->getGenerator()->generate($this->getBundle(), 'Post', $this->getMetadata(), 'xml', '/post', false);
 
         $files = array(
             'Controller/PostController.php',
@@ -99,7 +99,7 @@ class DoctrineCrudGeneratorTest extends GeneratorTest
 
     public function testGenerateAnnotationWrite()
     {
-        $this->getGenerator()->generate($this->getBundle(), 'Post', $this->getMetadata(), 'annotation', '/post', true, true);
+        $this->getGenerator()->generate($this->getBundle(), 'Post', $this->getMetadata(), 'annotation', '/post', true);
 
         $files = array(
             'Controller/PostController.php',
@@ -137,7 +137,7 @@ class DoctrineCrudGeneratorTest extends GeneratorTest
 
     public function testGenerateAnnotation()
     {
-        $this->getGenerator()->generate($this->getBundle(), 'Post', $this->getMetadata(), 'annotation', '/post', false, true);
+        $this->getGenerator()->generate($this->getBundle(), 'Post', $this->getMetadata(), 'annotation', '/post', false);
 
         $files = array(
             'Controller/PostController.php',

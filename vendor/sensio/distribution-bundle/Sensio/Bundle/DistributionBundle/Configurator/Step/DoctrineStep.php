@@ -32,7 +32,7 @@ class DoctrineStep implements StepInterface
     public $host;
 
     /**
-     * @Assert\Range(min = "0")
+     * @Assert\Min(0)
      */
     public $port;
 

@@ -27,8 +27,6 @@ class CollectionToArrayTransformer implements DataTransformerInterface
      * @param Collection $collection A collection of entities
      *
      * @return mixed An array of entities
-     *
-     * @throws UnexpectedTypeException
      */
     public function transform($collection)
     {

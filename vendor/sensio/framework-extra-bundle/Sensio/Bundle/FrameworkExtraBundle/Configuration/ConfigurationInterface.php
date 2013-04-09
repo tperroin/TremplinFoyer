@@ -24,11 +24,4 @@ interface ConfigurationInterface
      * @return string
      */
     function getAliasName();
-
-    /**
-     * Returns whether multiple annotations of this type are allowed
-     *
-     * @return Boolean
-     */
-    function allowArray();
 }

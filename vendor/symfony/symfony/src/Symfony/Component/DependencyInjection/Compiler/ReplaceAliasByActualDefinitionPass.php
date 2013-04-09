@@ -12,7 +12,6 @@
 namespace Symfony\Component\DependencyInjection\Compiler;
 
 use Symfony\Component\DependencyInjection\ContainerBuilder;
-use Symfony\Component\DependencyInjection\Exception\InvalidArgumentException;
 use Symfony\Component\DependencyInjection\Reference;
 
 /**
@@ -31,8 +30,6 @@ class ReplaceAliasByActualDefinitionPass implements CompilerPassInterface
      * Process the Container to replace aliases with service definitions.
      *
      * @param ContainerBuilder $container
-     *
-     * @throws InvalidArgumentException if the service definition does not exist
      */
     public function process(ContainerBuilder $container)
     {
@@ -42,11 +39,7 @@ class ReplaceAliasByActualDefinitionPass implements CompilerPassInterface
         foreach ($container->getAliases() as $id => $alias) {
             $aliasId = (string) $alias;
 
-            try {
-                $definition = $container->getDefinition($aliasId);
-            } catch (InvalidArgumentException $e) {
-                throw new InvalidArgumentException(sprintf('Unable to replace alias "%s" with "%s".', $alias, $id), null, $e);
-            }
+            $definition = $container->getDefinition($aliasId);
 
             if ($definition->isPublic()) {
                 continue;
@@ -104,8 +97,6 @@ class ReplaceAliasByActualDefinitionPass implements CompilerPassInterface
      * @param array  $arguments An array of Arguments
      * @param string $currentId The alias identifier
      * @param string $newId     The identifier the alias points to
-     *
-     * @return array
      */
     private function updateArgumentReferences(array $arguments, $currentId, $newId)
     {

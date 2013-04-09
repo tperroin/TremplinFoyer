@@ -31,5 +31,5 @@ interface AuthenticationProviderInterface extends AuthenticationManagerInterface
      *
      * @return Boolean true if the implementation supports the Token, false otherwise
      */
-     public function supports(TokenInterface $token);
+     function supports(TokenInterface $token);
 }

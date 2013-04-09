@@ -44,9 +44,7 @@ class ChainUserProvider implements UserProviderInterface
             }
         }
 
-        $ex = new UsernameNotFoundException(sprintf('There is no user with name "%s".', $username));
-        $ex->setUsername($username);
-        throw $ex;
+        throw new UsernameNotFoundException(sprintf('There is no user with name "%s".', $username));
     }
 
     /**
@@ -68,9 +66,7 @@ class ChainUserProvider implements UserProviderInterface
         }
 
         if ($supportedUserFound) {
-            $ex = new UsernameNotFoundException(sprintf('There is no user with name "%s".', $user->getUsername()));
-            $ex->setUsername($user->getUsername());
-            throw $ex;
+            throw new UsernameNotFoundException(sprintf('There is no user with name "%s".', $user->getUsername()));
         } else {
             throw new UnsupportedUserException(sprintf('The account "%s" is not supported.', get_class($user)));
         }

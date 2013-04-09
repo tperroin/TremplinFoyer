@@ -149,7 +149,7 @@ class HeaderBag implements \IteratorAggregate, \Countable
      *
      * @param string       $key     The key
      * @param string|array $values  The value or an array of values
-     * @param Boolean      $replace Whether to replace the actual value or not (true by default)
+     * @param Boolean      $replace Whether to replace the actual value of not (true by default)
      *
      * @api
      */
@@ -223,9 +223,7 @@ class HeaderBag implements \IteratorAggregate, \Countable
      * @param string    $key     The parameter key
      * @param \DateTime $default The default value
      *
-     * @return null|\DateTime The parsed DateTime or the default value if the header does not exist
-     *
-     * @throws \RuntimeException When the HTTP header is not parseable
+     * @return \DateTime The filtered value
      *
      * @api
      */
@@ -317,7 +315,7 @@ class HeaderBag implements \IteratorAggregate, \Countable
         $cacheControl = array();
         preg_match_all('#([a-zA-Z][a-zA-Z_-]*)\s*(?:=(?:"([^"]*)"|([^ \t",;]*)))?#', $header, $matches, PREG_SET_ORDER);
         foreach ($matches as $match) {
-            $cacheControl[strtolower($match[1])] = isset($match[3]) ? $match[3] : (isset($match[2]) ? $match[2] : true);
+            $cacheControl[strtolower($match[1])] = isset($match[2]) && $match[2] ? $match[2] : (isset($match[3]) ? $match[3] : true);
         }
 
         return $cacheControl;

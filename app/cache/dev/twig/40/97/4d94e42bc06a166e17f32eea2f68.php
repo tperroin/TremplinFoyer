@@ -1,13 +1,13 @@
 <?php
 
-/* @WebProfiler/Collector/exception.html.twig */
+/* WebProfilerBundle:Collector:exception.html.twig */
 class __TwigTemplate_40974d94e42bc06a166e17f32eea2f68 extends Twig_Template
 {
     public function __construct(Twig_Environment $env)
     {
         parent::__construct($env);
 
-        $this->parent = $this->env->loadTemplate("@WebProfiler/Profiler/layout.html.twig");
+        $this->parent = $this->env->loadTemplate("WebProfilerBundle:Profiler:layout.html.twig");
 
         $this->blocks = array(
             'head' => array($this, 'block_head'),
@@ -18,7 +18,7 @@ class __TwigTemplate_40974d94e42bc06a166e17f32eea2f68 extends Twig_Template
 
     protected function doGetParent(array $context)
     {
-        return "@WebProfiler/Profiler/layout.html.twig";
+        return "WebProfilerBundle:Profiler:layout.html.twig";
     }
 
     protected function doDisplay(array $context, array $blocks = array())
@@ -30,74 +30,66 @@ class __TwigTemplate_40974d94e42bc06a166e17f32eea2f68 extends Twig_Template
     public function block_head($context, array $blocks = array())
     {
         // line 4
-        echo "    ";
-        if ($this->getAttribute($this->getContext($context, "collector"), "hasexception")) {
-            // line 5
-            echo "        <style type=\"text/css\">
-            ";
-            // line 6
-            echo $this->env->getExtension('http_kernel')->renderFragment($this->env->getExtension('routing')->getPath("_profiler_exception_css", array("token" => $this->getContext($context, "token"))));
-            echo "
-        </style>
+        echo "    <link rel=\"stylesheet\" href=\"";
+        echo twig_escape_filter($this->env, $this->env->getExtension('assets')->getAssetUrl("bundles/framework/css/exception.css"), "html", null, true);
+        echo "\" />
     ";
-        }
-        // line 9
-        echo "    ";
+        // line 5
         $this->displayParentBlock("head", $context, $blocks);
         echo "
 ";
     }
 
-    // line 12
+    // line 8
     public function block_menu($context, array $blocks = array())
     {
-        // line 13
+        // line 9
         echo "<span class=\"label\">
-    <span class=\"icon\"><img src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACoAAAAeCAQAAADwIURrAAAEQ0lEQVR42sWVf0xbVRTHKSCUUNEsWdhE3BT3QzNMjHEydLz+eONnGS2sbBSkKBA7Nn6DGwb+EByLbMbFKEuUiG1kTrFgwmCODZaZqaGJEQYSMXQJMJFBs/pGlV9tv97bAukrZMD+8Z2k957vOfdzz7s579brwU+jSP2mojnmNgOXxQ4pLqa90SjyetjHEKQ6I7MwWGkyi+qMIWjDQPgUiuNMfBTf4kxlkfDZELJSynIMHmwsVyldNxaCC7soUjV/fcTawxmvjCscS6AUR9cdzsgZu0YVCwyiLV/uhGB9UFFmG4O0OXM7inEQCpTf6ZY7nEjbeCdKkUSs9O73iTYGmW0QrQfprWclBNHSAxWegD+ECEXmp0MU2nQLajxJFCH5VTfdYiBx6Fl4r6POYj0FcCcQAoFrG4T1fkS14VpscyEgwLaRU1Qr1rtqhY9mb7L6stCtuooIyd8JnSUvEkCoepiclg1y+C3HHx3NpoBZFQKWtQAoqaYeRijxfAvSxXYGWbXwX074oIwmFJ5FIMLlVjrvT4K/JlfKSTlNLkTf5VOtKwtCrUJ2VzKdXoaAH9VUk1sRTgiPlzdSr/IrbCbAvMi4SyWpprfoOd4sxyZEsDYarqrHM6wTz1qxu6CNzkq/xtMJY3QmWTDuLbtAZ1I7XkuR6V5pbCAqjNUIJlB1BwOx/T1DDpf678DxI5XDysUP8r4xO3bOOZu7USRbcOLnftCm3HOhrlWwJEoNh6TWmMn6VrLplDE/5/XsHV7aXxchNlorgys1Sz0Zb62YoGP5ZMzskhY9WzlKRy0XN7OkIdfwWeI/DJYs6abXUO3pybyZOnOCPd72xcAlPU4y2JjhMNKgky8ccMicZR360wv78Q4+4Vroidz+HEpkbhjKYmt3FUMG43iVtW5q7EPSLtiO8MES5wtbtKfa8/lLNHZPSIY9nue3Hs+oieHozHoeNTgJiaulfMFmTK9WRdW0+arEwde6rp+dWi035x4UCMNTEC02P14wn3/3PrsisWgUKrXOXVF2QH5sxDPvgOO0xXIOz/OuFzwGCWptHX2/XZtwT5ZbJ15i/Jj6ZaW+UNgRw9rcc7r/6htAG6oRhSCP6w4i7IAYh1HHryGz07AZAmYXk0VsCwSdW5N/52fgfaQSYBgCV70G4UvQiZ6vFjuWXq1JyguBT+GzGeWx455xJCJwjcsa4g23lJiu+/+h0R6I+IeCRiXM87rPzm+0fFssz0+YR9Ta0H3ZZl77W4/yNrk4XjDj7mebsW9taHjDDfdFP/W0DLp9ojOc7vLP7vGmq9izNnQLtB+PLZ6fo3kAxTihM7mO4Ijtj2YooW0edJ20BDoTchC8NtQPe/D2XHtvv+kXfIOjeI74RWgZ7OvtXWhAEoKxE8fwLfH70Uoiu/HIev6khdgOMZJxEBEIgR/8EYpXoYQCL2MTvOFH1EjiJ2M/ifivJPwHIs9MRJmsgVwAAAAASUVORK5CYII=\" alt=\"Exception\" /></span>
+    <span class=\"icon\"><img src=\"";
+        // line 10
+        echo twig_escape_filter($this->env, $this->env->getExtension('assets')->getAssetUrl("bundles/webprofiler/images/profiler/exception.png"), "html", null, true);
+        echo "\" alt=\"Exception\" /></span>
     <strong>Exception</strong>
     <span class=\"count\">
         ";
-        // line 17
+        // line 13
         if ($this->getAttribute($this->getContext($context, "collector"), "hasexception")) {
-            // line 18
+            // line 14
             echo "            <span>1</span>
         ";
         }
-        // line 20
+        // line 16
         echo "    </span>
 </span>
 ";
     }
 
-    // line 24
+    // line 20
     public function block_panel($context, array $blocks = array())
     {
-        // line 25
+        // line 21
         echo "    <h2>Exception</h2>
 
     ";
-        // line 27
+        // line 23
         if ((!$this->getAttribute($this->getContext($context, "collector"), "hasexception"))) {
-            // line 28
+            // line 24
             echo "        <p>
             <em>No exception was thrown and uncaught during the request.</em>
         </p>
     ";
         } else {
-            // line 32
-            echo "        <div class=\"sf-reset\">
-            ";
-            // line 33
-            echo $this->env->getExtension('http_kernel')->renderFragment($this->env->getExtension('routing')->getPath("_profiler_exception", array("token" => $this->getContext($context, "token"))));
-            echo "
-        </div>
-    ";
+            // line 28
+            echo "        ";
+            echo $this->env->getExtension('actions')->renderAction("WebProfilerBundle:Exception:show", array("exception" => $this->getAttribute($this->getContext($context, "collector"), "exception"), "format" => "html"), array());
+            // line 29
+            echo "    ";
         }
     }
 
     public function getTemplateName()
     {
-        return "@WebProfiler/Collector/exception.html.twig";
+        return "WebProfilerBundle:Collector:exception.html.twig";
     }
 
     public function isTraitable()
@@ -107,6 +99,6 @@ class __TwigTemplate_40974d94e42bc06a166e17f32eea2f68 extends Twig_Template
 
     public function getDebugInfo()
     {
-        return array (  91 => 33,  63 => 18,  385 => 160,  382 => 159,  374 => 157,  367 => 156,  363 => 155,  359 => 153,  357 => 152,  354 => 151,  351 => 150,  349 => 149,  339 => 146,  336 => 145,  330 => 141,  324 => 139,  322 => 138,  317 => 135,  311 => 131,  308 => 130,  303 => 128,  292 => 121,  289 => 120,  286 => 119,  284 => 118,  279 => 115,  277 => 114,  272 => 111,  270 => 110,  265 => 107,  261 => 105,  255 => 103,  249 => 100,  244 => 97,  242 => 96,  237 => 93,  231 => 89,  228 => 88,  225 => 87,  223 => 86,  218 => 83,  212 => 79,  206 => 77,  204 => 76,  199 => 73,  193 => 69,  190 => 68,  187 => 67,  180 => 63,  174 => 59,  171 => 58,  166 => 56,  159 => 53,  151 => 47,  148 => 46,  143 => 43,  140 => 42,  107 => 27,  103 => 25,  100 => 24,  97 => 23,  88 => 32,  82 => 28,  76 => 25,  61 => 17,  39 => 6,  36 => 5,  79 => 18,  72 => 13,  69 => 12,  54 => 22,  47 => 8,  42 => 7,  40 => 11,  37 => 10,  22 => 1,  246 => 32,  164 => 58,  157 => 56,  145 => 46,  139 => 45,  131 => 42,  120 => 40,  115 => 39,  111 => 38,  108 => 37,  106 => 36,  101 => 33,  98 => 32,  92 => 21,  83 => 25,  80 => 27,  74 => 14,  66 => 11,  60 => 6,  55 => 13,  52 => 12,  50 => 14,  41 => 8,  32 => 4,  29 => 6,  409 => 183,  400 => 180,  396 => 179,  393 => 178,  388 => 177,  386 => 176,  378 => 170,  376 => 158,  369 => 165,  362 => 161,  355 => 157,  348 => 153,  341 => 147,  334 => 145,  327 => 140,  312 => 129,  305 => 129,  298 => 125,  293 => 118,  288 => 116,  285 => 115,  276 => 113,  273 => 112,  271 => 111,  262 => 104,  259 => 103,  251 => 101,  248 => 96,  243 => 93,  240 => 92,  235 => 89,  229 => 87,  221 => 85,  219 => 84,  209 => 78,  202 => 75,  195 => 71,  191 => 69,  188 => 68,  185 => 66,  177 => 64,  172 => 62,  168 => 57,  165 => 60,  162 => 54,  156 => 58,  153 => 56,  150 => 55,  147 => 54,  141 => 51,  134 => 47,  130 => 39,  123 => 35,  119 => 40,  116 => 31,  113 => 38,  105 => 34,  102 => 33,  99 => 31,  96 => 31,  90 => 27,  84 => 24,  81 => 23,  73 => 24,  70 => 15,  67 => 20,  64 => 19,  59 => 14,  53 => 12,  45 => 9,  43 => 9,  38 => 6,  35 => 9,  33 => 4,  30 => 3,);
+        return array (  77 => 24,  71 => 21,  68 => 20,  62 => 16,  58 => 14,  56 => 13,  44 => 8,  388 => 160,  385 => 159,  379 => 158,  377 => 157,  370 => 156,  366 => 155,  362 => 153,  360 => 152,  357 => 151,  354 => 150,  352 => 149,  344 => 147,  342 => 146,  339 => 145,  330 => 140,  327 => 139,  320 => 135,  314 => 131,  311 => 130,  308 => 129,  306 => 128,  301 => 125,  292 => 120,  289 => 119,  287 => 118,  282 => 115,  280 => 114,  275 => 111,  273 => 110,  268 => 107,  264 => 105,  258 => 103,  254 => 101,  247 => 97,  240 => 93,  234 => 89,  231 => 88,  226 => 86,  221 => 83,  215 => 79,  212 => 78,  209 => 77,  207 => 76,  202 => 73,  196 => 69,  193 => 68,  190 => 67,  188 => 66,  183 => 63,  177 => 59,  174 => 58,  171 => 57,  169 => 56,  162 => 53,  143 => 43,  130 => 39,  107 => 27,  103 => 25,  97 => 23,  88 => 20,  82 => 19,  79 => 18,  76 => 17,  73 => 16,  67 => 14,  61 => 12,  47 => 9,  36 => 5,  70 => 15,  63 => 9,  46 => 14,  39 => 6,  22 => 1,  163 => 32,  155 => 50,  152 => 49,  149 => 48,  145 => 46,  139 => 45,  123 => 35,  120 => 40,  115 => 39,  111 => 38,  108 => 37,  106 => 36,  101 => 33,  98 => 32,  96 => 31,  92 => 21,  80 => 24,  74 => 22,  64 => 19,  55 => 9,  52 => 15,  50 => 10,  43 => 9,  41 => 8,  37 => 8,  32 => 4,  29 => 6,  356 => 163,  347 => 160,  343 => 159,  340 => 158,  335 => 157,  333 => 141,  325 => 138,  323 => 149,  316 => 145,  309 => 141,  302 => 137,  295 => 121,  288 => 129,  281 => 125,  274 => 121,  259 => 109,  252 => 100,  245 => 96,  238 => 97,  228 => 87,  225 => 88,  217 => 83,  214 => 82,  211 => 81,  206 => 78,  203 => 77,  198 => 74,  192 => 72,  184 => 70,  182 => 69,  172 => 64,  165 => 54,  158 => 56,  154 => 48,  151 => 47,  148 => 46,  140 => 42,  135 => 47,  131 => 42,  128 => 45,  125 => 44,  119 => 43,  116 => 31,  113 => 40,  110 => 39,  104 => 36,  100 => 24,  93 => 31,  89 => 29,  86 => 29,  83 => 28,  75 => 23,  72 => 22,  69 => 20,  66 => 20,  60 => 8,  54 => 6,  51 => 12,  48 => 15,  42 => 7,  38 => 5,  35 => 5,  33 => 4,  30 => 3,);
     }
 }

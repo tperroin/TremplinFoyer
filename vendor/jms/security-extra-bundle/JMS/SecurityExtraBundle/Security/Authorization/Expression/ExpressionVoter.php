@@ -18,8 +18,6 @@
 
 namespace JMS\SecurityExtraBundle\Security\Authorization\Expression;
 
-use Symfony\Component\HttpKernel\Log\LoggerInterface;
-
 use JMS\SecurityExtraBundle\Exception\RuntimeException;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\VoterInterface;
@@ -38,12 +36,10 @@ class ExpressionVoter implements VoterInterface
     private $compiler;
     private $cacheDir;
     private $expressionHandler;
-    private $logger;
 
-    public function __construct(ExpressionHandlerInterface $expressionHandler, LoggerInterface $logger = null)
+    public function __construct(ExpressionHandlerInterface $expressionHandler)
     {
         $this->expressionHandler = $expressionHandler;
-        $this->logger = $logger;
     }
 
     public function setCacheDir($cacheDir)
@@ -59,7 +55,6 @@ class ExpressionVoter implements VoterInterface
     public function vote(TokenInterface $token, $object, array $attributes)
     {
         $result = VoterInterface::ACCESS_ABSTAIN;
-        $exprs = array();
 
         foreach ($attributes as $attribute) {
             if (!$attribute instanceof Expression) {
@@ -67,7 +62,6 @@ class ExpressionVoter implements VoterInterface
             }
 
             $result = VoterInterface::ACCESS_DENIED;
-            $exprs[] = $attribute->expression;
             if (!isset($this->evaluators[$attribute->expression])) {
                 $this->evaluators[$attribute->expression] =
                     $this->createEvaluator($attribute);
@@ -75,19 +69,7 @@ class ExpressionVoter implements VoterInterface
 
             if (call_user_func($this->evaluators[$attribute->expression],
                     $this->expressionHandler->createContext($token, $object))) {
-                if (null !== $this->logger) {
-                    $this->logger->info(sprintf('"%s" evaluated to true; voting to grant access.', $attribute->expression));
-                }
-
                 return VoterInterface::ACCESS_GRANTED;
-            }
-        }
-
-        if (null !== $this->logger) {
-            if (VoterInterface::ACCESS_DENIED === $result) {
-                $this->logger->info(sprintf('"%s" evaluated to false; voting to deny access.', implode('", "', $exprs)));
-            } else {
-                $this->logger->info('No expression found; abstaining from voting.');
             }
         }
 

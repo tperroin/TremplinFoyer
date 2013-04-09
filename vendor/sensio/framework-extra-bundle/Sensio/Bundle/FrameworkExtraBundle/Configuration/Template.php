@@ -145,15 +145,4 @@ class Template extends ConfigurationAnnotation
     {
         return 'template';
     }
-
-    /**
-     * Only one template directive is allowed
-     *
-     * @return Boolean
-     * @see ConfigurationInterface
-     */
-    public function allowArray()
-    {
-        return false;
-    }
 }

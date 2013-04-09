@@ -24,10 +24,10 @@ class UsernamePasswordToken extends AbstractToken
     /**
      * Constructor.
      *
-     * @param string          $user        The username (like a nickname, email address, etc.), or a UserInterface instance or an object implementing a __toString method.
-     * @param string          $credentials This usually is the password of the user
-     * @param string          $providerKey The provider key
-     * @param RoleInterface[] $roles       An array of roles
+     * @param string $user        The username (like a nickname, email address, etc.), or a UserInterface instance or an object implementing a __toString method.
+     * @param string $credentials This usually is the password of the user
+     * @param string $providerKey The provider key
+     * @param array  $roles       An array of roles
      *
      * @throws \InvalidArgumentException
      */
@@ -78,20 +78,14 @@ class UsernamePasswordToken extends AbstractToken
         $this->credentials = null;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function serialize()
     {
         return serialize(array($this->credentials, $this->providerKey, parent::serialize()));
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function unserialize($serialized)
+    public function unserialize($str)
     {
-        list($this->credentials, $this->providerKey, $parentStr) = unserialize($serialized);
+        list($this->credentials, $this->providerKey, $parentStr) = unserialize($str);
         parent::unserialize($parentStr);
     }
 }

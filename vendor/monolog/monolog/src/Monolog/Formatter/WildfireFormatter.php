@@ -54,21 +54,18 @@ class WildfireFormatter extends NormalizerFormatter
 
         $record = $this->normalize($record);
         $message = array('message' => $record['message']);
-        $handleError = false;
         if ($record['context']) {
             $message['context'] = $record['context'];
-            $handleError = true;
         }
         if ($record['extra']) {
             $message['extra'] = $record['extra'];
-            $handleError = true;
         }
         if (count($message) === 1) {
             $message = reset($message);
         }
 
         // Create JSON object describing the appearance of the message in the console
-        $json = $this->toJson(array(
+        $json = json_encode(array(
             array(
                 'Type'  => $this->logLevels[$record['level']],
                 'File'  => $file,
@@ -76,7 +73,7 @@ class WildfireFormatter extends NormalizerFormatter
                 'Label' => $record['channel'],
             ),
             $message,
-        ), $handleError);
+        ));
 
         // The message itself is a serialization of the above JSON object + it's length
         return sprintf(

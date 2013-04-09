@@ -1,5 +1,2 @@
 vendor/
 composer.lock
-phpunit.xml
-Tests/ProjectContainer.php
-Tests/classes.map

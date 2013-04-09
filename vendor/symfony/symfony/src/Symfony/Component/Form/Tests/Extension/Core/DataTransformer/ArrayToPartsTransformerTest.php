@@ -57,7 +57,7 @@ class ArrayToPartsTransformerTest extends \PHPUnit_Framework_TestCase
         $this->assertSame($output, $this->transformer->transform($input));
     }
 
-    public function testTransformEmpty()
+    public function testTransform_empty()
     {
         $output = array(
             'first' => null,
@@ -68,7 +68,7 @@ class ArrayToPartsTransformerTest extends \PHPUnit_Framework_TestCase
     }
 
     /**
-     * @expectedException \Symfony\Component\Form\Exception\UnexpectedTypeException
+     * @expectedException Symfony\Component\Form\Exception\UnexpectedTypeException
      */
     public function testTransformRequiresArray()
     {
@@ -102,7 +102,7 @@ class ArrayToPartsTransformerTest extends \PHPUnit_Framework_TestCase
         $this->assertSame($output, $this->transformer->reverseTransform($input));
     }
 
-    public function testReverseTransformCompletelyEmpty()
+    public function testReverseTransform_completelyEmpty()
     {
         $input = array(
             'first' => '',
@@ -112,7 +112,7 @@ class ArrayToPartsTransformerTest extends \PHPUnit_Framework_TestCase
         $this->assertNull($this->transformer->reverseTransform($input));
     }
 
-    public function testReverseTransformCompletelyNull()
+    public function testReverseTransform_completelyNull()
     {
         $input = array(
             'first' => null,
@@ -123,9 +123,9 @@ class ArrayToPartsTransformerTest extends \PHPUnit_Framework_TestCase
     }
 
     /**
-     * @expectedException \Symfony\Component\Form\Exception\TransformationFailedException
+     * @expectedException Symfony\Component\Form\Exception\TransformationFailedException
      */
-    public function testReverseTransformPartiallyNull()
+    public function testReverseTransform_partiallyNull()
     {
         $input = array(
             'first' => array(
@@ -140,7 +140,7 @@ class ArrayToPartsTransformerTest extends \PHPUnit_Framework_TestCase
     }
 
     /**
-     * @expectedException \Symfony\Component\Form\Exception\UnexpectedTypeException
+     * @expectedException Symfony\Component\Form\Exception\UnexpectedTypeException
      */
     public function testReverseTransformRequiresArray()
     {

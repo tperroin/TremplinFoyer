@@ -40,9 +40,6 @@ class UniqueEntityValidator extends ConstraintValidator
     /**
      * @param object     $entity
      * @param Constraint $constraint
-     *
-     * @throws UnexpectedTypeException
-     * @throws ConstraintDefinitionException
      */
     public function validate($entity, Constraint $constraint)
     {
@@ -66,14 +63,14 @@ class UniqueEntityValidator extends ConstraintValidator
             $em = $this->registry->getManagerForClass(get_class($entity));
         }
 
-        $className = $this->context->getClassName();
+        $className = $this->context->getCurrentClass();
         $class = $em->getClassMetadata($className);
         /* @var $class \Doctrine\Common\Persistence\Mapping\ClassMetadata */
 
         $criteria = array();
         foreach ($fields as $fieldName) {
             if (!$class->hasField($fieldName) && !$class->hasAssociation($fieldName)) {
-                throw new ConstraintDefinitionException(sprintf("The field '%s' is not mapped by Doctrine, so it cannot be validated for uniqueness.", $fieldName));
+                throw new ConstraintDefinitionException("Only field names mapped by Doctrine can be validated for uniqueness.");
             }
 
             $criteria[$fieldName] = $class->reflFields[$fieldName]->getValue($entity);
@@ -123,6 +120,6 @@ class UniqueEntityValidator extends ConstraintValidator
 
         $errorPath = null !== $constraint->errorPath ? $constraint->errorPath : $fields[0];
 
-        $this->context->addViolationAt($errorPath, $constraint->message, array(), $criteria[$fields[0]]);
+        $this->context->addViolationAtSubPath($errorPath, $constraint->message, array(), $criteria[$fields[0]]);
     }
 }

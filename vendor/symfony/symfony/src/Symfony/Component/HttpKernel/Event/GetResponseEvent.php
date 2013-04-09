@@ -28,14 +28,14 @@ class GetResponseEvent extends KernelEvent
 {
     /**
      * The response object
-     * @var Response
+     * @var Symfony\Component\HttpFoundation\Response
      */
     private $response;
 
     /**
      * Returns the response object
      *
-     * @return Response
+     * @return Symfony\Component\HttpFoundation\Response
      *
      * @api
      */
@@ -47,7 +47,7 @@ class GetResponseEvent extends KernelEvent
     /**
      * Sets a response and stops event propagation
      *
-     * @param Response $response
+     * @param Symfony\Component\HttpFoundation\Response $response
      *
      * @api
      */

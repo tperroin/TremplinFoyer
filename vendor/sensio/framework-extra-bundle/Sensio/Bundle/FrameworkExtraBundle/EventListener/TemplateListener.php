@@ -119,6 +119,7 @@ class TemplateListener
                 return $templating->stream($template, $parameters);
             };
 
+
             $event->setResponse(new StreamedResponse($callback));
         }
     }

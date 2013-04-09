@@ -22,25 +22,15 @@ class Inline
 {
     const REGEX_QUOTED_STRING = '(?:"([^"\\\\]*(?:\\\\.[^"\\\\]*)*)"|\'([^\']*(?:\'\'[^\']*)*)\')';
 
-    private static $exceptionOnInvalidType = false;
-    private static $objectSupport = false;
-
     /**
      * Converts a YAML string to a PHP array.
      *
-     * @param string  $value                  A YAML string
-     * @param Boolean $exceptionOnInvalidType true if an exception must be thrown on invalid types (a PHP resource or object), false otherwise
-     * @param Boolean $objectSupport          true if object support is enabled, false otherwise
+     * @param string $value A YAML string
      *
      * @return array A PHP array representing the YAML string
-     *
-     * @throws ParseException
      */
-    public static function parse($value, $exceptionOnInvalidType = false, $objectSupport = false)
+    public static function parse($value)
     {
-        self::$exceptionOnInvalidType = $exceptionOnInvalidType;
-        self::$objectSupport = $objectSupport;
-
         $value = trim($value);
 
         if (0 == strlen($value)) {
@@ -52,23 +42,21 @@ class Inline
             mb_internal_encoding('ASCII');
         }
 
-        $i = 0;
         switch ($value[0]) {
             case '[':
-                $result = self::parseSequence($value, $i);
-                ++$i;
+                $result = self::parseSequence($value);
                 break;
             case '{':
-                $result = self::parseMapping($value, $i);
-                ++$i;
+                $result = self::parseMapping($value);
                 break;
             default:
+                $i = 0;
                 $result = self::parseScalar($value, null, array('"', "'"), $i);
-        }
 
-        // some comments are allowed at the end
-        if (preg_replace('/\s+#.*$/A', '', substr($value, $i))) {
-            throw new ParseException(sprintf('Unexpected characters near "%s".', substr($value, $i)));
+                // some comment can end the scalar
+                if (preg_replace('/\s+#.*$/A', '', substr($value, $i))) {
+                    throw new ParseException(sprintf('Unexpected characters near "%s".', substr($value, $i)));
+                }
         }
 
         if (isset($mbEncoding)) {
@@ -81,35 +69,21 @@ class Inline
     /**
      * Dumps a given PHP variable to a YAML string.
      *
-     * @param mixed   $value                  The PHP variable to convert
-     * @param Boolean $exceptionOnInvalidType true if an exception must be thrown on invalid types (a PHP resource or object), false otherwise
-     * @param Boolean $objectSupport          true if object support is enabled, false otherwise
+     * @param mixed $value The PHP variable to convert
      *
      * @return string The YAML string representing the PHP array
      *
      * @throws DumpException When trying to dump PHP resource
      */
-    public static function dump($value, $exceptionOnInvalidType = false, $objectSupport = false)
+    public static function dump($value)
     {
         switch (true) {
             case is_resource($value):
-                if ($exceptionOnInvalidType) {
-                    throw new DumpException(sprintf('Unable to dump PHP resources in a YAML file ("%s").', get_resource_type($value)));
-                }
-
-                return 'null';
+                throw new DumpException(sprintf('Unable to dump PHP resources in a YAML file ("%s").', get_resource_type($value)));
             case is_object($value):
-                if ($objectSupport) {
-                    return '!!php/object:'.serialize($value);
-                }
-
-                if ($exceptionOnInvalidType) {
-                    throw new DumpException('Object support when dumping a YAML file has been disabled.');
-                }
-
-                return 'null';
+                return '!!php/object:'.serialize($value);
             case is_array($value):
-                return self::dumpArray($value, $exceptionOnInvalidType, $objectSupport);
+                return self::dumpArray($value);
             case null === $value:
                 return 'null';
             case true === $value:
@@ -147,13 +121,11 @@ class Inline
     /**
      * Dumps a PHP array to a YAML string.
      *
-     * @param array   $value                  The PHP array to dump
-     * @param Boolean $exceptionOnInvalidType true if an exception must be thrown on invalid types (a PHP resource or object), false otherwise
-     * @param Boolean $objectSupport          true if object support is enabled, false otherwise
+     * @param array $value The PHP array to dump
      *
      * @return string The YAML string representing the PHP array
      */
-    private static function dumpArray($value, $exceptionOnInvalidType, $objectSupport)
+    private static function dumpArray($value)
     {
         // array
         $keys = array_keys($value);
@@ -162,7 +134,7 @@ class Inline
         ) {
             $output = array();
             foreach ($value as $val) {
-                $output[] = self::dump($val, $exceptionOnInvalidType, $objectSupport);
+                $output[] = self::dump($val);
             }
 
             return sprintf('[%s]', implode(', ', $output));
@@ -171,7 +143,7 @@ class Inline
         // mapping
         $output = array();
         foreach ($value as $key => $val) {
-            $output[] = sprintf('%s: %s', self::dump($key, $exceptionOnInvalidType, $objectSupport), self::dump($val, $exceptionOnInvalidType, $objectSupport));
+            $output[] = sprintf('%s: %s', self::dump($key), self::dump($val));
         }
 
         return sprintf('{ %s }', implode(', ', $output));
@@ -237,6 +209,11 @@ class Inline
      */
     private static function parseQuotedScalar($scalar, &$i)
     {
+        // Only check the current item we're dealing with (for sequences)
+        $subject = substr($scalar, $i);
+        $items = preg_split('/[\'"]\s*(?:[,:]|[}\]]\s*,)/', $subject);
+        $subject = substr($subject, 0, strlen($items[0]) + 1);
+
         if (!preg_match('/'.self::REGEX_QUOTED_STRING.'/Au', substr($scalar, $i), $match)) {
             throw new ParseException(sprintf('Malformed inline YAML string (%s).', substr($scalar, $i)));
         }
@@ -396,25 +373,12 @@ class Inline
             case 0 === strpos($scalar, '! '):
                 return intval(self::parseScalar(substr($scalar, 2)));
             case 0 === strpos($scalar, '!!php/object:'):
-                if (self::$objectSupport) {
-                    return unserialize(substr($scalar, 13));
-                }
-
-                if (self::$exceptionOnInvalidType) {
-                    throw new ParseException('Object support when parsing a YAML file has been disabled.');
-                }
-
-                return null;
+                return unserialize(substr($scalar, 13));
             case ctype_digit($scalar):
                 $raw = $scalar;
                 $cast = intval($scalar);
 
                 return '0' == $scalar[0] ? octdec($scalar) : (((string) $raw == (string) $cast) ? $cast : $raw);
-            case '-' === $scalar[0] && ctype_digit(substr($scalar, 1)):
-                $raw = $scalar;
-                $cast = intval($scalar);
-
-                return '0' == $scalar[1] ? octdec($scalar) : (((string) $raw == (string) $cast) ? $cast : $raw);
             case 'true' === strtolower($scalar):
                 return true;
             case 'false' === strtolower($scalar):
@@ -436,11 +400,9 @@ class Inline
     }
 
     /**
-     * Gets a regex that matches a YAML date.
+     * Gets a regex that matches an unix timestamp
      *
      * @return string The regular expression
-     *
-     * @see http://www.yaml.org/spec/1.2/spec.html#id2761573
      */
     private static function getTimestampRegex()
     {

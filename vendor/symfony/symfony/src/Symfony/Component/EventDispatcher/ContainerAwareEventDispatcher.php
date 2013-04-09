@@ -60,8 +60,6 @@ class ContainerAwareEventDispatcher extends EventDispatcher
      * @param integer $priority The higher this value, the earlier an event listener
      *                            will be triggered in the chain.
      *                            Defaults to 0.
-     *
-     * @throws \InvalidArgumentException
      */
     public function addListenerService($eventName, $callback, $priority = 0)
     {

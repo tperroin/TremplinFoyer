@@ -25,7 +25,7 @@ use Symfony\Component\Process\ProcessBuilder;
 class ServerRunCommand extends ContainerAwareCommand
 {
     /**
-     * {@inheritdoc}
+     * {@inheritDoc}
      */
     public function isEnabled()
     {
@@ -37,7 +37,7 @@ class ServerRunCommand extends ContainerAwareCommand
     }
 
     /**
-     * {@inheritdoc}
+     * @see Command
      */
     protected function configure()
     {
@@ -74,7 +74,7 @@ EOF
     }
 
     /**
-     * {@inheritdoc}
+     * @see Command
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {

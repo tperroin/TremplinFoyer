@@ -168,15 +168,4 @@ class Cache extends ConfigurationAnnotation
     {
         return 'cache';
     }
-
-    /**
-     * Only one cache directive is allowed
-     *
-     * @return Boolean
-     * @see ConfigurationInterface
-     */
-    public function allowArray()
-    {
-        return false;
-    }
 }

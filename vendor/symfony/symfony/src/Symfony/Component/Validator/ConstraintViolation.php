@@ -12,73 +12,22 @@
 namespace Symfony\Component\Validator;
 
 /**
- * Default implementation of {@ConstraintViolationInterface}.
+ * Represents a single violation of a constraint.
  *
- * @author Bernhard Schussek <bschussek@gmail.com>
+ * @api
  */
-class ConstraintViolation implements ConstraintViolationInterface
+class ConstraintViolation
 {
-    /**
-     * @var string
-     */
-    private $message;
+    protected $messageTemplate;
+    protected $messageParameters;
+    protected $messagePluralization;
+    protected $root;
+    protected $propertyPath;
+    protected $invalidValue;
+    protected $code;
 
-    /**
-     * @var string
-     */
-    private $messageTemplate;
-
-    /**
-     * @var array
-     */
-    private $messageParameters;
-
-    /**
-     * @var integer|null
-     */
-    private $messagePluralization;
-
-    /**
-     * @var mixed
-     */
-    private $root;
-
-    /**
-     * @var string
-     */
-    private $propertyPath;
-
-    /**
-     * @var mixed
-     */
-    private $invalidValue;
-
-    /**
-     * @var mixed
-     */
-    private $code;
-
-    /**
-     * Creates a new constraint violation.
-     *
-     * @param string       $message               The violation message.
-     * @param string       $messageTemplate       The raw violation message.
-     * @param array        $messageParameters     The parameters to substitute
-     *                                            in the raw message.
-     * @param mixed        $root                  The value originally passed
-     *                                            to the validator.
-     * @param string       $propertyPath          The property path from the
-     *                                            root value to the invalid
-     *                                            value.
-     * @param mixed        $invalidValue          The invalid value causing the
-     *                                            violation.
-     * @param integer|null $messagePluralization  The pluralization parameter.
-     * @param mixed        $code                  The error code of the
-     *                                            violation, if any.
-     */
-    public function __construct($message, $messageTemplate, array $messageParameters, $root, $propertyPath, $invalidValue, $messagePluralization = null, $code = null)
+    public function __construct($messageTemplate, array $messageParameters, $root, $propertyPath, $invalidValue, $messagePluralization = null, $code = null)
     {
-        $this->message = $message;
         $this->messageTemplate = $messageTemplate;
         $this->messageParameters = $messageParameters;
         $this->messagePluralization = $messagePluralization;
@@ -89,9 +38,7 @@ class ConstraintViolation implements ConstraintViolationInterface
     }
 
     /**
-     * Converts the violation into a string for debugging purposes.
-     *
-     * @return string The violation as string.
+     * @return string
      */
     public function __toString()
     {
@@ -111,7 +58,9 @@ class ConstraintViolation implements ConstraintViolationInterface
     }
 
     /**
-     * {@inheritDoc}
+     * @return string
+     *
+     * @api
      */
     public function getMessageTemplate()
     {
@@ -119,7 +68,9 @@ class ConstraintViolation implements ConstraintViolationInterface
     }
 
     /**
-     * {@inheritDoc}
+     * @return array
+     *
+     * @api
      */
     public function getMessageParameters()
     {
@@ -127,7 +78,7 @@ class ConstraintViolation implements ConstraintViolationInterface
     }
 
     /**
-     * {@inheritDoc}
+     * @return integer|null
      */
     public function getMessagePluralization()
     {
@@ -135,40 +86,40 @@ class ConstraintViolation implements ConstraintViolationInterface
     }
 
     /**
-     * {@inheritDoc}
+     * Returns the violation message.
+     *
+     * @return string
+     *
+     * @api
      */
     public function getMessage()
     {
-        return $this->message;
+        $parameters = $this->messageParameters;
+
+        foreach ($parameters as $i => $parameter) {
+            if (is_array($parameter)) {
+                $parameters[$i] = 'Array';
+            }
+        }
+
+        return strtr($this->messageTemplate, $parameters);
     }
 
-    /**
-     * {@inheritDoc}
-     */
     public function getRoot()
     {
         return $this->root;
     }
 
-    /**
-     * {@inheritDoc}
-     */
     public function getPropertyPath()
     {
         return $this->propertyPath;
     }
 
-    /**
-     * {@inheritDoc}
-     */
     public function getInvalidValue()
     {
         return $this->invalidValue;
     }
 
-    /**
-     * {@inheritDoc}
-     */
     public function getCode()
     {
         return $this->code;

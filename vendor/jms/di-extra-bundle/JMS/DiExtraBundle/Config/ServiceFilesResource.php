@@ -25,18 +25,16 @@ class ServiceFilesResource implements ResourceInterface
 {
     private $files;
     private $dirs;
-    private $disableGrep;
 
-    public function __construct(array $files, array $dirs, $disableGrep)
+    public function __construct(array $files, array $dirs)
     {
         $this->files = $files;
         $this->dirs = $dirs;
-        $this->disableGrep = $disableGrep;
     }
 
     public function isFresh($timestamp)
     {
-        $finder = new PatternFinder('JMS\DiExtraBundle\Annotation', '*.php', $this->disableGrep);
+        $finder = new PatternFinder('JMS\DiExtraBundle\Annotation');
         $files = $finder->findFiles($this->dirs);
 
         return !array_diff($files, $this->files) && !array_diff($this->files, $files);

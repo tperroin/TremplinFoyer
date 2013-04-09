@@ -176,15 +176,4 @@ class ParamConverter extends ConfigurationAnnotation
     {
         return 'converters';
     }
-
-    /**
-     * Multiple ParamConverters are allowed
-     *
-     * @return Boolean
-     * @see ConfigurationInterface
-     */
-    public function allowArray()
-    {
-        return true;
-    }
 }

@@ -11,19 +11,36 @@
 
 namespace Symfony\Component\Security\Core\Validator\Constraint;
 
+use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Security\Core\SecurityContextInterface;
 use Symfony\Component\Security\Core\Encoder\EncoderFactoryInterface;
-use Symfony\Component\Security\Core\Validator\Constraints\UserPasswordValidator as BaseUserPasswordValidator;
+use Symfony\Component\Validator\Constraint;
+use Symfony\Component\Validator\ConstraintValidator;
+use Symfony\Component\Validator\Exception\ConstraintDefinitionException;
 
-/**
- * @deprecated Deprecated since version 2.2, to be removed in 2.3.
- */
-class UserPasswordValidator extends BaseUserPasswordValidator
+class UserPasswordValidator extends ConstraintValidator
 {
+    private $securityContext;
+    private $encoderFactory;
+
     public function __construct(SecurityContextInterface $securityContext, EncoderFactoryInterface $encoderFactory)
     {
-        trigger_error('UserPasswordValidator class in Symfony\Component\Security\Core\Validator\Constraint namespace is deprecated since version 2.2 and will be removed in 2.3. Use the Symfony\Component\Security\Core\Validator\Constraints\UserPasswordValidator class instead.', E_USER_DEPRECATED);
+        $this->securityContext = $securityContext;
+        $this->encoderFactory = $encoderFactory;
+    }
 
-        parent::__construct($securityContext, $encoderFactory);
+    public function validate($password, Constraint $constraint)
+    {
+        $user = $this->securityContext->getToken()->getUser();
+
+        if (!$user instanceof UserInterface) {
+            throw new ConstraintDefinitionException('The User must extend UserInterface');
+        }
+
+        $encoder = $this->encoderFactory->getEncoder($user);
+
+        if (!$encoder->isPasswordValid($user->getPassword(), $password, $user->getSalt())) {
+            $this->context->addViolation($constraint->message);
+        }
     }
 }

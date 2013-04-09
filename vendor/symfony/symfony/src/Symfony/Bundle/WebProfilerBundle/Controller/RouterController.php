@@ -11,36 +11,17 @@
 
 namespace Symfony\Bundle\WebProfilerBundle\Controller;
 
+use Symfony\Component\DependencyInjection\ContainerAware;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Routing\Matcher\UrlMatcherInterface;
 use Symfony\Component\Routing\Matcher\TraceableUrlMatcher;
-use Symfony\Component\Routing\RouterInterface;
-use Symfony\Component\HttpKernel\Profiler\Profiler;
 
 /**
  * RouterController.
  *
  * @author Fabien Potencier <fabien@symfony.com>
  */
-class RouterController
+class RouterController extends ContainerAware
 {
-    private $profiler;
-    private $twig;
-    private $matcher;
-    private $routes;
-
-    public function __construct(Profiler $profiler, \Twig_Environment $twig, UrlMatcherInterface $matcher = null, $routes = null)
-    {
-        $this->profiler = $profiler;
-        $this->twig = $twig;
-        $this->matcher = $matcher;
-        $this->routes = $routes;
-
-        if (null === $this->routes && null !== $this->matcher && $this->matcher instanceof RouterInterface) {
-            $this->routes = $matcher->getRouteCollection();
-        }
-    }
-
     /**
      * Renders the profiler panel for the given token.
      *
@@ -50,24 +31,26 @@ class RouterController
      */
     public function panelAction($token)
     {
-        $this->profiler->disable();
+        $profiler = $this->container->get('profiler');
+        $profiler->disable();
 
-        if (null === $this->matcher || null === $this->routes) {
+        if (!$this->container->has('router')) {
             return new Response('The Router is not enabled.');
         }
+        $router = $this->container->get('router');
 
-        $profile = $this->profiler->loadProfile($token);
+        $profile = $profiler->loadProfile($token);
 
-        $context = $this->matcher->getContext();
+        $context = $router->getContext();
         $context->setMethod($profile->getMethod());
-        $matcher = new TraceableUrlMatcher($this->routes, $context);
+        $matcher = new TraceableUrlMatcher($router->getRouteCollection(), $context);
 
         $request = $profile->getCollector('request');
 
-        return new Response($this->twig->render('@WebProfiler/Router/panel.html.twig', array(
+        return $this->container->get('templating')->renderResponse('WebProfilerBundle:Router:panel.html.twig', array(
             'request' => $request,
             'router'  => $profile->getCollector('router'),
             'traces'  => $matcher->getTraces($request->getPathInfo()),
-        )));
+        ));
     }
 }

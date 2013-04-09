@@ -42,8 +42,6 @@ class DateTimeType extends AbstractType
      *  * "Z" for UTC
      *  * "(-|+)HH:mm" for other timezones (note the colon!)
      *
-     * For more information see:
-     *
      * http://userguide.icu-project.org/formatparse/datetime#TOC-Date-Time-Format-Syntax
      * http://www.w3.org/TR/html-markup/input.datetime.html
      * http://tools.ietf.org/html/rfc3339
@@ -51,11 +49,13 @@ class DateTimeType extends AbstractType
      * An ICU ticket was created:
      * http://icu-project.org/trac/ticket/9421
      *
-     * It was supposedly fixed, but is not available in all PHP installations
-     * yet. To temporarily circumvent this issue, DateTimeToRfc3339Transformer
-     * is used when the format matches this constant.
+     * To temporarily circumvent this issue, DateTimeToRfc3339Transformer is used
+     * when the format matches this constant.
+     *
+     * ("ZZZZZZ" is not recognized by ICU and used here to differentiate this
+     * pattern from custom patterns).
      */
-    const HTML5_FORMAT = "yyyy-MM-dd'T'HH:mm:ssZZZZZ";
+    const HTML5_FORMAT = "yyyy-MM-dd'T'HH:mm:ssZZZZZZ";
 
     private static $acceptedFormats = array(
         \IntlDateFormatter::FULL,
@@ -69,14 +69,9 @@ class DateTimeType extends AbstractType
      */
     public function buildForm(FormBuilderInterface $builder, array $options)
     {
-        $parts = array('year', 'month', 'day', 'hour');
+        $parts = array('year', 'month', 'day', 'hour', 'minute');
         $dateParts = array('year', 'month', 'day');
-        $timeParts = array('hour');
-
-        if ($options['with_minutes']) {
-            $parts[] = 'minute';
-            $timeParts[] = 'minute';
-        }
+        $timeParts = array('hour', 'minute');
 
         if ($options['with_seconds']) {
             $parts[] = 'second';
@@ -90,6 +85,10 @@ class DateTimeType extends AbstractType
 
         if (!in_array($dateFormat, self::$acceptedFormats, true)) {
             throw new InvalidOptionsException('The "date_format" option must be one of the IntlDateFormatter constants (FULL, LONG, MEDIUM, SHORT) or a string representing a custom format.');
+        }
+
+        if (null !== $pattern && (false === strpos($pattern, 'y') || false === strpos($pattern, 'M') || false === strpos($pattern, 'd') || false === strpos($pattern, 'H') || false === strpos($pattern, 'm'))) {
+            throw new InvalidOptionsException(sprintf('The "format" option should contain the letters "y", "M", "d", "H" and "m". Its current value is "%s".', $pattern));
         }
 
         if ('single_text' === $options['widget']) {
@@ -123,7 +122,6 @@ class DateTimeType extends AbstractType
                 'hours',
                 'minutes',
                 'seconds',
-                'with_minutes',
                 'with_seconds',
                 'empty_value',
                 'required',
@@ -229,7 +227,6 @@ class DateTimeType extends AbstractType
             'widget'         => null,
             'date_widget'    => $dateWidget,
             'time_widget'    => $timeWidget,
-            'with_minutes'   => true,
             'with_seconds'   => false,
             // Don't modify \DateTime classes by reference, we treat
             // them like immutable value objects

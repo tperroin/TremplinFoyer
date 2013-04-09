@@ -11,11 +11,10 @@
 
 namespace Symfony\Bridge\Doctrine\Form\ChoiceList;
 
-use Symfony\Component\Form\Exception\Exception;
+use Symfony\Component\Form\Exception\FormException;
 use Symfony\Component\Form\Exception\StringCastException;
 use Symfony\Component\Form\Extension\Core\ChoiceList\ObjectChoiceList;
 use Doctrine\Common\Persistence\ObjectManager;
-use Symfony\Component\PropertyAccess\PropertyAccessorInterface;
 
 /**
  * A choice list presenting a list of Doctrine entities as choices
@@ -87,18 +86,17 @@ class EntityChoiceList extends ObjectChoiceList
     /**
      * Creates a new entity choice list.
      *
-     * @param ObjectManager             $manager           An EntityManager instance
-     * @param string                    $class             The class name
-     * @param string                    $labelPath         The property path used for the label
-     * @param EntityLoaderInterface     $entityLoader      An optional query builder
-     * @param array                     $entities          An array of choices
-     * @param array                     $preferredEntities An array of preferred choices
-     * @param string                    $groupPath         A property path pointing to the property used
-     *                                                     to group the choices. Only allowed if
-     *                                                     the choices are given as flat array.
-     * @param PropertyAccessorInterface $propertyAccessor  The reflection graph for reading property paths.
+     * @param ObjectManager         $manager           An EntityManager instance
+     * @param string                $class             The class name
+     * @param string                $labelPath         The property path used for the label
+     * @param EntityLoaderInterface $entityLoader      An optional query builder
+     * @param array                 $entities          An array of choices
+     * @param array                 $preferredEntities An array of preferred choices
+     * @param string                $groupPath         A property path pointing to the property used
+     *                                                 to group the choices. Only allowed if
+     *                                                 the choices are given as flat array.
      */
-    public function __construct(ObjectManager $manager, $class, $labelPath = null, EntityLoaderInterface $entityLoader = null, $entities = null,  array $preferredEntities = array(), $groupPath = null, PropertyAccessorInterface $propertyAccessor = null)
+    public function __construct(ObjectManager $manager, $class, $labelPath = null, EntityLoaderInterface $entityLoader = null, $entities = null,  array $preferredEntities = array(), $groupPath = null)
     {
         $this->em = $manager;
         $this->entityLoader = $entityLoader;
@@ -113,7 +111,7 @@ class EntityChoiceList extends ObjectChoiceList
             $this->idField = $identifier[0];
             $this->idAsValue = true;
 
-            if (in_array($this->classMetadata->getTypeOfField($this->idField), array('integer', 'smallint', 'bigint'))) {
+            if ('integer' === $this->classMetadata->getTypeOfField($this->idField)) {
                 $this->idAsIndex = true;
             }
         }
@@ -124,7 +122,7 @@ class EntityChoiceList extends ObjectChoiceList
             $entities = array();
         }
 
-        parent::__construct($entities, $labelPath, $preferredEntities, $groupPath, null, $propertyAccessor);
+        parent::__construct($entities, $labelPath, $preferredEntities, $groupPath);
     }
 
     /**
@@ -331,7 +329,7 @@ class EntityChoiceList extends ObjectChoiceList
     protected function createIndex($entity)
     {
         if ($this->idAsIndex) {
-            return $this->fixIndex(current($this->getIdentifierValues($entity)));
+            return current($this->getIdentifierValues($entity));
         }
 
         return parent::createIndex($entity);
@@ -355,23 +353,6 @@ class EntityChoiceList extends ObjectChoiceList
         }
 
         return parent::createValue($entity);
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    protected function fixIndex($index)
-    {
-        $index = parent::fixIndex($index);
-
-        // If the ID is a single-field integer identifier, it is used as
-        // index. Replace any leading minus by underscore to make it a valid
-        // form name.
-        if ($this->idAsIndex && $index < 0) {
-            $index = strtr($index, '-', '_');
-        }
-
-        return $index;
     }
 
     /**
@@ -406,15 +387,12 @@ class EntityChoiceList extends ObjectChoiceList
      *
      * @return array          The identifier values
      *
-     * @throws Exception If the entity does not exist in Doctrine's identity map
+     * @throws FormException  If the entity does not exist in Doctrine's identity map
      */
     private function getIdentifierValues($entity)
     {
         if (!$this->em->contains($entity)) {
-            throw new Exception(
-                'Entities passed to the choice field must be managed. Maybe ' .
-                'persist them in the entity manager?'
-            );
+            throw new FormException('Entities passed to the choice field must be managed');
         }
 
         $this->em->initializeObject($entity);

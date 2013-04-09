@@ -129,7 +129,7 @@ class Tokenizer
             }
 
             $result = substr($s, $start, $next - $start);
-            if (strlen($result) > 0 && '\\' === $result[strlen($result) - 1]) {
+            if ('\\' === $result[strlen($result) - 1]) {
                 // next quote character is escaped
                 $pos = $next + 1;
                 continue;

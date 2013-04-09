@@ -13,7 +13,7 @@ namespace Symfony\Bundle\FrameworkBundle\Tests\Controller;
 
 use Symfony\Bundle\FrameworkBundle\Tests\TestCase;
 use Symfony\Bundle\FrameworkBundle\Controller\ControllerNameParser;
-use Symfony\Component\ClassLoader\ClassLoader;
+use Symfony\Component\ClassLoader\UniversalClassLoader;
 
 class ControllerNameParserTest extends TestCase
 {
@@ -21,8 +21,8 @@ class ControllerNameParserTest extends TestCase
 
     protected function setUp()
     {
-        $this->loader = new ClassLoader();
-        $this->loader->addPrefixes(array(
+        $this->loader = new UniversalClassLoader();
+        $this->loader->registerNamespaces(array(
             'TestBundle'      => __DIR__.'/../Fixtures',
             'TestApplication' => __DIR__.'/../Fixtures',
         ));

@@ -9,7 +9,7 @@
  * file that was distributed with this source code.
  */
 
-namespace Symfony\Component\BrowserKit\Tests;
+namespace Symfony\Component\Tests\BrowserKit;
 
 use Symfony\Component\BrowserKit\Request;
 

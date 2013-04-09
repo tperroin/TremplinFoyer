@@ -12,7 +12,6 @@
 namespace Symfony\Component\Validator;
 
 use Symfony\Component\Validator\Mapping\ClassMetadataFactoryInterface;
-use Symfony\Component\Validator\Mapping\ClassMetadataFactoryAdapter;
 
 /**
  * Default implementation of ValidatorContextInterface
@@ -24,11 +23,6 @@ use Symfony\Component\Validator\Mapping\ClassMetadataFactoryAdapter;
  */
 class ValidatorContext implements ValidatorContextInterface
 {
-    /**
-     * @var MetadataFactoryInterface
-     */
-    private $metadataFactory;
-
     /**
      * The class metadata factory used in the new validator
      * @var ClassMetadataFactoryInterface
@@ -49,14 +43,6 @@ class ValidatorContext implements ValidatorContextInterface
      */
     public function setClassMetadataFactory(ClassMetadataFactoryInterface $classMetadataFactory)
     {
-        trigger_error('setClassMetadataFactory() is deprecated since version 2.1 and will be removed in 2.3. Use Validation::createValidatorBuilder() instead.', E_USER_DEPRECATED);
-
-        if ($classMetadataFactory instanceof MetadataFactoryInterface) {
-            $this->metadataFactory = $classMetadataFactory;
-        } else {
-            $this->metadataFactory = new ClassMetadataFactoryAdapter($classMetadataFactory);
-        }
-
         $this->classMetadataFactory = $classMetadataFactory;
 
         return $this;
@@ -70,8 +56,6 @@ class ValidatorContext implements ValidatorContextInterface
      */
     public function setConstraintValidatorFactory(ConstraintValidatorFactoryInterface $constraintValidatorFactory)
     {
-        trigger_error('setConstraintValidatorFactory() is deprecated since version 2.1 and will be removed in 2.3. Use Validation::createValidatorBuilder() instead.', E_USER_DEPRECATED);
-
         $this->constraintValidatorFactory = $constraintValidatorFactory;
 
         return $this;
@@ -85,12 +69,9 @@ class ValidatorContext implements ValidatorContextInterface
      */
     public function getValidator()
     {
-        trigger_error('getValidator() is deprecated since version 2.1 and will be removed in 2.3. Use Validation::createValidator() instead.', E_USER_DEPRECATED);
-
         return new Validator(
-            $this->metadataFactory,
-            $this->constraintValidatorFactory,
-            new DefaultTranslator()
+            $this->classMetadataFactory,
+            $this->constraintValidatorFactory
         );
     }
 
@@ -103,8 +84,6 @@ class ValidatorContext implements ValidatorContextInterface
      */
     public function getClassMetadataFactory()
     {
-        trigger_error('getClassMetadataFactory() is deprecated since version 2.1 and will be removed in 2.3.', E_USER_DEPRECATED);
-
         return $this->classMetadataFactory;
     }
 
@@ -117,8 +96,6 @@ class ValidatorContext implements ValidatorContextInterface
      */
     public function getConstraintValidatorFactory()
     {
-        trigger_error('getConstraintValidatorFactory() is deprecated since version 2.1 and will be removed in 2.3.', E_USER_DEPRECATED);
-
         return $this->constraintValidatorFactory;
     }
 }

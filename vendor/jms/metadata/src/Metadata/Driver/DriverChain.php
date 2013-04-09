@@ -18,7 +18,7 @@
 
 namespace Metadata\Driver;
 
-final class DriverChain implements AdvancedDriverInterface
+final class DriverChain implements DriverInterface
 {
     private $drivers;
 
@@ -36,30 +36,5 @@ final class DriverChain implements AdvancedDriverInterface
         }
 
         return null;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function getAllClassNames()
-    {
-        $classes = array();
-        foreach ($this->drivers as $driver) {
-            if (!$driver instanceof AdvancedDriverInterface) {
-                throw new \RuntimeException(
-                    sprintf(
-                        'Driver "%s" must be an instance of "AdvancedDriverInterface" to use '.
-                        '"DriverChain::getAllClassNames()".',
-                        get_class($driver)
-                    )
-                );
-            }
-            $driverClasses = $driver->getAllClassNames();
-            if (!empty($driverClasses)) {
-                $classes = array_merge($classes, $driverClasses);
-            }
-        }
-
-        return $classes;
     }
 }

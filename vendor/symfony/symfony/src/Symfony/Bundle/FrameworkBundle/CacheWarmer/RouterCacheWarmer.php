@@ -27,7 +27,7 @@ class RouterCacheWarmer implements CacheWarmerInterface
     /**
      * Constructor.
      *
-     * @param RouterInterface $router A Router instance
+     * @param Router $router A Router instance
      */
     public function __construct(RouterInterface $router)
     {

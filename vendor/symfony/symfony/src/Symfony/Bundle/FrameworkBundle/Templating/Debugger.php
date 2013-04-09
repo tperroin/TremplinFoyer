@@ -12,7 +12,7 @@
 namespace Symfony\Bundle\FrameworkBundle\Templating;
 
 use Symfony\Component\Templating\DebuggerInterface;
-use Psr\Log\LoggerInterface;
+use Symfony\Component\HttpKernel\Log\LoggerInterface;
 
 /**
  * Binds the Symfony templating loader debugger to the Symfony logger.

@@ -20,8 +20,6 @@ use Symfony\Bridge\Twig\Node\TransNode;
  */
 class TranslationNodeVisitor implements \Twig_NodeVisitorInterface
 {
-    const UNDEFINED_DOMAIN = '_undefined';
-
     private $enabled = false;
     private $messages = array();
 
@@ -59,7 +57,7 @@ class TranslationNodeVisitor implements \Twig_NodeVisitorInterface
             // extract constant nodes with a trans filter
             $this->messages[] = array(
                 $node->getNode('node')->getAttribute('value'),
-                $this->getReadDomainFromArguments($node->getNode('arguments'), 1),
+                $node->getNode('arguments')->hasNode(1) ? $node->getNode('arguments')->getNode(1)->getAttribute('value') : null,
             );
         } elseif (
             $node instanceof \Twig_Node_Expression_Filter &&
@@ -69,13 +67,13 @@ class TranslationNodeVisitor implements \Twig_NodeVisitorInterface
             // extract constant nodes with a trans filter
             $this->messages[] = array(
                 $node->getNode('node')->getAttribute('value'),
-                $this->getReadDomainFromArguments($node->getNode('arguments'), 2),
+                $node->getNode('arguments')->hasNode(2) ? $node->getNode('arguments')->getNode(2)->getAttribute('value') : null,
             );
         } elseif ($node instanceof TransNode) {
             // extract trans nodes
             $this->messages[] = array(
                 $node->getNode('body')->getAttribute('data'),
-                $this->getReadDomainFromNode($node->getNode('domain')),
+                null === $node->getNode('domain') ? 'messages' : $node->getNode('domain')->getAttribute('value'),
             );
         }
 
@@ -95,43 +93,6 @@ class TranslationNodeVisitor implements \Twig_NodeVisitorInterface
      */
     public function getPriority()
     {
-        return 0;
-    }
-
-    /**
-     * @param \Twig_Node $arguments
-     * @param int        $index
-     *
-     * @return string|null
-     */
-    private function getReadDomainFromArguments(\Twig_Node $arguments, $index)
-    {
-        if ($arguments->hasNode('domain')) {
-            $argument = $arguments->getNode('domain');
-        } elseif ($arguments->hasNode($index)) {
-            $argument = $arguments->getNode($index);
-        } else {
-            return null;
-        }
-
-        return $this->getReadDomainFromNode($argument);
-    }
-
-    /**
-     * @param \Twig_Node $node
-     *
-     * @return string|null
-     */
-    private function getReadDomainFromNode(\Twig_Node $node = null)
-    {
-        if (null === $node) {
-            return null;
-        }
-
-        if ($node instanceof \Twig_Node_Expression_Constant) {
-            return $node->getAttribute('value');
-        }
-
-        return self::UNDEFINED_DOMAIN;
+        return -10;
     }
 }

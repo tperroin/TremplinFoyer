@@ -16,6 +16,6 @@ namespace Symfony\Component\Form\Exception;
  *
  * @author Bernhard Schussek <bschussek@gmail.com>
  */
-class CreationException extends Exception
+class CreationException extends FormException
 {
 }

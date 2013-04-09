@@ -11,6 +11,7 @@
 
 namespace Symfony\Component\Console\Output;
 
+use Symfony\Component\Console\Formatter\OutputFormatter;
 use Symfony\Component\Console\Formatter\OutputFormatterInterface;
 use Symfony\Component\Console\Output\ConsoleOutputInterface;
 
@@ -36,10 +37,10 @@ class ConsoleOutput extends StreamOutput implements ConsoleOutputInterface
     /**
      * Constructor.
      *
-     * @param integer                  $verbosity The verbosity level (self::VERBOSITY_QUIET, self::VERBOSITY_NORMAL,
-     *                                                                 self::VERBOSITY_VERBOSE)
-     * @param Boolean                  $decorated Whether to decorate messages or not (null for auto-guessing)
-     * @param OutputFormatterInterface $formatter Output formatter instance
+     * @param integer $verbosity The verbosity level (self::VERBOSITY_QUIET, self::VERBOSITY_NORMAL,
+     *                                   self::VERBOSITY_VERBOSE)
+     * @param Boolean         $decorated Whether to decorate messages or not (null for auto-guessing)
+     * @param OutputFormatter $formatter Output formatter instance
      *
      * @api
      */

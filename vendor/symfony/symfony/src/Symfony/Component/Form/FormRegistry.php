@@ -11,9 +11,8 @@
 
 namespace Symfony\Component\Form;
 
-use Symfony\Component\Form\Exception\ExceptionInterface;
 use Symfony\Component\Form\Exception\UnexpectedTypeException;
-use Symfony\Component\Form\Exception\Exception;
+use Symfony\Component\Form\Exception\FormException;
 
 /**
  * The central registry of the Form component.
@@ -24,8 +23,7 @@ class FormRegistry implements FormRegistryInterface
 {
     /**
      * Extensions
-     *
-     * @var FormExtensionInterface[] An array of FormExtensionInterface
+     * @var array An array of FormExtensionInterface
      */
     private $extensions = array();
 
@@ -35,9 +33,9 @@ class FormRegistry implements FormRegistryInterface
     private $types = array();
 
     /**
-     * @var FormTypeGuesserInterface|false|null
+     * @var FormTypeGuesserInterface
      */
-    private $guesser = false;
+    private $guesser;
 
     /**
      * @var ResolvedFormTypeFactoryInterface
@@ -47,7 +45,7 @@ class FormRegistry implements FormRegistryInterface
     /**
      * Constructor.
      *
-     * @param FormExtensionInterface[]         $extensions          An array of FormExtensionInterface
+     * @param array                            $extensions          An array of FormExtensionInterface
      * @param ResolvedFormTypeFactoryInterface $resolvedTypeFactory The factory for resolved form types.
      *
      * @throws UnexpectedTypeException if any extension does not implement FormExtensionInterface
@@ -69,8 +67,6 @@ class FormRegistry implements FormRegistryInterface
      */
     public function addType(ResolvedFormTypeInterface $type)
     {
-        trigger_error('addType() is deprecated since version 2.1 and will be removed in 2.3. Use form extensions or type registration in the Dependency Injection Container instead.', E_USER_DEPRECATED);
-
         $this->types[$type->getName()] = $type;
     }
 
@@ -96,7 +92,7 @@ class FormRegistry implements FormRegistryInterface
             }
 
             if (!$type) {
-                throw new Exception(sprintf('Could not load type "%s"', $name));
+                throw new FormException(sprintf('Could not load type "%s"', $name));
             }
 
             $this->resolveAndAddType($type);
@@ -132,13 +128,11 @@ class FormRegistry implements FormRegistryInterface
             );
         }
 
-        set_error_handler(array('Symfony\Component\Form\Test\DeprecationErrorHandler', 'handleBC'));
         $this->addType($this->resolvedTypeFactory->createResolvedType(
             $type,
             $typeExtensions,
             $parentType ? $this->getType($parentType) : null
         ));
-        restore_error_handler();
     }
 
     /**
@@ -152,7 +146,7 @@ class FormRegistry implements FormRegistryInterface
 
         try {
             $this->getType($name);
-        } catch (ExceptionInterface $e) {
+        } catch (FormException $e) {
             return false;
         }
 
@@ -164,7 +158,7 @@ class FormRegistry implements FormRegistryInterface
      */
     public function getTypeGuesser()
     {
-        if (false === $this->guesser) {
+        if (null === $this->guesser) {
             $guessers = array();
 
             foreach ($this->extensions as $extension) {
@@ -176,7 +170,7 @@ class FormRegistry implements FormRegistryInterface
                 }
             }
 
-            $this->guesser = !empty($guessers) ? new FormTypeGuesserChain($guessers) : null;
+            $this->guesser = new FormTypeGuesserChain($guessers);
         }
 
         return $this->guesser;

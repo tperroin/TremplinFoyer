@@ -177,7 +177,7 @@ class RememberMeListenerTest extends \PHPUnit_Framework_TestCase
 
     protected function getLogger()
     {
-        return $this->getMock('Psr\Log\LoggerInterface');
+        return $this->getMock('Symfony\Component\HttpKernel\Log\LoggerInterface');
     }
 
     protected function getManager()

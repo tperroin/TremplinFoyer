@@ -41,17 +41,14 @@ interface FormInterface extends \ArrayAccess, \Traversable, \Countable
     /**
      * Adds a child to the form.
      *
-     * @param FormInterface|string|integer $child   The FormInterface instance or the name of the child.
-     * @param string|null                  $type    The child's type, if a name was passed.
-     * @param array                        $options The child's options, if a name was passed.
+     * @param  FormInterface $child The FormInterface to add as a child
      *
      * @return FormInterface The form instance
      *
-     * @throws Exception\AlreadyBoundException   If the form has already been bound.
-     * @throws Exception\FormException           When trying to add a child to a non-compound form.
-     * @throws Exception\UnexpectedTypeException If $child or $type has an unexpected type.
+     * @throws Exception\AlreadyBoundException If the form has already been bound.
+     * @throws Exception\FormException         When trying to add a child to a non-compound form.
      */
-    public function add($child, $type = null, array $options = array());
+    public function add(FormInterface $child);
 
     /**
      * Returns the child with the given name.
@@ -87,21 +84,21 @@ interface FormInterface extends \ArrayAccess, \Traversable, \Countable
     /**
      * Returns all children in this group.
      *
-     * @return FormInterface[] An array of FormInterface instances
+     * @return array An array of FormInterface instances
      */
     public function all();
 
     /**
      * Returns all errors.
      *
-     * @return FormError[] An array of FormError instances that occurred during binding
+     * @return array An array of FormError instances that occurred during binding
      */
     public function getErrors();
 
     /**
      * Updates the form with default data.
      *
-     * @param  mixed $modelData The data formatted as expected for the underlying object
+     * @param  array $modelData The data formatted as expected for the underlying object
      *
      * @return FormInterface The form instance
      *
@@ -166,7 +163,7 @@ interface FormInterface extends \ArrayAccess, \Traversable, \Countable
     /**
      * Returns the property path that the form is mapped to.
      *
-     * @return \Symfony\Component\PropertyAccess\PropertyPathInterface The property path.
+     * @return Util\PropertyPathInterface The property path.
      */
     public function getPropertyPath();
 

@@ -29,15 +29,10 @@ class DoctrineParamConverterTest extends \PHPUnit_Framework_TestCase
 
     public function createConfiguration($class = null, array $options = null, $name = 'arg', $isOptional = false)
     {
-        $methods = array('getClass', 'getAliasName', 'getOptions', 'getName', 'allowArray');
-        if (null !== $isOptional) {
-            $methods[] = 'isOptional';
-        }
-        $config = $this
-            ->getMockBuilder('Sensio\Bundle\FrameworkExtraBundle\Configuration\ParamConverter')
-            ->setMethods($methods)
-            ->disableOriginalConstructor()
-            ->getMock();
+        $config = $this->getMock(
+            'Sensio\Bundle\FrameworkExtraBundle\Configuration\ConfigurationInterface', array(
+            'getClass', 'getAliasName', 'getOptions', 'isOptional', 'getName',
+        ));
         if ($options !== null) {
             $config->expects($this->once())
                    ->method('getOptions')
@@ -51,11 +46,9 @@ class DoctrineParamConverterTest extends \PHPUnit_Framework_TestCase
         $config->expects($this->any())
                ->method('getName')
                ->will($this->returnValue($name));
-        if (null !== $isOptional) {
-            $config->expects($this->any())
-                   ->method('isOptional')
-                   ->will($this->returnValue($isOptional));
-        }
+        $config->expects($this->any())
+               ->method('isOptional')
+               ->will($this->returnValue($isOptional));
 
         return $config;
     }
@@ -124,37 +117,6 @@ class DoctrineParamConverterTest extends \PHPUnit_Framework_TestCase
         );
     }
 
-    public function testApplyGuessOptional()
-    {
-        $request = new Request();
-        $request->attributes->set('arg', null);
-
-        $config = $this->createConfiguration('stdClass', array(), 'arg', null);
-
-        $classMetadata = $this->getMock('Doctrine\Common\Persistence\Mapping\ClassMetadata');
-        $manager = $this->getMock('Doctrine\Common\Persistence\ObjectManager');
-        $manager->expects($this->once())
-            ->method('getClassMetadata')
-            ->with('stdClass')
-            ->will($this->returnValue($classMetadata));
-
-        $objectRepository = $this->getMock('Doctrine\Common\Persistence\ObjectRepository');
-        $this->registry->expects($this->once())
-              ->method('getManagerForClass')
-              ->with('stdClass')
-              ->will($this->returnValue($manager));
-
-        $manager->expects($this->never())->method('getRepository');
-
-        $objectRepository->expects($this->never())->method('find');
-        $objectRepository->expects($this->never())->method('findOneBy');
-
-        $ret = $this->converter->apply($request, $config);
-
-        $this->assertTrue($ret);
-        $this->assertNull($request->attributes->get('arg'));
-    }
-
     public function testApplyWithMappingAndExclude()
     {
         $request = new Request();
@@ -199,84 +161,6 @@ class DoctrineParamConverterTest extends \PHPUnit_Framework_TestCase
 
         $this->assertTrue($ret);
         $this->assertSame($object, $request->attributes->get('arg'));
-    }
-
-    public function testApplyWithRepositoryMethod()
-    {
-        $request = new Request();
-        $request->attributes->set('id', 1);
-
-        $config = $this->createConfiguration(
-            'stdClass',
-            array('repository_method' => 'getClassName'),
-            'arg'
-        );
-
-        $objectRepository = $this->getMock('Doctrine\Common\Persistence\ObjectRepository');
-        $manager = $this->getMock('Doctrine\Common\Persistence\ObjectManager');
-        $manager->expects($this->once())
-            ->method('getRepository')
-            ->with('stdClass')
-            ->will($this->returnValue($objectRepository));
-        $this->registry->expects($this->once())
-                      ->method('getManagerForClass')
-                      ->will($this->returnValue($manager));
-
-        $objectRepository->expects($this->once())
-                      ->method('getClassName')
-                      ->will($this->returnValue($className = 'ObjectRepository'));
-
-        $ret = $this->converter->apply($request, $config);
-
-        $this->assertTrue($ret);
-        $this->assertSame($className, $request->attributes->get('arg'));
-    }
-
-    public function testApplyWithRepositoryMethodAndMapping()
-    {
-        $request = new Request();
-        $request->attributes->set('id', 1);
-
-        $config = $this->createConfiguration(
-            'stdClass',
-            array('repository_method' => 'getClassName', 'mapping' => array('foo' => 'Foo')),
-            'arg'
-        );
-
-        $objectManager = $this->getMock('Doctrine\Common\Persistence\ObjectManager');
-        $objectRepository = $this->getMock('Doctrine\Common\Persistence\ObjectRepository');
-        $metadata = $this->getMock('Doctrine\Common\Persistence\Mapping\ClassMetadata');
-
-        $objectManager->expects($this->once())
-            ->method('getRepository')
-            ->with('stdClass')
-            ->will($this->returnValue($objectRepository));
-
-        $this->registry->expects($this->once())
-                    ->method('getManagerForClass')
-                    ->will($this->returnValue($objectManager));
-
-        $metadata->expects($this->once())
-                 ->method('hasField')
-                 ->with($this->equalTo('Foo'))
-                 ->will($this->returnValue(true));
-
-        $objectManager->expects($this->once())
-                      ->method('getClassMetadata')
-                      ->will($this->returnValue($metadata));
-        $objectManager->expects($this->once())
-            ->method('getRepository')
-            ->with('stdClass')
-            ->will($this->returnValue($objectRepository));
-
-        $objectRepository->expects($this->once())
-                      ->method('getClassName')
-                      ->will($this->returnValue($className = 'ObjectRepository'));
-
-        $ret = $this->converter->apply($request, $config);
-
-        $this->assertTrue($ret);
-        $this->assertSame($className, $request->attributes->get('arg'));
     }
 
     public function testSupports()

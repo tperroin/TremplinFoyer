@@ -16,7 +16,6 @@ use Symfony\Component\Security\Core\SecurityContextInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\Routing\Matcher\UrlMatcherInterface;
-use Symfony\Component\Routing\Matcher\RequestMatcherInterface;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Routing\Exception\MethodNotAllowedException;
 use Symfony\Component\Routing\Exception\ResourceNotFoundException;
@@ -34,15 +33,12 @@ class HttpUtils
     /**
      * Constructor.
      *
-     * @param UrlGeneratorInterface                       $urlGenerator A UrlGeneratorInterface instance
-     * @param UrlMatcherInterface|RequestMatcherInterface $urlMatcher   The Url or Request matcher
+     * @param UrlGeneratorInterface $urlGenerator A UrlGeneratorInterface instance
+     * @param UrlMatcherInterface   $urlMatcher   A UrlMatcherInterface instance
      */
-    public function __construct(UrlGeneratorInterface $urlGenerator = null, $urlMatcher = null)
+    public function __construct(UrlGeneratorInterface $urlGenerator = null, UrlMatcherInterface $urlMatcher = null)
     {
         $this->urlGenerator = $urlGenerator;
-        if ($urlMatcher !== null && !$urlMatcher instanceof UrlMatcherInterface && !$urlMatcher instanceof RequestMatcherInterface) {
-            throw new \InvalidArgumentException('Matcher must either implement UrlMatcherInterface or RequestMatcherInterface.');
-        }
         $this->urlMatcher = $urlMatcher;
     }
 
@@ -70,9 +66,9 @@ class HttpUtils
      */
     public function createRequest(Request $request, $path)
     {
-        $newRequest = $request::create($this->generateUri($request, $path), 'get', array(), $request->cookies->all(), array(), $request->server->all());
-        if ($request->hasSession()) {
-            $newRequest->setSession($request->getSession());
+        $newRequest = Request::create($this->generateUri($request, $path), 'get', array(), $request->cookies->all(), array(), $request->server->all());
+        if ($session = $request->getSession()) {
+            $newRequest->setSession($session);
         }
 
         if ($request->attributes->has(SecurityContextInterface::AUTHENTICATION_ERROR)) {
@@ -100,12 +96,7 @@ class HttpUtils
     {
         if ('/' !== $path[0]) {
             try {
-                // matching a request is more powerful than matching a URL path + context, so try that first
-                if ($this->urlMatcher instanceof RequestMatcherInterface) {
-                    $parameters = $this->urlMatcher->matchRequest($request);
-                } else {
-                    $parameters = $this->urlMatcher->match($request->getPathInfo());
-                }
+                $parameters = $this->urlMatcher->match($request->getPathInfo());
 
                 return $path === $parameters['_route'];
             } catch (MethodNotAllowedException $e) {
@@ -115,7 +106,7 @@ class HttpUtils
             }
         }
 
-        return $path === rawurldecode($request->getPathInfo());
+        return $path === $request->getPathInfo();
     }
 
     /**
@@ -136,20 +127,15 @@ class HttpUtils
             return $request->getUriForPath($path);
         }
 
+        return $this->generateUrl($path, true);
+    }
+
+    private function generateUrl($route, $absolute = false)
+    {
         if (null === $this->urlGenerator) {
             throw new \LogicException('You must provide a UrlGeneratorInterface instance to be able to use routes.');
         }
 
-        $url = $this->urlGenerator->generate($path, $request->attributes->all(), UrlGeneratorInterface::ABSOLUTE_URL);
-
-        // unnecessary query string parameters must be removed from url
-        // (ie. query parameters that are presents in $attributes)
-        // fortunately, they all are, so we have to remove entire query string
-        $position = strpos($url, '?');
-        if (false !== $position) {
-            $url = substr($url, 0, $position);
-        }
-
-        return $url;
+        return $this->urlGenerator->generate($route, array(), $absolute);
     }
 }

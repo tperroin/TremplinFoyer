@@ -14,6 +14,7 @@ namespace Monolog\Handler;
 use Monolog\Logger;
 use Monolog\Formatter\LineFormatter;
 
+
 /**
  * Logs to syslog service.
  *
@@ -115,6 +116,6 @@ class SyslogHandler extends AbstractProcessingHandler
      */
     protected function getDefaultFormatter()
     {
-        return new LineFormatter('%channel%.%level_name%: %message% %context% %extra%');
+        return new LineFormatter('%channel%.%level_name%: %message% %context% %extra%\n');
     }
 }

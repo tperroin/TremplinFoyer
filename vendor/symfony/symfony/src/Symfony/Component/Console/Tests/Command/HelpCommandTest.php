@@ -22,14 +22,6 @@ class HelpCommandTest extends \PHPUnit_Framework_TestCase
     {
         $command = new HelpCommand();
 
-        $application = new Application();
-        $command->setApplication($application);
-        $commandTester = new CommandTester($command);
-        $commandTester->execute(array('command_name' => 'li'));
-        $this->assertRegExp('/list \[--xml\] \[--raw\] \[namespace\]/', $commandTester->getDisplay(), '->execute() returns a text help for the given command alias');
-
-        $command = new HelpCommand();
-
         $commandTester = new CommandTester($command);
         $command->setCommand(new ListCommand());
         $commandTester->execute(array());

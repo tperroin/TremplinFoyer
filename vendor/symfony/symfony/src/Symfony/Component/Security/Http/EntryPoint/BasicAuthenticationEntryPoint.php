@@ -34,7 +34,7 @@ class BasicAuthenticationEntryPoint implements AuthenticationEntryPointInterface
     {
         $response = new Response();
         $response->headers->set('WWW-Authenticate', sprintf('Basic realm="%s"', $this->realmName));
-        $response->setStatusCode(401);
+        $response->setStatusCode(401, $authException ? $authException->getMessage() : null);
 
         return $response;
     }

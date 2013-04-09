@@ -43,7 +43,6 @@ class WebProfilerExtension extends Extension
         $config = $this->processConfiguration($configuration, $configs);
 
         $loader = new XmlFileLoader($container, new FileLocator(__DIR__.'/../Resources/config'));
-        $loader->load('profiler.xml');
         $loader->load('toolbar.xml');
 
         $container->setParameter('web_profiler.debug_toolbar.intercept_redirects', $config['intercept_redirects']);

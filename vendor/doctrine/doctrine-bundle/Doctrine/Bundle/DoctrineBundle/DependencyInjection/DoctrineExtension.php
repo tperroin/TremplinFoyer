@@ -321,14 +321,10 @@ class DoctrineExtension extends AbstractDoctrineExtension
         }
 
         $enabledFilters = array();
-        $filtersParameters = array();
         foreach ($entityManager['filters'] as $name => $filter) {
             $ormConfigDef->addMethodCall('addFilter', array($name, $filter['class']));
             if ($filter['enabled']) {
                 $enabledFilters[] = $name;
-            }
-            if ($filter['parameters']) {
-                $filtersParameters[$name] = $filter['parameters'];
             }
         }
 
@@ -336,7 +332,6 @@ class DoctrineExtension extends AbstractDoctrineExtension
         $managerConfiguratorDef = $container
             ->setDefinition($managerConfiguratorName, new DefinitionDecorator('doctrine.orm.manager_configurator.abstract'))
             ->replaceArgument(0, $enabledFilters)
-            ->replaceArgument(1, $filtersParameters)
         ;
 
         if (!isset($entityManager['connection'])) {

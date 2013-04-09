@@ -115,6 +115,7 @@ interface MutableAclInterface extends AclInterface
      * Sets the parent ACL
      *
      * @param AclInterface|null $acl
+     * @return void
      */
     public function setParentAcl(AclInterface $acl = null);
 

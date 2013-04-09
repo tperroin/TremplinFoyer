@@ -21,22 +21,14 @@ use Symfony\Component\DependencyInjection\Exception\InvalidArgumentException;
  */
 class RepeatedPass implements CompilerPassInterface
 {
-    /**
-     * @var Boolean
-     */
-    private $repeat = false;
-
-    /**
-     * @var RepeatablePassInterface[]
-     */
+    private $repeat;
     private $passes;
 
     /**
      * Constructor.
      *
-     * @param RepeatablePassInterface[] $passes An array of RepeatablePassInterface objects
-     *
-     * @throws InvalidArgumentException when the passes don't implement RepeatablePassInterface
+     * @param array $passes An array of RepeatablePassInterface objects
+     * @throws InvalidArgumentException if a pass is not a RepeatablePassInterface instance
      */
     public function __construct(array $passes)
     {
@@ -79,7 +71,7 @@ class RepeatedPass implements CompilerPassInterface
     /**
      * Returns the passes
      *
-     * @return RepeatablePassInterface[] An array of RepeatablePassInterface objects
+     * @return array An array of RepeatablePassInterface objects
      */
     public function getPasses()
     {

@@ -37,7 +37,6 @@ class ProjectServiceContainer extends Container
             'foo' => '%baz%',
             'baz' => 'bar',
             'bar' => 'foo is %%foo bar',
-            'escape' => '@escapeme',
             'values' => array(
                 0 => true,
                 1 => false,

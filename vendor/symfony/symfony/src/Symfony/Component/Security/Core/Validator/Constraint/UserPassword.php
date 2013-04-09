@@ -11,19 +11,17 @@
 
 namespace Symfony\Component\Security\Core\Validator\Constraint;
 
-use Symfony\Component\Security\Core\Validator\Constraints\UserPassword as BaseUserPassword;
+use Symfony\Component\Validator\Constraint;
 
 /**
  * @Annotation
- *
- * @deprecated Deprecated since version 2.2, to be removed in 2.3.
  */
-class UserPassword extends BaseUserPassword
+class UserPassword extends Constraint
 {
-    public function __construct($options = null)
-    {
-        trigger_error('UserPassword class in Symfony\Component\Security\Core\Validator\Constraint namespace is deprecated since version 2.2 and will be removed in 2.3. Use the Symfony\Component\Security\Core\Validator\Constraints\UserPassword class instead.', E_USER_DEPRECATED);
+    public $message = 'This value should be the user current password.';
 
-        parent::__construct($options);
+    public function validatedBy()
+    {
+        return 'security.validator.user_password';
     }
 }

@@ -26,7 +26,7 @@ class ORMQueryBuilderLoader implements EntityLoaderInterface
      *
      * This property should only be accessed through queryBuilder.
      *
-     * @var QueryBuilder
+     * @var Doctrine\ORM\QueryBuilder
      */
     private $queryBuilder;
 
@@ -36,8 +36,6 @@ class ORMQueryBuilderLoader implements EntityLoaderInterface
      * @param QueryBuilder|\Closure $queryBuilder
      * @param EntityManager         $manager
      * @param string                $class
-     *
-     * @throws UnexpectedTypeException
      */
     public function __construct($queryBuilder, $manager = null, $class = null)
     {

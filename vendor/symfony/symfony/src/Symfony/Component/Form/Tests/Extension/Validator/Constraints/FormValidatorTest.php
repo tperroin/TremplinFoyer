@@ -12,14 +12,18 @@
 namespace Symfony\Component\Form\Tests\Extension\Validator\Constraints;
 
 use Symfony\Component\Form\FormBuilder;
+use Symfony\Component\Validator\ConstraintViolation;
 use Symfony\Component\Form\Exception\TransformationFailedException;
 use Symfony\Component\Form\CallbackTransformer;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\Form\Extension\Validator\Constraints\Form;
 use Symfony\Component\Form\Extension\Validator\Constraints\FormValidator;
+use Symfony\Component\Form\Util\PropertyPath;
 use Symfony\Component\Validator\Constraint;
 use Symfony\Component\Validator\Constraints\NotNull;
 use Symfony\Component\Validator\Constraints\NotBlank;
+use Symfony\Component\Validator\GlobalExecutionContext;
+use Symfony\Component\Validator\ExecutionContext;
 
 /**
  * @author Bernhard Schussek <bschussek@gmail.com>
@@ -63,19 +67,20 @@ class FormValidatorTest extends \PHPUnit_Framework_TestCase
 
     public function testValidate()
     {
-        $context = $this->getMockExecutionContext();
+        $context = $this->getExecutionContext();
+        $graphWalker = $context->getGraphWalker();
         $object = $this->getMock('\stdClass');
         $options = array('validation_groups' => array('group1', 'group2'));
         $form = $this->getBuilder('name', '\stdClass', $options)
             ->setData($object)
             ->getForm();
 
-        $context->expects($this->at(0))
-            ->method('validate')
-            ->with($object, 'data', 'group1', true);
-        $context->expects($this->at(1))
-            ->method('validate')
-            ->with($object, 'data', 'group2', true);
+        $graphWalker->expects($this->at(0))
+            ->method('walkReference')
+            ->with($object, 'group1', 'data', true);
+        $graphWalker->expects($this->at(1))
+            ->method('walkReference')
+            ->with($object, 'group2', 'data', true);
 
         $this->validator->initialize($context);
         $this->validator->validate($form, new Form());
@@ -83,7 +88,8 @@ class FormValidatorTest extends \PHPUnit_Framework_TestCase
 
     public function testValidateConstraints()
     {
-        $context = $this->getMockExecutionContext();
+        $context = $this->getExecutionContext();
+        $graphWalker = $context->getGraphWalker();
         $object = $this->getMock('\stdClass');
         $constraint1 = new NotNull(array('groups' => array('group1', 'group2')));
         $constraint2 = new NotBlank(array('groups' => 'group2'));
@@ -97,20 +103,20 @@ class FormValidatorTest extends \PHPUnit_Framework_TestCase
             ->getForm();
 
         // First default constraints
-        $context->expects($this->at(0))
-            ->method('validate')
-            ->with($object, 'data', 'group1', true);
-        $context->expects($this->at(1))
-            ->method('validate')
-            ->with($object, 'data', 'group2', true);
+        $graphWalker->expects($this->at(0))
+            ->method('walkReference')
+            ->with($object, 'group1', 'data', true);
+        $graphWalker->expects($this->at(1))
+            ->method('walkReference')
+            ->with($object, 'group2', 'data', true);
 
         // Then custom constraints
-        $context->expects($this->at(2))
-            ->method('validateValue')
-            ->with($object, $constraint1, 'data', 'group1');
-        $context->expects($this->at(3))
-            ->method('validateValue')
-            ->with($object, $constraint2, 'data', 'group2');
+        $graphWalker->expects($this->at(2))
+            ->method('walkConstraint')
+            ->with($constraint1, $object, 'group1', 'data');
+        $graphWalker->expects($this->at(3))
+            ->method('walkConstraint')
+            ->with($constraint2, $object, 'group2', 'data');
 
         $this->validator->initialize($context);
         $this->validator->validate($form, new Form());
@@ -118,7 +124,8 @@ class FormValidatorTest extends \PHPUnit_Framework_TestCase
 
     public function testDontValidateIfParentWithoutCascadeValidation()
     {
-        $context = $this->getMockExecutionContext();
+        $context = $this->getExecutionContext();
+        $graphWalker = $context->getGraphWalker();
         $object = $this->getMock('\stdClass');
 
         $parent = $this->getBuilder('parent', null, array('cascade_validation' => false))
@@ -131,8 +138,8 @@ class FormValidatorTest extends \PHPUnit_Framework_TestCase
 
         $form->setData($object);
 
-        $context->expects($this->never())
-            ->method('validate');
+        $graphWalker->expects($this->never())
+            ->method('walkReference');
 
         $this->validator->initialize($context);
         $this->validator->validate($form, new Form());
@@ -140,7 +147,8 @@ class FormValidatorTest extends \PHPUnit_Framework_TestCase
 
     public function testValidateConstraintsEvenIfNoCascadeValidation()
     {
-        $context = $this->getMockExecutionContext();
+        $context = $this->getExecutionContext();
+        $graphWalker = $context->getGraphWalker();
         $object = $this->getMock('\stdClass');
         $constraint1 = new NotNull(array('groups' => array('group1', 'group2')));
         $constraint2 = new NotBlank(array('groups' => 'group2'));
@@ -158,12 +166,12 @@ class FormValidatorTest extends \PHPUnit_Framework_TestCase
             ->getForm();
         $parent->add($form);
 
-        $context->expects($this->at(0))
-            ->method('validateValue')
-            ->with($object, $constraint1, 'data', 'group1');
-        $context->expects($this->at(1))
-            ->method('validateValue')
-            ->with($object, $constraint2, 'data', 'group2');
+        $graphWalker->expects($this->at(0))
+            ->method('walkConstraint')
+            ->with($constraint1, $object, 'group1', 'data');
+        $graphWalker->expects($this->at(1))
+            ->method('walkConstraint')
+            ->with($constraint2, $object, 'group2', 'data');
 
         $this->validator->initialize($context);
         $this->validator->validate($form, new Form());
@@ -171,7 +179,8 @@ class FormValidatorTest extends \PHPUnit_Framework_TestCase
 
     public function testDontValidateIfNotSynchronized()
     {
-        $context = $this->getMockExecutionContext();
+        $context = $this->getExecutionContext();
+        $graphWalker = $context->getGraphWalker();
         $object = $this->getMock('\stdClass');
 
         $form = $this->getBuilder('name', '\stdClass', array(
@@ -191,26 +200,30 @@ class FormValidatorTest extends \PHPUnit_Framework_TestCase
         // Launch transformer
         $form->bind('foo');
 
-        $context->expects($this->never())
-            ->method('validate');
-
-        $context->expects($this->once())
-            ->method('addViolation')
-            ->with(
-                'invalid_message_key',
-                array('{{ value }}' => 'foo', '{{ foo }}' => 'bar'),
-                'foo'
-            );
-        $context->expects($this->never())
-            ->method('addViolationAt');
+        $graphWalker->expects($this->never())
+            ->method('walkReference');
 
         $this->validator->initialize($context);
         $this->validator->validate($form, new Form());
+
+        $expectedViolation = new ConstraintViolation(
+            'invalid_message_key',
+            array('{{ value }}' => 'foo', '{{ foo }}' => 'bar'),
+            'Root',
+            null,
+            'foo',
+            null,
+            Form::ERR_INVALID
+        );
+
+        $this->assertCount(1, $context->getViolations());
+        $this->assertEquals($expectedViolation, $context->getViolations()->get(0));
     }
 
     public function testDontValidateConstraintsIfNotSynchronized()
     {
-        $context = $this->getMockExecutionContext();
+        $context = $this->getExecutionContext();
+        $graphWalker = $context->getGraphWalker();
         $object = $this->getMock('\stdClass');
         $constraint1 = $this->getMock('Symfony\Component\Validator\Constraint');
         $constraint2 = $this->getMock('Symfony\Component\Validator\Constraint');
@@ -230,42 +243,8 @@ class FormValidatorTest extends \PHPUnit_Framework_TestCase
         // Launch transformer
         $form->bind(array());
 
-        $context->expects($this->never())
-            ->method('validate');
-
-        $this->validator->initialize($context);
-        $this->validator->validate($form, new Form());
-    }
-
-    // https://github.com/symfony/symfony/issues/4359
-    public function testDontMarkInvalidIfAnyChildIsNotSynchronized()
-    {
-        $context = $this->getMockExecutionContext();
-        $object = $this->getMock('\stdClass');
-
-        $failingTransformer = new CallbackTransformer(
-            function ($data) { return $data; },
-            function () { throw new TransformationFailedException(); }
-        );
-
-        $form = $this->getBuilder('name', '\stdClass')
-            ->setData($object)
-            ->addViewTransformer($failingTransformer)
-            ->setCompound(true)
-            ->setDataMapper($this->getDataMapper())
-            ->add(
-                $this->getBuilder('child')
-                    ->addViewTransformer($failingTransformer)
-            )
-            ->getForm();
-
-        // Launch transformer
-        $form->bind(array('child' => 'foo'));
-
-        $context->expects($this->never())
-            ->method('addViolation');
-        $context->expects($this->never())
-            ->method('addViolationAt');
+        $graphWalker->expects($this->never())
+            ->method('walkReference');
 
         $this->validator->initialize($context);
         $this->validator->validate($form, new Form());
@@ -273,19 +252,20 @@ class FormValidatorTest extends \PHPUnit_Framework_TestCase
 
     public function testHandleCallbackValidationGroups()
     {
-        $context = $this->getMockExecutionContext();
+        $context = $this->getExecutionContext();
+        $graphWalker = $context->getGraphWalker();
         $object = $this->getMock('\stdClass');
         $options = array('validation_groups' => array($this, 'getValidationGroups'));
         $form = $this->getBuilder('name', '\stdClass', $options)
             ->setData($object)
             ->getForm();
 
-        $context->expects($this->at(0))
-            ->method('validate')
-            ->with($object, 'data', 'group1', true);
-        $context->expects($this->at(1))
-            ->method('validate')
-            ->with($object, 'data', 'group2', true);
+        $graphWalker->expects($this->at(0))
+            ->method('walkReference')
+            ->with($object, 'group1', 'data', true);
+        $graphWalker->expects($this->at(1))
+            ->method('walkReference')
+            ->with($object, 'group2', 'data', true);
 
         $this->validator->initialize($context);
         $this->validator->validate($form, new Form());
@@ -293,7 +273,8 @@ class FormValidatorTest extends \PHPUnit_Framework_TestCase
 
     public function testHandleClosureValidationGroups()
     {
-        $context = $this->getMockExecutionContext();
+        $context = $this->getExecutionContext();
+        $graphWalker = $context->getGraphWalker();
         $object = $this->getMock('\stdClass');
         $options = array('validation_groups' => function(FormInterface $form){
             return array('group1', 'group2');
@@ -302,12 +283,12 @@ class FormValidatorTest extends \PHPUnit_Framework_TestCase
             ->setData($object)
             ->getForm();
 
-        $context->expects($this->at(0))
-            ->method('validate')
-            ->with($object, 'data', 'group1', true);
-        $context->expects($this->at(1))
-            ->method('validate')
-            ->with($object, 'data', 'group2', true);
+        $graphWalker->expects($this->at(0))
+            ->method('walkReference')
+            ->with($object, 'group1', 'data', true);
+        $graphWalker->expects($this->at(1))
+            ->method('walkReference')
+            ->with($object, 'group2', 'data', true);
 
         $this->validator->initialize($context);
         $this->validator->validate($form, new Form());
@@ -315,7 +296,8 @@ class FormValidatorTest extends \PHPUnit_Framework_TestCase
 
     public function testUseInheritedValidationGroup()
     {
-        $context = $this->getMockExecutionContext();
+        $context = $this->getExecutionContext('foo.bar');
+        $graphWalker = $context->getGraphWalker();
         $object = $this->getMock('\stdClass');
 
         $parentOptions = array(
@@ -331,9 +313,9 @@ class FormValidatorTest extends \PHPUnit_Framework_TestCase
 
         $form->setData($object);
 
-        $context->expects($this->once())
-            ->method('validate')
-            ->with($object, 'data', 'group', true);
+        $graphWalker->expects($this->once())
+            ->method('walkReference')
+            ->with($object, 'group', 'foo.bar.data', true);
 
         $this->validator->initialize($context);
         $this->validator->validate($form, new Form());
@@ -341,7 +323,8 @@ class FormValidatorTest extends \PHPUnit_Framework_TestCase
 
     public function testUseInheritedCallbackValidationGroup()
     {
-        $context = $this->getMockExecutionContext();
+        $context = $this->getExecutionContext('foo.bar');
+        $graphWalker = $context->getGraphWalker();
         $object = $this->getMock('\stdClass');
 
         $parentOptions = array(
@@ -357,12 +340,12 @@ class FormValidatorTest extends \PHPUnit_Framework_TestCase
 
         $form->setData($object);
 
-        $context->expects($this->at(0))
-            ->method('validate')
-            ->with($object, 'data', 'group1', true);
-        $context->expects($this->at(1))
-            ->method('validate')
-            ->with($object, 'data', 'group2', true);
+        $graphWalker->expects($this->at(0))
+            ->method('walkReference')
+            ->with($object, 'group1', 'foo.bar.data', true);
+        $graphWalker->expects($this->at(1))
+            ->method('walkReference')
+            ->with($object, 'group2', 'foo.bar.data', true);
 
         $this->validator->initialize($context);
         $this->validator->validate($form, new Form());
@@ -370,7 +353,8 @@ class FormValidatorTest extends \PHPUnit_Framework_TestCase
 
     public function testUseInheritedClosureValidationGroup()
     {
-        $context = $this->getMockExecutionContext();
+        $context = $this->getExecutionContext('foo.bar');
+        $graphWalker = $context->getGraphWalker();
         $object = $this->getMock('\stdClass');
 
         $parentOptions = array(
@@ -388,12 +372,12 @@ class FormValidatorTest extends \PHPUnit_Framework_TestCase
 
         $form->setData($object);
 
-        $context->expects($this->at(0))
-            ->method('validate')
-            ->with($object, 'data', 'group1', true);
-        $context->expects($this->at(1))
-            ->method('validate')
-            ->with($object, 'data', 'group2', true);
+        $graphWalker->expects($this->at(0))
+            ->method('walkReference')
+            ->with($object, 'group1', 'foo.bar.data', true);
+        $graphWalker->expects($this->at(1))
+            ->method('walkReference')
+            ->with($object, 'group2', 'foo.bar.data', true);
 
         $this->validator->initialize($context);
         $this->validator->validate($form, new Form());
@@ -401,15 +385,16 @@ class FormValidatorTest extends \PHPUnit_Framework_TestCase
 
     public function testAppendPropertyPath()
     {
-        $context = $this->getMockExecutionContext();
+        $context = $this->getExecutionContext('foo.bar');
+        $graphWalker = $context->getGraphWalker();
         $object = $this->getMock('\stdClass');
         $form = $this->getBuilder('name', '\stdClass')
             ->setData($object)
             ->getForm();
 
-        $context->expects($this->once())
-            ->method('validate')
-            ->with($object, 'data', 'Default', true);
+        $graphWalker->expects($this->once())
+            ->method('walkReference')
+            ->with($object, 'Default', 'foo.bar.data', true);
 
         $this->validator->initialize($context);
         $this->validator->validate($form, new Form());
@@ -417,14 +402,15 @@ class FormValidatorTest extends \PHPUnit_Framework_TestCase
 
     public function testDontWalkScalars()
     {
-        $context = $this->getMockExecutionContext();
+        $context = $this->getExecutionContext();
+        $graphWalker = $context->getGraphWalker();
 
         $form = $this->getBuilder()
             ->setData('scalar')
             ->getForm();
 
-        $context->expects($this->never())
-            ->method('validate');
+        $graphWalker->expects($this->never())
+            ->method('walkReference');
 
         $this->validator->initialize($context);
         $this->validator->validate($form, new Form());
@@ -432,7 +418,7 @@ class FormValidatorTest extends \PHPUnit_Framework_TestCase
 
     public function testViolationIfExtraData()
     {
-        $context = $this->getMockExecutionContext();
+        $context = $this->getExecutionContext();
 
         $form = $this->getBuilder('parent', null, array('extra_fields_message' => 'Extra!'))
             ->setCompound(true)
@@ -442,24 +428,17 @@ class FormValidatorTest extends \PHPUnit_Framework_TestCase
 
         $form->bind(array('foo' => 'bar'));
 
-        $context->expects($this->once())
-            ->method('addViolation')
-            ->with(
-                'Extra!',
-                array('{{ extra_fields }}' => 'foo'),
-                array('foo' => 'bar')
-            );
-        $context->expects($this->never())
-            ->method('addViolationAt');
-
         $this->validator->initialize($context);
         $this->validator->validate($form, new Form());
+
+        $this->assertCount(1, $context->getViolations());
+        $this->assertEquals('Extra!', $context->getViolations()->get(0)->getMessage());
     }
 
     /**
      * @dataProvider getPostMaxSizeFixtures
      */
-    public function testPostMaxSizeViolation($contentLength, $iniMax, $nbViolation, array $params = array())
+    public function testPostMaxSizeViolation($contentLength, $iniMax, $nbViolation, $msg)
     {
         $this->serverParams->expects($this->once())
             ->method('getContentLength')
@@ -468,39 +447,30 @@ class FormValidatorTest extends \PHPUnit_Framework_TestCase
             ->method('getNormalizedIniPostMaxSize')
             ->will($this->returnValue($iniMax));
 
-        $context = $this->getMockExecutionContext();
+        $context = $this->getExecutionContext();
         $options = array('post_max_size_message' => 'Max {{ max }}!');
         $form = $this->getBuilder('name', null, $options)->getForm();
 
-        for ($i = 0; $i < $nbViolation; ++$i) {
-            if (0 === $i && count($params) > 0) {
-                $context->expects($this->at($i))
-                    ->method('addViolation')
-                    ->with($options['post_max_size_message'], $params);
-            } else {
-                $context->expects($this->at($i))
-                    ->method('addViolation');
-            }
-        }
-
-        $context->expects($this->never())
-            ->method('addViolationAt');
-
         $this->validator->initialize($context);
         $this->validator->validate($form, new Form());
+
+        $this->assertCount($nbViolation, $context->getViolations());
+        if (null !== $msg) {
+            $this->assertEquals($msg, $context->getViolations()->get(0)->getMessage());
+        }
     }
 
     public function getPostMaxSizeFixtures()
     {
         return array(
-            array(pow(1024, 3) + 1, '1G', 1, array('{{ max }}' => '1G')),
-            array(pow(1024, 3), '1G', 0),
-            array(pow(1024, 2) + 1, '1M', 1, array('{{ max }}' => '1M')),
-            array(pow(1024, 2), '1M', 0),
-            array(1024 + 1, '1K', 1, array('{{ max }}' => '1K')),
-            array(1024, '1K', 0),
-            array(null, '1K', 0),
-            array(1024, '', 0),
+            array(pow(1024, 3) + 1, '1G', 1, 'Max 1G!'),
+            array(pow(1024, 3), '1G', 0, null),
+            array(pow(1024, 2) + 1, '1M', 1, 'Max 1M!'),
+            array(pow(1024, 2), '1M', 0, null),
+            array(1024 + 1, '1K', 1, 'Max 1K!'),
+            array(1024, '1K', 0, null),
+            array(null, '1K', 0, null),
+            array(1024, '', 0, null),
         );
     }
 
@@ -512,7 +482,7 @@ class FormValidatorTest extends \PHPUnit_Framework_TestCase
         $this->serverParams->expects($this->never())
             ->method('getNormalizedIniPostMaxSize');
 
-        $context = $this->getMockExecutionContext();
+        $context = $this->getExecutionContext();
         $parent = $this->getBuilder()
             ->setCompound(true)
             ->setDataMapper($this->getDataMapper())
@@ -520,13 +490,10 @@ class FormValidatorTest extends \PHPUnit_Framework_TestCase
         $form = $this->getForm();
         $parent->add($form);
 
-        $context->expects($this->never())
-            ->method('addViolation');
-        $context->expects($this->never())
-            ->method('addViolationAt');
-
         $this->validator->initialize($context);
         $this->validator->validate($form, new Form());
+
+        $this->assertCount(0, $context->getViolations());
     }
 
     /**
@@ -539,16 +506,28 @@ class FormValidatorTest extends \PHPUnit_Framework_TestCase
         return array('group1', 'group2');
     }
 
-    private function getMockExecutionContext()
+    private function getMockGraphWalker()
     {
-        return $this->getMock('Symfony\Component\Validator\ExecutionContextInterface');
+        return $this->getMockBuilder('Symfony\Component\Validator\GraphWalker')
+            ->disableOriginalConstructor()
+            ->getMock();
+    }
+
+    private function getMockMetadataFactory()
+    {
+        return $this->getMock('Symfony\Component\Validator\Mapping\ClassMetadataFactoryInterface');
+    }
+
+    private function getExecutionContext($propertyPath = null)
+    {
+        $graphWalker = $this->getMockGraphWalker();
+        $metadataFactory = $this->getMockMetadataFactory();
+        $globalContext = new GlobalExecutionContext('Root', $graphWalker, $metadataFactory);
+
+        return new ExecutionContext($globalContext, null, $propertyPath, null, null, null);
     }
 
     /**
-     * @param string $name
-     * @param string $dataClass
-     * @param array  $options
-     *
      * @return FormBuilder
      */
     private function getBuilder($name = 'name', $dataClass = null, array $options = array())

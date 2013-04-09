@@ -30,9 +30,9 @@ class FastDirectoriesResource implements ResourceInterface
     private $filePattern;
     private $files = array();
 
-    public function __construct(array $directories, $filePattern = null, $disableGrep = false)
+    public function __construct(array $directories, $filePattern = null)
     {
-        $this->finder = new PatternFinder('.*', '*.php', $disableGrep);
+        $this->finder = new PatternFinder('.*', '*.php');
         $this->finder->setRegexPattern(true);
 
         $this->directories = $directories;

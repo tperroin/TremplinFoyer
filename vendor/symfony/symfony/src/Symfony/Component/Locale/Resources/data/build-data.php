@@ -125,8 +125,7 @@ function get_data($index, $dataDir, $locale = 'en', $constraint = null)
     return $data;
 }
 
-function icu_version()
-{
+function icu_version() {
     exec('icu-config --version', $output, $result);
 
     if ($result !== 0 || !isset($output[0])) {
@@ -136,15 +135,13 @@ function icu_version()
     return $output[0];
 }
 
-function normalize_icu_version($version)
-{
+function normalize_icu_version($version) {
     preg_match('/^(?P<version>[0-9]\.[0-9]|[0-9]{2,})/', $version, $matches);
 
     return $matches['version'];
 }
 
-function download_icu_data($version)
-{
+function download_icu_data($version) {
     $icu = parse_ini_file(__DIR__.'/icu.ini');
 
     if (!isset($icu[$version])) {
@@ -251,6 +248,7 @@ MESSAGE
 }
 
 check_command('svn');
+check_command('icu-config');
 
 // Script options
 $version = isset($GLOBALS['argv'][1]) ? $GLOBALS['argv'][1] : icu_version();

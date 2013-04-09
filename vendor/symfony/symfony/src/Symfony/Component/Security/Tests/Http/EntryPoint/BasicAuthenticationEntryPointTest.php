@@ -34,6 +34,7 @@ class BasicAuthenticationEntryPointTest extends \PHPUnit_Framework_TestCase
 
         $this->assertEquals('Basic realm="TheRealmName"', $response->headers->get('WWW-Authenticate'));
         $this->assertEquals(401, $response->getStatusCode());
+        $this->assertAttributeEquals('The exception message', 'statusText', $response);
     }
 
     public function testStartWithoutAuthException()
@@ -46,5 +47,6 @@ class BasicAuthenticationEntryPointTest extends \PHPUnit_Framework_TestCase
 
         $this->assertEquals('Basic realm="TheRealmName"', $response->headers->get('WWW-Authenticate'));
         $this->assertEquals(401, $response->getStatusCode());
+        $this->assertAttributeEquals('Unauthorized', 'statusText', $response);
     }
 }

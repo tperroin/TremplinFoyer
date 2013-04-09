@@ -46,9 +46,6 @@ class ProxyCacheWarmer implements CacheWarmerInterface
         return false;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function warmUp($cacheDir)
     {
         foreach ($this->registry->getManagers() as $em) {

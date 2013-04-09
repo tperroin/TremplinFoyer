@@ -12,59 +12,39 @@
 namespace Symfony\Component\Validator;
 
 use Symfony\Component\Validator\Constraints\Valid;
+use Symfony\Component\Validator\Mapping\ClassMetadataFactoryInterface;
 use Symfony\Component\Validator\Exception\ValidatorException;
-use Symfony\Component\Translation\TranslatorInterface;
 
 /**
- * Default implementation of {@link ValidatorInterface}.
+ * The default implementation of the ValidatorInterface.
+ *
+ * This service can be used to validate objects, properties and raw values
+ * against constraints.
  *
  * @author Fabien Potencier <fabien@symfony.com>
  * @author Bernhard Schussek <bschussek@gmail.com>
+ *
+ * @api
  */
 class Validator implements ValidatorInterface
 {
-    /**
-     * @var MetadataFactoryInterface
-     */
-    private $metadataFactory;
-
-    /**
-     * @var ConstraintValidatorFactoryInterface
-     */
-    private $validatorFactory;
-
-    /**
-     * @var TranslatorInterface
-     */
-    private $translator;
-
-    /**
-     * @var null|string
-     */
-    private $translationDomain;
-
-    /**
-     * @var array
-     */
-    private $objectInitializers;
+    protected $metadataFactory;
+    protected $validatorFactory;
+    protected $validatorInitializers;
 
     public function __construct(
-        MetadataFactoryInterface $metadataFactory,
+        ClassMetadataFactoryInterface $metadataFactory,
         ConstraintValidatorFactoryInterface $validatorFactory,
-        TranslatorInterface $translator,
-        $translationDomain = 'validators',
-        array $objectInitializers = array()
+        array $validatorInitializers = array()
     )
     {
         $this->metadataFactory = $metadataFactory;
         $this->validatorFactory = $validatorFactory;
-        $this->translator = $translator;
-        $this->translationDomain = $translationDomain;
-        $this->objectInitializers = $objectInitializers;
+        $this->validatorInitializers = $validatorInitializers;
     }
 
     /**
-     * {@inheritdoc}
+     * {@inheritDoc}
      */
     public function getMetadataFactory()
     {
@@ -73,149 +53,91 @@ class Validator implements ValidatorInterface
 
     /**
      * {@inheritDoc}
+     *
+     * @api
      */
-    public function getMetadataFor($value)
+    public function validate($object, $groups = null)
     {
-        return $this->metadataFactory->getMetadataFor($value);
-    }
+        $metadata = $this->metadataFactory->getClassMetadata(get_class($object));
 
-    /**
-     * {@inheritDoc}
-     */
-    public function validate($value, $groups = null, $traverse = false, $deep = false)
-    {
-        $visitor = $this->createVisitor($value);
+        $walk = function(GraphWalker $walker, $group) use ($metadata, $object) {
+            return $walker->walkObject($metadata, $object, $group, '');
+        };
 
-        foreach ($this->resolveGroups($groups) as $group) {
-            $visitor->validate($value, $group, '');
-        }
-
-        return $visitor->getViolations();
+        return $this->validateGraph($object, $walk, $groups);
     }
 
     /**
      * {@inheritDoc}
      *
-     * @throws ValidatorException If the metadata for the value does not support properties.
+     * @api
      */
-    public function validateProperty($containingValue, $property, $groups = null)
+    public function validateProperty($object, $property, $groups = null)
     {
-        $visitor = $this->createVisitor($containingValue);
-        $metadata = $this->metadataFactory->getMetadataFor($containingValue);
+        $metadata = $this->metadataFactory->getClassMetadata(get_class($object));
 
-        if (!$metadata instanceof PropertyMetadataContainerInterface) {
-            $valueAsString = is_scalar($containingValue)
-                ? '"' . $containingValue . '"'
-                : 'the value of type ' . gettype($containingValue);
+        $walk = function(GraphWalker $walker, $group) use ($metadata, $property, $object) {
+            return $walker->walkProperty($metadata, $property, $object, $group, '');
+        };
 
-            throw new ValidatorException(sprintf('The metadata for ' . $valueAsString . ' does not support properties.'));
-        }
-
-        foreach ($this->resolveGroups($groups) as $group) {
-            if (!$metadata->hasPropertyMetadata($property)) {
-                continue;
-            }
-
-            foreach ($metadata->getPropertyMetadata($property) as $propMeta) {
-                $propMeta->accept($visitor, $propMeta->getPropertyValue($containingValue), $group, $property);
-            }
-        }
-
-        return $visitor->getViolations();
+        return $this->validateGraph($object, $walk, $groups);
     }
 
     /**
      * {@inheritDoc}
      *
-     * @throws ValidatorException If the metadata for the value does not support properties.
+     * @api
      */
-    public function validatePropertyValue($containingValue, $property, $value, $groups = null)
+    public function validatePropertyValue($class, $property, $value, $groups = null)
     {
-        $visitor = $this->createVisitor($containingValue);
-        $metadata = $this->metadataFactory->getMetadataFor($containingValue);
+        $metadata = $this->metadataFactory->getClassMetadata($class);
 
-        if (!$metadata instanceof PropertyMetadataContainerInterface) {
-            $valueAsString = is_scalar($containingValue)
-                ? '"' . $containingValue . '"'
-                : 'the value of type ' . gettype($containingValue);
+        $walk = function(GraphWalker $walker, $group) use ($metadata, $property, $value) {
+            return $walker->walkPropertyValue($metadata, $property, $value, $group, '');
+        };
 
-            throw new ValidatorException(sprintf('The metadata for ' . $valueAsString . ' does not support properties.'));
-        }
-
-        foreach ($this->resolveGroups($groups) as $group) {
-            if (!$metadata->hasPropertyMetadata($property)) {
-                continue;
-            }
-
-            foreach ($metadata->getPropertyMetadata($property) as $propMeta) {
-                $propMeta->accept($visitor, $value, $group, $property);
-            }
-        }
-
-        return $visitor->getViolations();
+        return $this->validateGraph($class, $walk, $groups);
     }
 
     /**
      * {@inheritDoc}
+     *
+     * @api
      */
-    public function validateValue($value, $constraints, $groups = null)
+    public function validateValue($value, Constraint $constraint, $groups = null)
     {
-        $context = new ExecutionContext($this->createVisitor(null), $this->translator, $this->translationDomain);
+        if ($constraint instanceof Valid) {
+            // Why can't the Valid constraint be executed directly?
+            //
+            // It cannot be executed like regular other constraints, because regular
+            // constraints are only executed *if they belong to the validated group*.
+            // The Valid constraint, on the other hand, is always executed and propagates
+            // the group to the cascaded object. The propagated group depends on
+            //
+            //  * Whether a group sequence is currently being executed. Then the default
+            //    group is propagated.
+            //
+            //  * Otherwise the validated group is propagated.
 
-        $constraints = is_array($constraints) ? $constraints : array($constraints);
-
-        foreach ($constraints as $constraint) {
-            if ($constraint instanceof Valid) {
-                // Why can't the Valid constraint be executed directly?
-                //
-                // It cannot be executed like regular other constraints, because regular
-                // constraints are only executed *if they belong to the validated group*.
-                // The Valid constraint, on the other hand, is always executed and propagates
-                // the group to the cascaded object. The propagated group depends on
-                //
-                //  * Whether a group sequence is currently being executed. Then the default
-                //    group is propagated.
-                //
-                //  * Otherwise the validated group is propagated.
-
-                throw new ValidatorException(
-                    sprintf(
-                        'The constraint %s cannot be validated. Use the method validate() instead.',
-                        get_class($constraint)
-                    )
-                );
-            }
-
-            $context->validateValue($value, $constraint, $groups);
+            throw new ValidatorException('The constraint ' . get_class($constraint) . ' cannot be validated. Use the method validate() instead.');
         }
 
-        return $context->getViolations();
+        $walk = function(GraphWalker $walker, $group) use ($constraint, $value) {
+            return $walker->walkConstraint($constraint, $value, $group, '');
+        };
+
+        return $this->validateGraph('', $walk, $groups);
     }
 
-    /**
-     * @param mixed $root
-     *
-     * @return ValidationVisitor
-     */
-    private function createVisitor($root)
+    protected function validateGraph($root, \Closure $walk, $groups = null)
     {
-        return new ValidationVisitor(
-            $root,
-            $this->metadataFactory,
-            $this->validatorFactory,
-            $this->translator,
-            $this->translationDomain,
-            $this->objectInitializers
-        );
-    }
+        $walker = new GraphWalker($root, $this->metadataFactory, $this->validatorFactory, $this->validatorInitializers);
+        $groups = $groups ? (array) $groups : array(Constraint::DEFAULT_GROUP);
 
-    /**
-     * @param null|string|string[] $groups
-     *
-     * @return string[]
-     */
-    private function resolveGroups($groups)
-    {
-        return $groups ? (array) $groups : array(Constraint::DEFAULT_GROUP);
+        foreach ($groups as $group) {
+            $walk($walker, $group);
+        }
+
+        return $walker->getViolations();
     }
 }

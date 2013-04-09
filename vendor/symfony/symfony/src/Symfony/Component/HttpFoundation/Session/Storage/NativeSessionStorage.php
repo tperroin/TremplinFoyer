@@ -27,17 +27,17 @@ class NativeSessionStorage implements SessionStorageInterface
     /**
      * Array of SessionBagInterface
      *
-     * @var SessionBagInterface[]
+     * @var array
      */
     protected $bags;
 
     /**
-     * @var Boolean
+     * @var boolean
      */
     protected $started = false;
 
     /**
-     * @var Boolean
+     * @var boolean
      */
     protected $closed = false;
 
@@ -55,7 +55,7 @@ class NativeSessionStorage implements SessionStorageInterface
      * Constructor.
      *
      * Depending on how you want the storage driver to behave you probably
-     * want to override this constructor entirely.
+     * want top override this constructor entirely.
      *
      * List of options for $options array with their defaults.
      * @see http://php.net/session.configuration for options
@@ -332,9 +332,9 @@ class NativeSessionStorage implements SessionStorageInterface
      * Registers save handler as a PHP session handler.
      *
      * To use internal PHP session save handlers, override this method using ini_set with
-     * session.save_handler and session.save_path e.g.
+     * session.save_handlers and session.save_path e.g.
      *
-     *     ini_set('session.save_handler', 'files');
+     *     ini_set('session.save_handlers', 'files');
      *     ini_set('session.save_path', /tmp');
      *
      * @see http://php.net/session-set-save-handler

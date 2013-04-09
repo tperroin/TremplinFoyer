@@ -11,6 +11,7 @@
 
 namespace Symfony\Component\Validator\Tests\Constraints;
 
+use Symfony\Component\Validator\ExecutionContext;
 use Symfony\Component\Validator\Constraints\Choice;
 use Symfony\Component\Validator\Constraints\ChoiceValidator;
 
@@ -36,7 +37,7 @@ class ChoiceValidatorTest extends \PHPUnit_Framework_TestCase
         $this->validator->initialize($this->context);
 
         $this->context->expects($this->any())
-            ->method('getClassName')
+            ->method('getCurrentClass')
             ->will($this->returnValue(__CLASS__));
     }
 
@@ -47,7 +48,7 @@ class ChoiceValidatorTest extends \PHPUnit_Framework_TestCase
     }
 
     /**
-     * @expectedException \Symfony\Component\Validator\Exception\UnexpectedTypeException
+     * @expectedException Symfony\Component\Validator\Exception\UnexpectedTypeException
      */
     public function testExpectArrayIfMultipleIsTrue()
     {
@@ -68,7 +69,7 @@ class ChoiceValidatorTest extends \PHPUnit_Framework_TestCase
     }
 
     /**
-     * @expectedException \Symfony\Component\Validator\Exception\ConstraintDefinitionException
+     * @expectedException Symfony\Component\Validator\Exception\ConstraintDefinitionException
      */
     public function testChoicesOrCallbackExpected()
     {
@@ -76,7 +77,7 @@ class ChoiceValidatorTest extends \PHPUnit_Framework_TestCase
     }
 
     /**
-     * @expectedException \Symfony\Component\Validator\Exception\ConstraintDefinitionException
+     * @expectedException Symfony\Component\Validator\Exception\ConstraintDefinitionException
      */
     public function testValidCallbackExpected()
     {

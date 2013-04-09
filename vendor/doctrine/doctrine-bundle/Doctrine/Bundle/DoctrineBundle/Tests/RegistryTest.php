@@ -31,7 +31,7 @@ class RegistryTest extends TestCase
         $container = $this->getMock('Symfony\Component\DependencyInjection\ContainerInterface');
         $registry = new Registry($container, array(), array(), 'default', 'default');
 
-        $this->assertEquals('default', $registry->getDefaultManagerName());
+        $this->assertEquals('default', $registry->getDefaultEntityManagerName());
     }
 
     public function testGetDefaultConnection()
@@ -90,7 +90,7 @@ class RegistryTest extends TestCase
 
         $registry = new Registry($container, array(), array('default' => 'doctrine.orm.default_entity_manager'), 'default', 'default');
 
-        $this->assertSame($em, $registry->getManager());
+        $this->assertSame($em, $registry->getEntityManager());
     }
 
     public function testGetEntityManager()
@@ -104,7 +104,7 @@ class RegistryTest extends TestCase
 
         $registry = new Registry($container, array(), array('default' => 'doctrine.orm.default_entity_manager'), 'default', 'default');
 
-        $this->assertSame($em, $registry->getManager('default'));
+        $this->assertSame($em, $registry->getEntityManager('default'));
     }
 
     public function testGetUnknownEntityManager()
@@ -113,7 +113,7 @@ class RegistryTest extends TestCase
         $registry = new Registry($container, array(), array(), 'default', 'default');
 
         $this->setExpectedException('InvalidArgumentException', 'Doctrine ORM Manager named "default" does not exist.');
-        $registry->getManager('default');
+        $registry->getEntityManager('default');
     }
 
     public function testResetDefaultEntityManager()
@@ -124,7 +124,7 @@ class RegistryTest extends TestCase
                   ->with($this->equalTo('doctrine.orm.default_entity_manager'), $this->equalTo(null));
 
         $registry = new Registry($container, array(), array('default' => 'doctrine.orm.default_entity_manager'), 'default', 'default');
-        $registry->resetManager();
+        $registry->resetEntityManager();
     }
 
     public function testResetEntityManager()
@@ -135,7 +135,7 @@ class RegistryTest extends TestCase
                   ->with($this->equalTo('doctrine.orm.default_entity_manager'), $this->equalTo(null));
 
         $registry = new Registry($container, array(), array('default' => 'doctrine.orm.default_entity_manager'), 'default', 'default');
-        $registry->resetManager('default');
+        $registry->resetEntityManager('default');
     }
 
     public function testResetUnknownEntityManager()
@@ -144,6 +144,6 @@ class RegistryTest extends TestCase
         $registry = new Registry($container, array(), array(), 'default', 'default');
 
         $this->setExpectedException('InvalidArgumentException', 'Doctrine ORM Manager named "default" does not exist.');
-        $registry->resetManager('default');
+        $registry->resetEntityManager('default');
     }
 }

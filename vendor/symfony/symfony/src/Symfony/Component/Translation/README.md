@@ -26,10 +26,13 @@ https://github.com/fabpot/Silex/blob/master/src/Silex/Provider/TranslationServic
 
 Documentation:
 
-http://symfony.com/doc/2.2/book/translation.html
+http://symfony.com/doc/2.0/book/translation.html
 
 You can run the unit tests with the following command:
 
-    $ cd path/to/Symfony/Component/Translation/
-    $ composer.phar install --dev
-    $ phpunit
+    phpunit
+
+If you also want to run the unit tests that depend on other Symfony
+Components, install dev dependencies before running PHPUnit:
+
+    php composer.phar install --dev

@@ -91,7 +91,9 @@ class FormatterHelper extends Helper
     }
 
     /**
-     * {@inheritDoc}
+     * Returns the helper's canonical name.
+     *
+     * @return string The canonical name of the helper
      */
     public function getName()
     {

@@ -39,13 +39,4 @@ class PasswordTypeTest extends TypeTestCase
 
         $this->assertSame('pAs5w0rd', $view->vars['value']);
     }
-
-    public function testNotTrimmed()
-    {
-        $form = $this->factory->create('password', null);
-        $form->bind(' pAs5w0rd ');
-        $data = $form->getData();
-
-        $this->assertSame(' pAs5w0rd ', $data);
-    }
 }

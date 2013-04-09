@@ -11,8 +11,6 @@
 
 namespace Symfony\Component\Translation\Loader;
 
-use Symfony\Component\Translation\Exception\InvalidResourceException;
-use Symfony\Component\Translation\Exception\NotFoundResourceException;
 use Symfony\Component\Config\Resource\FileResource;
 
 /**
@@ -35,20 +33,16 @@ class CsvFileLoader extends ArrayLoader implements LoaderInterface
      */
     public function load($resource, $locale, $domain = 'messages')
     {
-        if (!stream_is_local($resource)) {
-            throw new InvalidResourceException(sprintf('This is not a local file "%s".', $resource));
-        }
-
-        if (!file_exists($resource)) {
-            throw new NotFoundResourceException(sprintf('File "%s" not found.', $resource));
-        }
-
         $messages = array();
+
+        if (!stream_is_local($resource)) {
+            throw new \InvalidArgumentException(sprintf('This is not a local file "%s".', $resource));
+        }
 
         try {
             $file = new \SplFileObject($resource, 'rb');
         } catch (\RuntimeException $e) {
-            throw new NotFoundResourceException(sprintf('Error opening file "%s".', $resource), 0, $e);
+            throw new \InvalidArgumentException(sprintf('Error opening file "%s".', $resource));
         }
 
         $file->setFlags(\SplFileObject::READ_CSV | \SplFileObject::SKIP_EMPTY);

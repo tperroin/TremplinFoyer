@@ -54,31 +54,35 @@ class __TwigTemplate_8d6b77de8e784d527130f1a1dc73a5a3 extends Twig_Template
             // line 13
             ob_start();
             // line 14
-            echo "    <a href=\"#\" onclick=\"toggle('trace-";
-            echo twig_escape_filter($this->env, (($this->getContext($context, "prefix") . "-") . $this->getContext($context, "i")), "html", null, true);
-            echo "'); switchIcons('icon-";
-            echo twig_escape_filter($this->env, (($this->getContext($context, "prefix") . "-") . $this->getContext($context, "i")), "html", null, true);
-            echo "-open', 'icon-";
-            echo twig_escape_filter($this->env, (($this->getContext($context, "prefix") . "-") . $this->getContext($context, "i")), "html", null, true);
-            echo "-close'); return false;\">
-        <img class=\"toggle\" id=\"icon-";
+            echo "    <a href=\"#\" onclick=\"toggle('trace_";
+            echo twig_escape_filter($this->env, (($this->getContext($context, "prefix") . "_") . $this->getContext($context, "i")), "html", null, true);
+            echo "'); switchIcons('icon_";
+            echo twig_escape_filter($this->env, (($this->getContext($context, "prefix") . "_") . $this->getContext($context, "i")), "html", null, true);
+            echo "_open', 'icon_";
+            echo twig_escape_filter($this->env, (($this->getContext($context, "prefix") . "_") . $this->getContext($context, "i")), "html", null, true);
+            echo "_close'); return false;\">
+        <img class=\"toggle\" id=\"icon_";
             // line 15
-            echo twig_escape_filter($this->env, (($this->getContext($context, "prefix") . "-") . $this->getContext($context, "i")), "html", null, true);
-            echo "-close\" alt=\"-\" src=\"data:image/gif;base64,R0lGODlhEgASAMQSANft94TG57Hb8GS44ez1+mC24IvK6ePx+Wa44dXs92+942e54o3L6W2844/M6dnu+P/+/l614P///wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACH5BAEAABIALAAAAAASABIAQAVCoCQBTBOd6Kk4gJhGBCTPxysJb44K0qD/ER/wlxjmisZkMqBEBW5NHrMZmVKvv9hMVsO+hE0EoNAstEYGxG9heIhCADs=\" style=\"visibility: ";
-            echo (((0 == $this->getContext($context, "i"))) ? ("visible") : ("hidden"));
+            echo twig_escape_filter($this->env, (($this->getContext($context, "prefix") . "_") . $this->getContext($context, "i")), "html", null, true);
+            echo "_close\" alt=\"-\" src=\"";
+            echo twig_escape_filter($this->env, $this->env->getExtension('assets')->getAssetUrl("bundles/framework/images/blue_picto_less.gif"), "html", null, true);
+            echo "\" style=\"visibility: ";
+            echo (((0 == $this->getContext($context, "i"))) ? ("display") : ("hidden"));
             echo "\" />
-        <img class=\"toggle\" id=\"icon-";
+        <img class=\"toggle\" id=\"icon_";
             // line 16
-            echo twig_escape_filter($this->env, (($this->getContext($context, "prefix") . "-") . $this->getContext($context, "i")), "html", null, true);
-            echo "-open\" alt=\"+\" src=\"data:image/gif;base64,R0lGODlhEgASAMQTANft99/v+Ga44bHb8ITG52S44dXs9+z1+uPx+YvK6WC24G+944/M6W28443L6dnu+Ge54v/+/l614P///wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACH5BAEAABMALAAAAAASABIAQAVS4DQBTiOd6LkwgJgeUSzHSDoNaZ4PU6FLgYBA5/vFID/DbylRGiNIZu74I0h1hNsVxbNuUV4d9SsZM2EzWe1qThVzwWFOAFCQFa1RQq6DJB4iIQA7\" style=\"visibility: ";
-            echo (((0 == $this->getContext($context, "i"))) ? ("hidden") : ("visible"));
+            echo twig_escape_filter($this->env, (($this->getContext($context, "prefix") . "_") . $this->getContext($context, "i")), "html", null, true);
+            echo "_open\" alt=\"+\" src=\"";
+            echo twig_escape_filter($this->env, $this->env->getExtension('assets')->getAssetUrl("bundles/framework/images/blue_picto_more.gif"), "html", null, true);
+            echo "\" style=\"visibility: ";
+            echo (((0 == $this->getContext($context, "i"))) ? ("hidden") : ("display"));
             echo "; margin-left: -18px\" />
     </a>
     ";
             echo trim(preg_replace('/>\s+</', '><', ob_get_clean()));
             // line 19
-            echo "    <div id=\"trace-";
-            echo twig_escape_filter($this->env, (($this->getContext($context, "prefix") . "-") . $this->getContext($context, "i")), "html", null, true);
+            echo "    <div id=\"trace_";
+            echo twig_escape_filter($this->env, (($this->getContext($context, "prefix") . "_") . $this->getContext($context, "i")), "html", null, true);
             echo "\" style=\"display: ";
             echo (((0 == $this->getContext($context, "i"))) ? ("block") : ("none"));
             echo "\" class=\"trace\">
@@ -103,6 +107,6 @@ class __TwigTemplate_8d6b77de8e784d527130f1a1dc73a5a3 extends Twig_Template
 
     public function getDebugInfo()
     {
-        return array (  87 => 20,  21 => 2,  31 => 5,  25 => 4,  26 => 3,  28 => 3,  24 => 4,  19 => 1,  93 => 9,  88 => 6,  78 => 40,  46 => 11,  44 => 10,  27 => 4,  79 => 21,  72 => 16,  69 => 12,  47 => 18,  40 => 7,  37 => 10,  22 => 2,  246 => 32,  157 => 56,  145 => 46,  139 => 45,  131 => 42,  123 => 41,  120 => 40,  115 => 39,  111 => 38,  108 => 37,  101 => 33,  98 => 40,  96 => 31,  83 => 25,  74 => 14,  66 => 15,  55 => 13,  52 => 21,  50 => 14,  43 => 8,  41 => 9,  35 => 4,  32 => 4,  29 => 4,  209 => 82,  203 => 78,  199 => 76,  193 => 73,  189 => 71,  187 => 70,  182 => 68,  176 => 64,  173 => 63,  168 => 62,  164 => 58,  162 => 57,  154 => 54,  149 => 51,  147 => 50,  144 => 49,  141 => 48,  133 => 42,  130 => 41,  125 => 38,  122 => 37,  116 => 36,  112 => 35,  109 => 34,  106 => 36,  103 => 32,  99 => 30,  95 => 28,  92 => 29,  86 => 24,  82 => 22,  80 => 19,  73 => 19,  64 => 19,  60 => 6,  57 => 14,  54 => 11,  51 => 12,  48 => 9,  45 => 17,  42 => 16,  39 => 8,  36 => 7,  33 => 4,  30 => 3,);
+        return array (  91 => 20,  84 => 19,  74 => 16,  66 => 15,  57 => 14,  55 => 13,  51 => 12,  44 => 10,  36 => 7,  25 => 4,  105 => 24,  98 => 22,  96 => 21,  93 => 20,  89 => 19,  83 => 18,  76 => 16,  72 => 14,  68 => 12,  50 => 8,  33 => 5,  27 => 4,  24 => 3,  22 => 2,  225 => 96,  216 => 90,  212 => 88,  205 => 84,  201 => 83,  196 => 80,  194 => 79,  191 => 78,  189 => 77,  186 => 76,  180 => 72,  178 => 71,  172 => 67,  163 => 63,  159 => 61,  157 => 60,  154 => 59,  147 => 55,  143 => 54,  138 => 51,  136 => 50,  132 => 48,  130 => 47,  127 => 46,  121 => 45,  118 => 44,  114 => 43,  104 => 36,  100 => 34,  95 => 31,  78 => 28,  75 => 27,  71 => 26,  63 => 24,  60 => 23,  58 => 9,  41 => 9,  34 => 11,  19 => 1,  94 => 39,  88 => 6,  81 => 40,  79 => 17,  59 => 22,  48 => 19,  39 => 6,  35 => 7,  31 => 5,  26 => 6,  21 => 2,  46 => 11,  43 => 7,  32 => 4,  29 => 3,);
     }
 }

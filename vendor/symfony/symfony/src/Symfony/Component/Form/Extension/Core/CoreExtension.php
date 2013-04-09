@@ -12,7 +12,6 @@
 namespace Symfony\Component\Form\Extension\Core;
 
 use Symfony\Component\Form\AbstractExtension;
-use Symfony\Component\PropertyAccess\PropertyAccess;
 
 /**
  * Represents the main form extension, which loads the core functionality.
@@ -25,7 +24,7 @@ class CoreExtension extends AbstractExtension
     {
         return array(
             new Type\FieldType(),
-            new Type\FormType(PropertyAccess::getPropertyAccessor()),
+            new Type\FormType(),
             new Type\BirthdayType(),
             new Type\CheckboxType(),
             new Type\ChoiceType(),

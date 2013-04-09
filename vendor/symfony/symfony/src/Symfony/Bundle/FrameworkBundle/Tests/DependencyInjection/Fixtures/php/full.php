@@ -4,8 +4,6 @@ $container->loadFromExtension('framework', array(
     'secret' => 's3cr3t',
     'default_locale' => 'fr',
     'form' => null,
-    'trust_proxy_headers' => true,
-    'trusted_proxies' => array('127.0.0.1', '10.0.0.1'),
     'csrf_protection' => array(
         'enabled'    => true,
         'field_name' => '_csrf',
@@ -15,7 +13,6 @@ $container->loadFromExtension('framework', array(
     ),
     'profiler' => array(
         'only_exceptions' => true,
-        'enabled' => false,
     ),
     'router' => array(
         'resource'     => '%kernel.root_dir%/config/routing.xml',

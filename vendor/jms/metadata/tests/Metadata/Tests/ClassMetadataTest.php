@@ -11,7 +11,7 @@ class ClassMetadataTest extends \PHPUnit_Framework_TestCase
         $metadata = new ClassMetadata('Metadata\Tests\Fixtures\TestObject');
 
         $this->assertEquals('Metadata\Tests\Fixtures\TestObject', $metadata->name);
-        $this->assertEquals('Metadata\Tests\Fixtures\TestObject', $metadata->reflection->name);
+        $this->assertEquals('Metadata\Tests\Fixtures\TestObject', $metadata->reflection->getName());
     }
 
     public function testSerializeUnserialize()
@@ -27,7 +27,7 @@ class ClassMetadataTest extends \PHPUnit_Framework_TestCase
         touch($ref->getFilename());
         sleep(2);
 
-        $metadata = new ClassMetadata($ref->name);
+        $metadata = new ClassMetadata($ref->getName());
         $metadata->fileResources[] = $ref->getFilename();
         $this->assertTrue($metadata->isFresh());
 

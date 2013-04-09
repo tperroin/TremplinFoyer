@@ -71,16 +71,15 @@ class Client extends BaseClient
      * Returns the script to execute when the request must be insulated.
      *
      * @param Request $request A Request instance
-     *
-     * @return string
      */
     protected function getScript($request)
     {
         $kernel = str_replace("'", "\\'", serialize($this->kernel));
         $request = str_replace("'", "\\'", serialize($request));
 
-        $r = new \ReflectionClass('\\Symfony\\Component\\ClassLoader\\ClassLoader');
+        $r = new \ReflectionClass('\\Symfony\\Component\\ClassLoader\\UniversalClassLoader');
         $requirePath = str_replace("'", "\\'", $r->getFileName());
+
         $symfonyPath = str_replace("'", "\\'", realpath(__DIR__.'/../../..'));
 
         return <<<EOF
@@ -88,8 +87,8 @@ class Client extends BaseClient
 
 require_once '$requirePath';
 
-\$loader = new Symfony\Component\ClassLoader\ClassLoader();
-\$loader->addPrefix('Symfony', '$symfonyPath');
+\$loader = new Symfony\Component\ClassLoader\UniversalClassLoader();
+\$loader->registerNamespaces(array('Symfony' => '$symfonyPath'));
 \$loader->register();
 
 \$kernel = unserialize('$kernel');
@@ -180,11 +179,6 @@ EOF;
             $headers['Set-Cookie'] = $cookies;
         }
 
-        // this is needed to support StreamedResponse
-        ob_start();
-        $response->sendContent();
-        $content = ob_get_clean();
-
-        return new DomResponse($content, $response->getStatusCode(), $headers);
+        return new DomResponse($response->getContent(), $response->getStatusCode(), $headers);
     }
 }

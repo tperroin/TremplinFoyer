@@ -23,7 +23,7 @@ class VirtualFormAwareIterator extends \ArrayIterator implements \RecursiveItera
 {
     public function getChildren()
     {
-        return new self($this->current()->all());
+        return new self($this->current()->getChildren());
     }
 
     public function hasChildren()

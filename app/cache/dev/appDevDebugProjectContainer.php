@@ -146,7 +146,7 @@ class appDevDebugProjectContainer extends Container
 
         $c = new \Symfony\Bundle\FrameworkBundle\CacheWarmer\TemplateFinder($a, $b, '/var/www/sites/TremplinFoyerV1/app/Resources');
 
-        return $this->services['cache_warmer'] = new \Symfony\Component\HttpKernel\CacheWarmer\CacheWarmerAggregate(array(0 => new \Symfony\Bundle\FrameworkBundle\CacheWarmer\TemplatePathsCacheWarmer($c, $this->get('templating.locator')), 1 => new \Symfony\Bundle\AsseticBundle\CacheWarmer\AssetManagerCacheWarmer($this), 2 => new \Symfony\Bundle\FrameworkBundle\CacheWarmer\RouterCacheWarmer($this->get('router')), 3 => new \Symfony\Bundle\TwigBundle\CacheWarmer\TemplateCacheCacheWarmer($this, $c), 4 => new \Symfony\Bridge\Doctrine\CacheWarmer\ProxyCacheWarmer($this->get('doctrine')), 5 => new \JMS\DiExtraBundle\HttpKernel\ControllerInjectorsWarmer($a, $this->get('jms_di_extra.controller_resolver'), array())));
+        return $this->services['cache_warmer'] = new \Symfony\Component\HttpKernel\CacheWarmer\CacheWarmerAggregate(array(0 => new \Symfony\Bundle\FrameworkBundle\CacheWarmer\TemplatePathsCacheWarmer($c, $this->get('templating.locator')), 1 => new \Symfony\Bundle\AsseticBundle\CacheWarmer\AssetManagerCacheWarmer($this), 2 => new \Symfony\Bundle\FrameworkBundle\CacheWarmer\RouterCacheWarmer($this->get('router')), 3 => new \Symfony\Bundle\TwigBundle\CacheWarmer\TemplateCacheCacheWarmer($this, $c), 4 => new \Symfony\Bridge\Doctrine\CacheWarmer\ProxyCacheWarmer($this->get('doctrine')), 5 => new \JMS\DiExtraBundle\HttpKernel\ControllerInjectorsWarmer($a, $this->get('debug.controller_resolver'))));
     }
 
     /**
@@ -181,41 +181,11 @@ class appDevDebugProjectContainer extends Container
      * This service is shared.
      * This method always returns the same instance of the service.
      *
-     * @return Symfony\Component\HttpKernel\Controller\TraceableControllerResolver A Symfony\Component\HttpKernel\Controller\TraceableControllerResolver instance.
+     * @return JMS\DiExtraBundle\HttpKernel\ControllerResolver A JMS\DiExtraBundle\HttpKernel\ControllerResolver instance.
      */
     protected function getDebug_ControllerResolverService()
     {
-        return $this->services['debug.controller_resolver'] = new \Symfony\Component\HttpKernel\Controller\TraceableControllerResolver($this->get('jms_di_extra.controller_resolver'), $this->get('debug.stopwatch'));
-    }
-
-    /**
-     * Gets the 'debug.deprecation_logger_listener' service.
-     *
-     * This service is shared.
-     * This method always returns the same instance of the service.
-     *
-     * @return Symfony\Component\HttpKernel\EventListener\DeprecationLoggerListener A Symfony\Component\HttpKernel\EventListener\DeprecationLoggerListener instance.
-     */
-    protected function getDebug_DeprecationLoggerListenerService()
-    {
-        return $this->services['debug.deprecation_logger_listener'] = new \Symfony\Component\HttpKernel\EventListener\DeprecationLoggerListener($this->get('monolog.logger.deprecation'));
-    }
-
-    /**
-     * Gets the 'debug.event_dispatcher' service.
-     *
-     * This service is shared.
-     * This method always returns the same instance of the service.
-     *
-     * @return Symfony\Component\HttpKernel\Debug\TraceableEventDispatcher A Symfony\Component\HttpKernel\Debug\TraceableEventDispatcher instance.
-     */
-    protected function getDebug_EventDispatcherService()
-    {
-        $this->services['debug.event_dispatcher'] = $instance = new \Symfony\Component\HttpKernel\Debug\TraceableEventDispatcher($this->get('event_dispatcher'), $this->get('debug.stopwatch'), $this->get('monolog.logger.event'));
-
-        $instance->setProfiler($this->get('profiler'));
-
-        return $instance;
+        return $this->services['debug.controller_resolver'] = new \JMS\DiExtraBundle\HttpKernel\ControllerResolver($this, $this->get('controller_name_converter'), $this->get('monolog.logger.request'));
     }
 
     /**
@@ -224,11 +194,11 @@ class appDevDebugProjectContainer extends Container
      * This service is shared.
      * This method always returns the same instance of the service.
      *
-     * @return Symfony\Component\Stopwatch\Stopwatch A Symfony\Component\Stopwatch\Stopwatch instance.
+     * @return Symfony\Component\HttpKernel\Debug\Stopwatch A Symfony\Component\HttpKernel\Debug\Stopwatch instance.
      */
     protected function getDebug_StopwatchService()
     {
-        return $this->services['debug.stopwatch'] = new \Symfony\Component\Stopwatch\Stopwatch();
+        return $this->services['debug.stopwatch'] = new \Symfony\Component\HttpKernel\Debug\Stopwatch();
     }
 
     /**
@@ -277,6 +247,7 @@ class appDevDebugProjectContainer extends Container
         $c = new \Symfony\Bridge\Doctrine\ContainerAwareEventManager($this);
         $c->addEventSubscriber(new \FOS\UserBundle\Entity\UserListener($this));
         $c->addEventSubscriber($this->get('sonata.easy_extends.doctrine.mapper'));
+        $c->addEventSubscriber($this->get('sonata.media.doctrine.event_subscriber'));
 
         return $this->services['doctrine.dbal.default_connection'] = $this->get('doctrine.dbal.connection_factory')->createConnection(array('dbname' => 'tremplinfoyer', 'host' => '127.0.0.1', 'port' => NULL, 'user' => 'root', 'password' => 'root', 'charset' => 'UTF8', 'driver' => 'pdo_mysql', 'driverOptions' => array()), $b, $c, array());
     }
@@ -287,11 +258,11 @@ class appDevDebugProjectContainer extends Container
      * This service is shared.
      * This method always returns the same instance of the service.
      *
-     * @return EntityManager51640d77010bd_546a8d27f194334ee012bfe64f629947b07e4919\__CG__\Doctrine\ORM\EntityManager A EntityManager51640d77010bd_546a8d27f194334ee012bfe64f629947b07e4919\__CG__\Doctrine\ORM\EntityManager instance.
+     * @return EntityManager516424e6b2bd4_546a8d27f194334ee012bfe64f629947b07e4919\__CG__\Doctrine\ORM\EntityManager A EntityManager516424e6b2bd4_546a8d27f194334ee012bfe64f629947b07e4919\__CG__\Doctrine\ORM\EntityManager instance.
      */
     protected function getDoctrine_Orm_DefaultEntityManagerService()
     {
-        require_once '/var/www/sites/TremplinFoyerV1/app/cache/dev/jms_diextra/doctrine/EntityManager_51640d77010bd.php';
+        require_once '/var/www/sites/TremplinFoyerV1/app/cache/dev/jms_diextra/doctrine/EntityManager_516424e6b2bd4.php';
 
         $a = new \Doctrine\Common\Cache\ArrayCache();
         $a->setNamespace('sf2orm_default_e419d7037a9a2d7c298aeebf8a7a5c68');
@@ -302,16 +273,20 @@ class appDevDebugProjectContainer extends Container
         $c = new \Doctrine\Common\Cache\ArrayCache();
         $c->setNamespace('sf2orm_default_e419d7037a9a2d7c298aeebf8a7a5c68');
 
-        $d = new \Doctrine\ORM\Mapping\Driver\SimplifiedXmlDriver(array('/var/www/sites/TremplinFoyerV1/src/Application/Sonata/UserBundle/Resources/config/doctrine' => 'Application\\Sonata\\UserBundle\\Entity', '/var/www/sites/TremplinFoyerV1/vendor/sonata-project/user-bundle/Sonata/UserBundle/Resources/config/doctrine' => 'Sonata\\UserBundle\\Entity', '/var/www/sites/TremplinFoyerV1/vendor/friendsofsymfony/user-bundle/FOS/UserBundle/Resources/config/doctrine' => 'FOS\\UserBundle\\Entity'));
+        $d = new \Doctrine\ORM\Mapping\Driver\SimplifiedXmlDriver(array('/var/www/sites/TremplinFoyerV1/src/Application/Sonata/UserBundle/Resources/config/doctrine' => 'Application\\Sonata\\UserBundle\\Entity', '/var/www/sites/TremplinFoyerV1/vendor/sonata-project/user-bundle/Sonata/UserBundle/Resources/config/doctrine' => 'Sonata\\UserBundle\\Entity', '/var/www/sites/TremplinFoyerV1/vendor/friendsofsymfony/user-bundle/FOS/UserBundle/Resources/config/doctrine' => 'FOS\\UserBundle\\Entity', '/var/www/sites/TremplinFoyerV1/src/Application/Sonata/NewsBundle/Resources/config/doctrine' => 'Application\\Sonata\\NewsBundle\\Entity', '/var/www/sites/TremplinFoyerV1/vendor/sonata-project/news-bundle/Sonata/NewsBundle/Resources/config/doctrine' => 'Sonata\\NewsBundle\\Entity', '/var/www/sites/TremplinFoyerV1/vendor/sonata-project/media-bundle/Sonata/MediaBundle/Resources/config/doctrine' => 'Sonata\\MediaBundle\\Entity', '/var/www/sites/TremplinFoyerV1/src/Application/Sonata/MediaBundle/Resources/config/doctrine' => 'Application\\Sonata\\MediaBundle\\Entity'));
         $d->setGlobalBasename('mapping');
 
         $e = new \Doctrine\ORM\Mapping\Driver\DriverChain();
         $e->addDriver($d, 'Application\\Sonata\\UserBundle\\Entity');
         $e->addDriver($d, 'Sonata\\UserBundle\\Entity');
         $e->addDriver($d, 'FOS\\UserBundle\\Entity');
+        $e->addDriver($d, 'Application\\Sonata\\NewsBundle\\Entity');
+        $e->addDriver($d, 'Sonata\\NewsBundle\\Entity');
+        $e->addDriver($d, 'Sonata\\MediaBundle\\Entity');
+        $e->addDriver($d, 'Application\\Sonata\\MediaBundle\\Entity');
 
         $f = new \Doctrine\ORM\Configuration();
-        $f->setEntityNamespaces(array('ApplicationSonataUserBundle' => 'Application\\Sonata\\UserBundle\\Entity', 'SonataUserBundle' => 'Sonata\\UserBundle\\Entity', 'FOSUserBundle' => 'FOS\\UserBundle\\Entity'));
+        $f->setEntityNamespaces(array('ApplicationSonataUserBundle' => 'Application\\Sonata\\UserBundle\\Entity', 'SonataUserBundle' => 'Sonata\\UserBundle\\Entity', 'FOSUserBundle' => 'FOS\\UserBundle\\Entity', 'ApplicationSonataNewsBundle' => 'Application\\Sonata\\NewsBundle\\Entity', 'SonataNewsBundle' => 'Sonata\\NewsBundle\\Entity', 'SonataMediaBundle' => 'Sonata\\MediaBundle\\Entity', 'ApplicationSonataMediaBundle' => 'Application\\Sonata\\MediaBundle\\Entity'));
         $f->setMetadataCacheImpl($a);
         $f->setQueryCacheImpl($b);
         $f->setResultCacheImpl($c);
@@ -326,7 +301,7 @@ class appDevDebugProjectContainer extends Container
         $g = call_user_func(array('Doctrine\\ORM\\EntityManager', 'create'), $this->get('doctrine.dbal.default_connection'), $f);
         $this->get('doctrine.orm.default_manager_configurator')->configure($g);
 
-        return $this->services['doctrine.orm.default_entity_manager'] = new \EntityManager51640d77010bd_546a8d27f194334ee012bfe64f629947b07e4919\__CG__\Doctrine\ORM\EntityManager($g, $this);
+        return $this->services['doctrine.orm.default_entity_manager'] = new \EntityManager516424e6b2bd4_546a8d27f194334ee012bfe64f629947b07e4919\__CG__\Doctrine\ORM\EntityManager($g, $this);
     }
 
     /**
@@ -339,7 +314,7 @@ class appDevDebugProjectContainer extends Container
      */
     protected function getDoctrine_Orm_DefaultManagerConfiguratorService()
     {
-        return $this->services['doctrine.orm.default_manager_configurator'] = new \Doctrine\Bundle\DoctrineBundle\ManagerConfigurator(array(), array());
+        return $this->services['doctrine.orm.default_manager_configurator'] = new \Doctrine\Bundle\DoctrineBundle\ManagerConfigurator(array());
     }
 
     /**
@@ -374,13 +349,20 @@ class appDevDebugProjectContainer extends Container
      * This service is shared.
      * This method always returns the same instance of the service.
      *
-     * @return Symfony\Component\EventDispatcher\ContainerAwareEventDispatcher A Symfony\Component\EventDispatcher\ContainerAwareEventDispatcher instance.
+     * @return Symfony\Component\HttpKernel\Debug\ContainerAwareTraceableEventDispatcher A Symfony\Component\HttpKernel\Debug\ContainerAwareTraceableEventDispatcher instance.
      */
     protected function getEventDispatcherService()
     {
-        $this->services['event_dispatcher'] = $instance = new \Symfony\Component\EventDispatcher\ContainerAwareEventDispatcher($this);
+        $this->services['event_dispatcher'] = $instance = new \Symfony\Component\HttpKernel\Debug\ContainerAwareTraceableEventDispatcher($this, $this->get('debug.stopwatch'), $this->get('monolog.logger.event'));
 
+        $instance->addListenerService('knp_pager.before', array(0 => 'knp_paginator.subscriber.paginate', 1 => 'before'), 0);
+        $instance->addListenerService('knp_pager.pagination', array(0 => 'knp_paginator.subscriber.paginate', 1 => 'pagination'), 0);
+        $instance->addListenerService('knp_pager.before', array(0 => 'knp_paginator.subscriber.sortable', 1 => 'before'), 1);
+        $instance->addListenerService('knp_pager.before', array(0 => 'knp_paginator.subscriber.filtration', 1 => 'before'), 1);
+        $instance->addListenerService('knp_pager.pagination', array(0 => 'knp_paginator.subscriber.sliding_pagination', 1 => 'pagination'), 1);
         $instance->addListenerService('kernel.controller', array(0 => 'data_collector.router', 1 => 'onKernelController'), 0);
+        $instance->addListenerService('kernel.request', array(0 => 'security.firewall', 1 => 'onKernelRequest'), 8);
+        $instance->addListenerService('kernel.response', array(0 => 'security.rememberme.response_listener', 1 => 'onKernelResponse'), 0);
         $instance->addListenerService('kernel.response', array(0 => 'monolog.handler.firephp', 1 => 'onKernelResponse'), 0);
         $instance->addListenerService('kernel.response', array(0 => 'monolog.handler.chromephp', 1 => 'onKernelResponse'), 0);
         $instance->addListenerService('kernel.request', array(0 => 'assetic.request_listener', 1 => 'onKernelRequest'), 0);
@@ -390,18 +372,14 @@ class appDevDebugProjectContainer extends Container
         $instance->addListenerService('kernel.view', array(0 => 'sensio_framework_extra.view.listener', 1 => 'onKernelView'), 0);
         $instance->addListenerService('kernel.response', array(0 => 'sensio_framework_extra.cache.listener', 1 => 'onKernelResponse'), 0);
         $instance->addListenerService('security.interactive_login', array(0 => 'fos_user.security.interactive_login_listener', 1 => 'onSecurityInteractiveLogin'), 0);
+        $instance->addListenerService('kernel.request', array(0 => 'knp_paginator.subscriber.sliding_pagination', 1 => 'onKernelRequest'), 0);
         $instance->addSubscriberService('response_listener', 'Symfony\\Component\\HttpKernel\\EventListener\\ResponseListener');
         $instance->addSubscriberService('streamed_response_listener', 'Symfony\\Component\\HttpKernel\\EventListener\\StreamedResponseListener');
         $instance->addSubscriberService('locale_listener', 'Symfony\\Component\\HttpKernel\\EventListener\\LocaleListener');
-        $instance->addSubscriberService('fragment.handler', 'Symfony\\Component\\HttpKernel\\Fragment\\FragmentHandler');
-        $instance->addSubscriberService('debug.deprecation_logger_listener', 'Symfony\\Component\\HttpKernel\\EventListener\\DeprecationLoggerListener');
         $instance->addSubscriberService('session_listener', 'Symfony\\Bundle\\FrameworkBundle\\EventListener\\SessionListener');
-        $instance->addSubscriberService('fragment.listener', 'Symfony\\Component\\HttpKernel\\EventListener\\FragmentListener');
         $instance->addSubscriberService('profiler_listener', 'Symfony\\Component\\HttpKernel\\EventListener\\ProfilerListener');
         $instance->addSubscriberService('data_collector.request', 'Symfony\\Component\\HttpKernel\\DataCollector\\RequestDataCollector');
         $instance->addSubscriberService('router_listener', 'Symfony\\Component\\HttpKernel\\EventListener\\RouterListener');
-        $instance->addSubscriberService('security.firewall', 'Symfony\\Component\\Security\\Http\\Firewall');
-        $instance->addSubscriberService('security.rememberme.response_listener', 'Symfony\\Component\\Security\\Http\\RememberMe\\ResponseListener');
         $instance->addSubscriberService('twig.exception_listener', 'Symfony\\Component\\HttpKernel\\EventListener\\ExceptionListener');
         $instance->addSubscriberService('swiftmailer.email_sender.listener', 'Symfony\\Bundle\\SwiftmailerBundle\\EventListener\\EmailSenderListener');
         $instance->addSubscriberService('web_profiler.debug_toolbar', 'Symfony\\Bundle\\WebProfilerBundle\\EventListener\\WebDebugToolbarListener');
@@ -471,7 +449,7 @@ class appDevDebugProjectContainer extends Container
      */
     protected function getForm_RegistryService()
     {
-        return $this->services['form.registry'] = new \Symfony\Component\Form\FormRegistry(array(0 => new \Symfony\Component\Form\Extension\DependencyInjection\DependencyInjectionExtension($this, array('field' => 'form.type.field', 'form' => 'form.type.form', 'birthday' => 'form.type.birthday', 'checkbox' => 'form.type.checkbox', 'choice' => 'form.type.choice', 'collection' => 'form.type.collection', 'country' => 'form.type.country', 'date' => 'form.type.date', 'datetime' => 'form.type.datetime', 'email' => 'form.type.email', 'file' => 'form.type.file', 'hidden' => 'form.type.hidden', 'integer' => 'form.type.integer', 'language' => 'form.type.language', 'locale' => 'form.type.locale', 'money' => 'form.type.money', 'number' => 'form.type.number', 'password' => 'form.type.password', 'percent' => 'form.type.percent', 'radio' => 'form.type.radio', 'repeated' => 'form.type.repeated', 'search' => 'form.type.search', 'textarea' => 'form.type.textarea', 'text' => 'form.type.text', 'time' => 'form.type.time', 'timezone' => 'form.type.timezone', 'url' => 'form.type.url', 'entity' => 'form.type.entity', 'sonata_block_service_choice' => 'sonata.block.form.type.block', 'fos_user_username' => 'fos_user.username_form_type', 'fos_user_profile' => 'fos_user.profile.form.type', 'fos_user_registration' => 'fos_user.registration.form.type', 'fos_user_change_password' => 'fos_user.change_password.form.type', 'fos_user_resetting' => 'fos_user.resetting.form.type', 'sonata_type_admin' => 'sonata.admin.form.type.admin', 'sonata_type_collection' => 'sonata.admin.form.type.collection', 'sonata_type_model' => 'sonata.admin.form.type.model_choice', 'sonata_type_model_list' => 'sonata.admin.form.type.model_list', 'sonata_type_model_reference' => 'sonata.admin.form.type.model_reference', 'sonata_type_immutable_array' => 'sonata.admin.form.type.array', 'sonata_type_boolean' => 'sonata.admin.form.type.boolean', 'sonata_type_translatable_choice' => 'sonata.admin.form.type.translatable_choice', 'sonata_type_date_range' => 'sonata.admin.form.type.date_range', 'sonata_type_datetime_range' => 'sonata.admin.form.type.datetime_range', 'sonata_type_equal' => 'sonata.admin.form.type.equal', 'sonata_type_filter_number' => 'sonata.admin.form.filter.type.number', 'sonata_type_filter_choice' => 'sonata.admin.form.filter.type.choice', 'sonata_type_filter_default' => 'sonata.admin.form.filter.type.default', 'sonata_type_filter_date' => 'sonata.admin.form.filter.type.date', 'sonata_type_filter_date_range' => 'sonata.admin.form.filter.type.daterange', 'sonata_type_filter_datetime' => 'sonata.admin.form.filter.type.datetime', 'sonata_type_filter_datetime_range' => 'sonata.admin.form.filter.type.datetime_range', 'sonata_security_roles' => 'sonata.user.form.type.security_roles', 'sonata_user_profile' => 'sonata.user.profile.form.type'), array('form' => array(0 => 'form.type_extension.form.http_foundation', 1 => 'form.type_extension.form.validator', 2 => 'form.type_extension.csrf', 3 => 'sonata.admin.form.extension.field'), 'repeated' => array(0 => 'form.type_extension.repeated.validator')), array(0 => 'form.type_guesser.validator', 1 => 'form.type_guesser.doctrine'))), $this->get('form.resolved_type_factory'));
+        return $this->services['form.registry'] = new \Symfony\Component\Form\FormRegistry(array(0 => new \Symfony\Component\Form\Extension\DependencyInjection\DependencyInjectionExtension($this, array('field' => 'form.type.field', 'form' => 'form.type.form', 'birthday' => 'form.type.birthday', 'checkbox' => 'form.type.checkbox', 'choice' => 'form.type.choice', 'collection' => 'form.type.collection', 'country' => 'form.type.country', 'date' => 'form.type.date', 'datetime' => 'form.type.datetime', 'email' => 'form.type.email', 'file' => 'form.type.file', 'hidden' => 'form.type.hidden', 'integer' => 'form.type.integer', 'language' => 'form.type.language', 'locale' => 'form.type.locale', 'money' => 'form.type.money', 'number' => 'form.type.number', 'password' => 'form.type.password', 'percent' => 'form.type.percent', 'radio' => 'form.type.radio', 'repeated' => 'form.type.repeated', 'search' => 'form.type.search', 'textarea' => 'form.type.textarea', 'text' => 'form.type.text', 'time' => 'form.type.time', 'timezone' => 'form.type.timezone', 'url' => 'form.type.url', 'entity' => 'form.type.entity', 'fos_user_username' => 'fos_user.username_form_type', 'fos_user_profile' => 'fos_user.profile.form.type', 'fos_user_registration' => 'fos_user.registration.form.type', 'fos_user_change_password' => 'fos_user.change_password.form.type', 'fos_user_resetting' => 'fos_user.resetting.form.type', 'sonata_type_admin' => 'sonata.admin.form.type.admin', 'sonata_type_collection' => 'sonata.admin.form.type.collection', 'sonata_type_model' => 'sonata.admin.form.type.model_choice', 'sonata_type_model_list' => 'sonata.admin.form.type.model_list', 'sonata_type_model_reference' => 'sonata.admin.form.type.model_reference', 'sonata_type_immutable_array' => 'sonata.admin.form.type.array', 'sonata_type_boolean' => 'sonata.admin.form.type.boolean', 'sonata_type_translatable_choice' => 'sonata.admin.form.type.translatable_choice', 'sonata_type_date_range' => 'sonata.admin.form.type.date_range', 'sonata_type_datetime_range' => 'sonata.admin.form.type.datetime_range', 'sonata_type_equal' => 'sonata.admin.form.type.equal', 'sonata_type_filter_number' => 'sonata.admin.form.filter.type.number', 'sonata_type_filter_choice' => 'sonata.admin.form.filter.type.choice', 'sonata_type_filter_default' => 'sonata.admin.form.filter.type.default', 'sonata_type_filter_date' => 'sonata.admin.form.filter.type.date', 'sonata_type_filter_date_range' => 'sonata.admin.form.filter.type.daterange', 'sonata_type_filter_datetime' => 'sonata.admin.form.filter.type.datetime', 'sonata_type_filter_datetime_range' => 'sonata.admin.form.filter.type.datetime_range', 'sonata_block_service_choice' => 'sonata.block.form.type.block', 'sonata_security_roles' => 'sonata.user.form.type.security_roles', 'sonata_user_profile' => 'sonata.user.profile.form.type', 'sonata_post_comment' => 'sonata.news.form.type.comment', 'sonata_media_type' => 'sonata.media.form.type.media', 'sonata_formatter_type_selector' => 'sonata.formatter.form.type.selector'), array('form' => array(0 => 'form.type_extension.form.http_foundation', 1 => 'form.type_extension.form.validator', 2 => 'form.type_extension.csrf', 3 => 'sonata.admin.form.extension.field'), 'repeated' => array(0 => 'form.type_extension.repeated.validator')), array(0 => 'form.type_guesser.validator', 1 => 'form.type_guesser.doctrine'))), $this->get('form.resolved_type_factory'));
     }
 
     /**
@@ -640,7 +618,7 @@ class appDevDebugProjectContainer extends Container
      */
     protected function getForm_Type_FormService()
     {
-        return $this->services['form.type.form'] = new \Symfony\Component\Form\Extension\Core\Type\FormType($this->get('property_accessor'));
+        return $this->services['form.type.form'] = new \Symfony\Component\Form\Extension\Core\Type\FormType();
     }
 
     /**
@@ -1208,71 +1186,6 @@ class appDevDebugProjectContainer extends Container
     }
 
     /**
-     * Gets the 'fragment.handler' service.
-     *
-     * This service is shared.
-     * This method always returns the same instance of the service.
-     *
-     * @return Symfony\Component\HttpKernel\Fragment\FragmentHandler A Symfony\Component\HttpKernel\Fragment\FragmentHandler instance.
-     */
-    protected function getFragment_HandlerService()
-    {
-        $this->services['fragment.handler'] = $instance = new \Symfony\Component\HttpKernel\Fragment\FragmentHandler(array(), true);
-
-        $instance->addRenderer($this->get('fragment.renderer.inline'));
-        $instance->addRenderer($this->get('fragment.renderer.hinclude'));
-
-        return $instance;
-    }
-
-    /**
-     * Gets the 'fragment.listener' service.
-     *
-     * This service is shared.
-     * This method always returns the same instance of the service.
-     *
-     * @return Symfony\Component\HttpKernel\EventListener\FragmentListener A Symfony\Component\HttpKernel\EventListener\FragmentListener instance.
-     */
-    protected function getFragment_ListenerService()
-    {
-        return $this->services['fragment.listener'] = new \Symfony\Component\HttpKernel\EventListener\FragmentListener($this->get('uri_signer'), '/_fragment');
-    }
-
-    /**
-     * Gets the 'fragment.renderer.hinclude' service.
-     *
-     * This service is shared.
-     * This method always returns the same instance of the service.
-     *
-     * @return Symfony\Bundle\FrameworkBundle\Fragment\ContainerAwareHIncludeFragmentRenderer A Symfony\Bundle\FrameworkBundle\Fragment\ContainerAwareHIncludeFragmentRenderer instance.
-     */
-    protected function getFragment_Renderer_HincludeService()
-    {
-        $this->services['fragment.renderer.hinclude'] = $instance = new \Symfony\Bundle\FrameworkBundle\Fragment\ContainerAwareHIncludeFragmentRenderer($this, $this->get('uri_signer'), NULL);
-
-        $instance->setFragmentPath('/_fragment');
-
-        return $instance;
-    }
-
-    /**
-     * Gets the 'fragment.renderer.inline' service.
-     *
-     * This service is shared.
-     * This method always returns the same instance of the service.
-     *
-     * @return Symfony\Component\HttpKernel\Fragment\InlineFragmentRenderer A Symfony\Component\HttpKernel\Fragment\InlineFragmentRenderer instance.
-     */
-    protected function getFragment_Renderer_InlineService()
-    {
-        $this->services['fragment.renderer.inline'] = $instance = new \Symfony\Component\HttpKernel\Fragment\InlineFragmentRenderer($this->get('http_kernel'));
-
-        $instance->setFragmentPath('/_fragment');
-
-        return $instance;
-    }
-
-    /**
      * Gets the 'http_kernel' service.
      *
      * This service is shared.
@@ -1282,7 +1195,7 @@ class appDevDebugProjectContainer extends Container
      */
     protected function getHttpKernelService()
     {
-        return $this->services['http_kernel'] = new \Symfony\Bundle\FrameworkBundle\HttpKernel($this->get('debug.event_dispatcher'), $this, $this->get('debug.controller_resolver'));
+        return $this->services['http_kernel'] = new \Symfony\Bundle\FrameworkBundle\HttpKernel($this->get('event_dispatcher'), $this, $this->get('debug.controller_resolver'));
     }
 
     /**
@@ -1433,6 +1346,114 @@ class appDevDebugProjectContainer extends Container
     }
 
     /**
+     * Gets the 'knp_paginator' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Knp\Component\Pager\Paginator A Knp\Component\Pager\Paginator instance.
+     */
+    protected function getKnpPaginatorService()
+    {
+        $this->services['knp_paginator'] = $instance = new \Knp\Component\Pager\Paginator($this->get('event_dispatcher'));
+
+        $instance->setDefaultPaginatorOptions(array('pageParameterName' => 'page', 'sortFieldParameterName' => 'sort', 'sortDirectionParameterName' => 'direction', 'filterFieldParameterName' => 'filterField', 'filterValueParameterName' => 'filterValue', 'distinct' => true));
+
+        return $instance;
+    }
+
+    /**
+     * Gets the 'knp_paginator.helper.processor' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Knp\Bundle\PaginatorBundle\Helper\Processor A Knp\Bundle\PaginatorBundle\Helper\Processor instance.
+     */
+    protected function getKnpPaginator_Helper_ProcessorService()
+    {
+        return $this->services['knp_paginator.helper.processor'] = new \Knp\Bundle\PaginatorBundle\Helper\Processor($this->get('templating.helper.router'), $this->get('translator.default'));
+    }
+
+    /**
+     * Gets the 'knp_paginator.subscriber.filtration' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Knp\Component\Pager\Event\Subscriber\Filtration\FiltrationSubscriber A Knp\Component\Pager\Event\Subscriber\Filtration\FiltrationSubscriber instance.
+     */
+    protected function getKnpPaginator_Subscriber_FiltrationService()
+    {
+        return $this->services['knp_paginator.subscriber.filtration'] = new \Knp\Component\Pager\Event\Subscriber\Filtration\FiltrationSubscriber();
+    }
+
+    /**
+     * Gets the 'knp_paginator.subscriber.paginate' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Knp\Component\Pager\Event\Subscriber\Paginate\PaginationSubscriber A Knp\Component\Pager\Event\Subscriber\Paginate\PaginationSubscriber instance.
+     */
+    protected function getKnpPaginator_Subscriber_PaginateService()
+    {
+        return $this->services['knp_paginator.subscriber.paginate'] = new \Knp\Component\Pager\Event\Subscriber\Paginate\PaginationSubscriber();
+    }
+
+    /**
+     * Gets the 'knp_paginator.subscriber.sliding_pagination' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Knp\Bundle\PaginatorBundle\Subscriber\SlidingPaginationSubscriber A Knp\Bundle\PaginatorBundle\Subscriber\SlidingPaginationSubscriber instance.
+     */
+    protected function getKnpPaginator_Subscriber_SlidingPaginationService()
+    {
+        return $this->services['knp_paginator.subscriber.sliding_pagination'] = new \Knp\Bundle\PaginatorBundle\Subscriber\SlidingPaginationSubscriber(array('defaultPaginationTemplate' => 'KnpPaginatorBundle:Pagination:sliding.html.twig', 'defaultSortableTemplate' => 'KnpPaginatorBundle:Pagination:sortable_link.html.twig', 'defaultFiltrationTemplate' => 'KnpPaginatorBundle:Pagination:filtration.html.twig', 'defaultPageRange' => 5));
+    }
+
+    /**
+     * Gets the 'knp_paginator.subscriber.sortable' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Knp\Component\Pager\Event\Subscriber\Sortable\SortableSubscriber A Knp\Component\Pager\Event\Subscriber\Sortable\SortableSubscriber instance.
+     */
+    protected function getKnpPaginator_Subscriber_SortableService()
+    {
+        return $this->services['knp_paginator.subscriber.sortable'] = new \Knp\Component\Pager\Event\Subscriber\Sortable\SortableSubscriber();
+    }
+
+    /**
+     * Gets the 'knp_paginator.templating.helper.pagination' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Knp\Bundle\PaginatorBundle\Templating\PaginationHelper A Knp\Bundle\PaginatorBundle\Templating\PaginationHelper instance.
+     */
+    protected function getKnpPaginator_Templating_Helper_PaginationService()
+    {
+        return $this->services['knp_paginator.templating.helper.pagination'] = new \Knp\Bundle\PaginatorBundle\Templating\PaginationHelper($this->get('knp_paginator.helper.processor'), $this->get('templating.engine.php'));
+    }
+
+    /**
+     * Gets the 'knp_paginator.twig.extension.pagination' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Knp\Bundle\PaginatorBundle\Twig\Extension\PaginationExtension A Knp\Bundle\PaginatorBundle\Twig\Extension\PaginationExtension instance.
+     */
+    protected function getKnpPaginator_Twig_Extension_PaginationService()
+    {
+        return $this->services['knp_paginator.twig.extension.pagination'] = new \Knp\Bundle\PaginatorBundle\Twig\Extension\PaginationExtension($this->get('knp_paginator.helper.processor'));
+    }
+
+    /**
      * Gets the 'locale_listener' service.
      *
      * This service is shared.
@@ -1442,7 +1463,7 @@ class appDevDebugProjectContainer extends Container
      */
     protected function getLocaleListenerService()
     {
-        return $this->services['locale_listener'] = new \Symfony\Component\HttpKernel\EventListener\LocaleListener('en', $this->get('router'));
+        return $this->services['locale_listener'] = new \Symfony\Component\HttpKernel\EventListener\LocaleListener('fr', $this->get('router'));
     }
 
     /**
@@ -1476,6 +1497,19 @@ class appDevDebugProjectContainer extends Container
     protected function getMailerService()
     {
         return $this->services['mailer'] = new \Swift_Mailer($this->get('swiftmailer.transport'));
+    }
+
+    /**
+     * Gets the 'markdown.parser' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Knp\Bundle\MarkdownBundle\Parser\Preset\Max A Knp\Bundle\MarkdownBundle\Parser\Preset\Max instance.
+     */
+    protected function getMarkdown_ParserService()
+    {
+        return $this->services['markdown.parser'] = new \Knp\Bundle\MarkdownBundle\Parser\Preset\Max();
     }
 
     /**
@@ -1528,26 +1562,6 @@ class appDevDebugProjectContainer extends Container
     protected function getMonolog_Handler_MainService()
     {
         return $this->services['monolog.handler.main'] = new \Monolog\Handler\StreamHandler('/var/www/sites/TremplinFoyerV1/app/logs/dev.log', 100, true);
-    }
-
-    /**
-     * Gets the 'monolog.logger.deprecation' service.
-     *
-     * This service is shared.
-     * This method always returns the same instance of the service.
-     *
-     * @return Symfony\Bridge\Monolog\Logger A Symfony\Bridge\Monolog\Logger instance.
-     */
-    protected function getMonolog_Logger_DeprecationService()
-    {
-        $this->services['monolog.logger.deprecation'] = $instance = new \Symfony\Bridge\Monolog\Logger('deprecation');
-
-        $instance->pushHandler($this->get('monolog.handler.chromephp'));
-        $instance->pushHandler($this->get('monolog.handler.firephp'));
-        $instance->pushHandler($this->get('monolog.handler.main'));
-        $instance->pushHandler($this->get('monolog.handler.debug'));
-
-        return $instance;
     }
 
     /**
@@ -1706,22 +1720,25 @@ class appDevDebugProjectContainer extends Container
         $c = new \Symfony\Component\HttpKernel\DataCollector\ConfigDataCollector();
         $c->setKernel($b);
 
-        $d = new \Doctrine\Bundle\DoctrineBundle\DataCollector\DoctrineDataCollector($this->get('doctrine'));
-        $d->addLogger('default', $this->get('doctrine.dbal.logger.profiling.default'));
+        $d = new \Symfony\Component\HttpKernel\DataCollector\EventDataCollector();
+        $d->setEventDispatcher($this->get('event_dispatcher'));
+
+        $e = new \Doctrine\Bundle\DoctrineBundle\DataCollector\DoctrineDataCollector($this->get('doctrine'));
+        $e->addLogger('default', $this->get('doctrine.dbal.logger.profiling.default'));
 
         $this->services['profiler'] = $instance = new \Symfony\Component\HttpKernel\Profiler\Profiler(new \Symfony\Component\HttpKernel\Profiler\FileProfilerStorage('file:/var/www/sites/TremplinFoyerV1/app/cache/dev/profiler', '', '', 86400), $a);
 
         $instance->add($c);
         $instance->add($this->get('data_collector.request'));
         $instance->add(new \Symfony\Component\HttpKernel\DataCollector\ExceptionDataCollector());
-        $instance->add(new \Symfony\Component\HttpKernel\DataCollector\EventDataCollector());
+        $instance->add($d);
         $instance->add(new \Symfony\Component\HttpKernel\DataCollector\LoggerDataCollector($a));
         $instance->add(new \Symfony\Component\HttpKernel\DataCollector\TimeDataCollector($b));
         $instance->add(new \Symfony\Component\HttpKernel\DataCollector\MemoryDataCollector());
         $instance->add($this->get('data_collector.router'));
         $instance->add(new \Symfony\Bundle\SecurityBundle\DataCollector\SecurityDataCollector($this->get('security.context')));
         $instance->add(new \Symfony\Bridge\Swiftmailer\DataCollector\MessageDataCollector($this, true));
-        $instance->add($d);
+        $instance->add($e);
         $instance->add(new \Sonata\BlockBundle\Profiler\DataCollector\BlockDataCollector($this->get('sonata.block.renderer.traceable'), array(0 => 'sonata.page.block.container', 1 => 'symfony_cmf.block.container')));
 
         return $instance;
@@ -1738,19 +1755,6 @@ class appDevDebugProjectContainer extends Container
     protected function getProfilerListenerService()
     {
         return $this->services['profiler_listener'] = new \Symfony\Component\HttpKernel\EventListener\ProfilerListener($this->get('profiler'), NULL, false, false);
-    }
-
-    /**
-     * Gets the 'property_accessor' service.
-     *
-     * This service is shared.
-     * This method always returns the same instance of the service.
-     *
-     * @return Symfony\Component\PropertyAccess\PropertyAccessor A Symfony\Component\PropertyAccess\PropertyAccessor instance.
-     */
-    protected function getPropertyAccessorService()
-    {
-        return $this->services['property_accessor'] = new \Symfony\Component\PropertyAccess\PropertyAccessor();
     }
 
     /**
@@ -1793,7 +1797,7 @@ class appDevDebugProjectContainer extends Container
      */
     protected function getRouterService()
     {
-        return $this->services['router'] = new \Symfony\Bundle\FrameworkBundle\Routing\Router($this, '/var/www/sites/TremplinFoyerV1/app/cache/dev/assetic/routing.yml', array('cache_dir' => '/var/www/sites/TremplinFoyerV1/app/cache/dev', 'debug' => true, 'generator_class' => 'Symfony\\Component\\Routing\\Generator\\UrlGenerator', 'generator_base_class' => 'Symfony\\Component\\Routing\\Generator\\UrlGenerator', 'generator_dumper_class' => 'Symfony\\Component\\Routing\\Generator\\Dumper\\PhpGeneratorDumper', 'generator_cache_class' => 'appDevUrlGenerator', 'matcher_class' => 'Symfony\\Bundle\\FrameworkBundle\\Routing\\RedirectableUrlMatcher', 'matcher_base_class' => 'Symfony\\Bundle\\FrameworkBundle\\Routing\\RedirectableUrlMatcher', 'matcher_dumper_class' => 'Symfony\\Component\\Routing\\Matcher\\Dumper\\PhpMatcherDumper', 'matcher_cache_class' => 'appDevUrlMatcher', 'strict_requirements' => true), $this->get('router.request_context'), $this->get('monolog.logger.router'));
+        return $this->services['router'] = new \Symfony\Bundle\FrameworkBundle\Routing\Router($this, '/var/www/sites/TremplinFoyerV1/app/cache/dev/assetic/routing.yml', array('cache_dir' => '/var/www/sites/TremplinFoyerV1/app/cache/dev', 'debug' => true, 'generator_class' => 'Symfony\\Component\\Routing\\Generator\\UrlGenerator', 'generator_base_class' => 'Symfony\\Component\\Routing\\Generator\\UrlGenerator', 'generator_dumper_class' => 'Symfony\\Component\\Routing\\Generator\\Dumper\\PhpGeneratorDumper', 'generator_cache_class' => 'appdevUrlGenerator', 'matcher_class' => 'Symfony\\Bundle\\FrameworkBundle\\Routing\\RedirectableUrlMatcher', 'matcher_base_class' => 'Symfony\\Bundle\\FrameworkBundle\\Routing\\RedirectableUrlMatcher', 'matcher_dumper_class' => 'Symfony\\Component\\Routing\\Matcher\\Dumper\\PhpMatcherDumper', 'matcher_cache_class' => 'appdevUrlMatcher', 'strict_requirements' => true), $this->get('router.request_context'), $this->get('monolog.logger.router'));
     }
 
     /**
@@ -1835,23 +1839,6 @@ class appDevDebugProjectContainer extends Container
         $d->addLoader($this->get('sonata.admin.route_loader'));
 
         return $this->services['routing.loader'] = new \Symfony\Bundle\FrameworkBundle\Routing\DelegatingLoader($this->get('controller_name_converter'), $this->get('monolog.logger.router'), $d);
-    }
-
-    /**
-     * Gets the 'security.access.decision_manager' service.
-     *
-     * This service is shared.
-     * This method always returns the same instance of the service.
-     *
-     * @return JMS\SecurityExtraBundle\Security\Authorization\RememberingAccessDecisionManager A JMS\SecurityExtraBundle\Security\Authorization\RememberingAccessDecisionManager instance.
-     */
-    protected function getSecurity_Access_DecisionManagerService()
-    {
-        $a = new \JMS\SecurityExtraBundle\Security\Authorization\Expression\LazyLoadingExpressionVoter($this->get('security.expressions.handler'), $this->get('monolog.logger.security'));
-        $a->setLazyCompiler($this, 'security.expressions.compiler');
-        $a->setCacheDir('/var/www/sites/TremplinFoyerV1/app/cache/dev/jms_security/expressions');
-
-        return $this->services['security.access.decision_manager'] = new \JMS\SecurityExtraBundle\Security\Authorization\RememberingAccessDecisionManager(new \Symfony\Component\Security\Core\Authorization\AccessDecisionManager(array(0 => $a, 1 => new \Symfony\Component\Security\Core\Authorization\Voter\RoleHierarchyVoter($this->get('security.role_hierarchy')), 2 => new \Symfony\Component\Security\Core\Authorization\Voter\AuthenticatedVoter($this->get('security.authentication.trust_resolver'))), 'affirmative', false, true));
     }
 
     /**
@@ -1946,19 +1933,6 @@ class appDevDebugProjectContainer extends Container
     }
 
     /**
-     * Gets the 'security.expressions.reverse_interpreter' service.
-     *
-     * This service is shared.
-     * This method always returns the same instance of the service.
-     *
-     * @return JMS\SecurityExtraBundle\Security\Authorization\Expression\ReverseInterpreter A JMS\SecurityExtraBundle\Security\Authorization\Expression\ReverseInterpreter instance.
-     */
-    protected function getSecurity_Expressions_ReverseInterpreterService()
-    {
-        return $this->services['security.expressions.reverse_interpreter'] = new \JMS\SecurityExtraBundle\Security\Authorization\Expression\ReverseInterpreter($this->get('security.expressions.compiler'), $this->get('security.expressions.handler'));
-    }
-
-    /**
      * Gets the 'security.extra.metadata_driver' service.
      *
      * This service is shared.
@@ -2006,7 +1980,7 @@ class appDevDebugProjectContainer extends Container
         $g = new \Symfony\Component\Security\Http\Authentication\DefaultAuthenticationSuccessHandler($d, array('login_path' => '/admin/login', 'always_use_default_target_path' => false, 'default_target_path' => '/', 'target_path_parameter' => '_target_path', 'use_referer' => false));
         $g->setProviderKey('admin');
 
-        return $this->services['security.firewall.map.context.admin'] = new \Symfony\Bundle\SecurityBundle\Security\FirewallContext(array(0 => $this->get('security.channel_listener'), 1 => new \Symfony\Component\Security\Http\Firewall\ContextListener($a, array(0 => $this->get('fos_user.user_manager')), 'admin', $b, $c), 2 => $f, 3 => new \Symfony\Component\Security\Http\Firewall\UsernamePasswordFormAuthenticationListener($a, $this->get('security.authentication.manager'), $this->get('security.authentication.session_strategy'), $d, 'admin', $g, new \Symfony\Component\Security\Http\Authentication\DefaultAuthenticationFailureHandler($e, $d, array('login_path' => '/admin/login', 'failure_path' => NULL, 'failure_forward' => false, 'failure_path_parameter' => '_failure_path'), $b), array('check_path' => '/admin/login_check', 'use_forward' => false, 'username_parameter' => '_username', 'password_parameter' => '_password', 'csrf_parameter' => '_csrf_token', 'intention' => 'authenticate', 'post_only' => true), $b, $c), 4 => new \Symfony\Component\Security\Http\Firewall\AnonymousAuthenticationListener($a, '51640d76b7a9b', $b), 5 => $this->get('security.access_listener')), new \Symfony\Component\Security\Http\Firewall\ExceptionListener($a, $this->get('security.authentication.trust_resolver'), $d, 'admin', new \Symfony\Component\Security\Http\EntryPoint\FormAuthenticationEntryPoint($e, $d, '/admin/login', false), NULL, NULL, $b));
+        return $this->services['security.firewall.map.context.admin'] = new \Symfony\Bundle\SecurityBundle\Security\FirewallContext(array(0 => $this->get('security.channel_listener'), 1 => new \Symfony\Component\Security\Http\Firewall\ContextListener($a, array(0 => $this->get('fos_user.user_manager')), 'admin', $b, $c), 2 => $f, 3 => new \Symfony\Component\Security\Http\Firewall\UsernamePasswordFormAuthenticationListener($a, $this->get('security.authentication.manager'), $this->get('security.authentication.session_strategy'), $d, 'admin', $g, new \Symfony\Component\Security\Http\Authentication\DefaultAuthenticationFailureHandler($e, $d, array('login_path' => '/admin/login', 'failure_path' => NULL, 'failure_forward' => false), $b), array('check_path' => '/admin/login_check', 'use_forward' => false, 'username_parameter' => '_username', 'password_parameter' => '_password', 'csrf_parameter' => '_csrf_token', 'intention' => 'authenticate', 'post_only' => true), $b, $c), 4 => new \Symfony\Component\Security\Http\Firewall\AnonymousAuthenticationListener($a, '516424e674c8d', $b), 5 => $this->get('security.access_listener')), new \Symfony\Component\Security\Http\Firewall\ExceptionListener($a, $this->get('security.authentication.trust_resolver'), $d, 'admin', new \Symfony\Component\Security\Http\EntryPoint\FormAuthenticationEntryPoint($e, $d, '/admin/login', false), NULL, NULL, $b));
     }
 
     /**
@@ -2031,7 +2005,7 @@ class appDevDebugProjectContainer extends Container
         $g = new \Symfony\Component\Security\Http\Authentication\DefaultAuthenticationSuccessHandler($d, array('login_path' => '/login', 'always_use_default_target_path' => false, 'default_target_path' => '/', 'target_path_parameter' => '_target_path', 'use_referer' => false));
         $g->setProviderKey('main');
 
-        return $this->services['security.firewall.map.context.main'] = new \Symfony\Bundle\SecurityBundle\Security\FirewallContext(array(0 => $this->get('security.channel_listener'), 1 => new \Symfony\Component\Security\Http\Firewall\ContextListener($a, array(0 => $this->get('fos_user.user_manager')), 'main', $b, $c), 2 => $f, 3 => new \Symfony\Component\Security\Http\Firewall\UsernamePasswordFormAuthenticationListener($a, $this->get('security.authentication.manager'), $this->get('security.authentication.session_strategy'), $d, 'main', $g, new \Symfony\Component\Security\Http\Authentication\DefaultAuthenticationFailureHandler($e, $d, array('login_path' => '/login', 'failure_path' => NULL, 'failure_forward' => false, 'failure_path_parameter' => '_failure_path'), $b), array('check_path' => '/login_check', 'use_forward' => false, 'username_parameter' => '_username', 'password_parameter' => '_password', 'csrf_parameter' => '_csrf_token', 'intention' => 'authenticate', 'post_only' => true), $b, $c), 4 => new \Symfony\Component\Security\Http\Firewall\AnonymousAuthenticationListener($a, '51640d76b7a9b', $b), 5 => $this->get('security.access_listener')), new \Symfony\Component\Security\Http\Firewall\ExceptionListener($a, $this->get('security.authentication.trust_resolver'), $d, 'main', new \Symfony\Component\Security\Http\EntryPoint\FormAuthenticationEntryPoint($e, $d, '/login', false), NULL, NULL, $b));
+        return $this->services['security.firewall.map.context.main'] = new \Symfony\Bundle\SecurityBundle\Security\FirewallContext(array(0 => $this->get('security.channel_listener'), 1 => new \Symfony\Component\Security\Http\Firewall\ContextListener($a, array(0 => $this->get('fos_user.user_manager')), 'main', $b, $c), 2 => $f, 3 => new \Symfony\Component\Security\Http\Firewall\UsernamePasswordFormAuthenticationListener($a, $this->get('security.authentication.manager'), $this->get('security.authentication.session_strategy'), $d, 'main', $g, new \Symfony\Component\Security\Http\Authentication\DefaultAuthenticationFailureHandler($e, $d, array('login_path' => '/login', 'failure_path' => NULL, 'failure_forward' => false), $b), array('check_path' => '/login_check', 'use_forward' => false, 'username_parameter' => '_username', 'password_parameter' => '_password', 'csrf_parameter' => '_csrf_token', 'intention' => 'authenticate', 'post_only' => true), $b, $c), 4 => new \Symfony\Component\Security\Http\Firewall\AnonymousAuthenticationListener($a, '516424e674c8d', $b), 5 => $this->get('security.access_listener')), new \Symfony\Component\Security\Http\Firewall\ExceptionListener($a, $this->get('security.authentication.trust_resolver'), $d, 'main', new \Symfony\Component\Security\Http\EntryPoint\FormAuthenticationEntryPoint($e, $d, '/login', false), NULL, NULL, $b));
     }
 
     /**
@@ -2061,29 +2035,16 @@ class appDevDebugProjectContainer extends Container
     }
 
     /**
-     * Gets the 'security.secure_random' service.
-     *
-     * This service is shared.
-     * This method always returns the same instance of the service.
-     *
-     * @return Symfony\Component\Security\Core\Util\SecureRandom A Symfony\Component\Security\Core\Util\SecureRandom instance.
-     */
-    protected function getSecurity_SecureRandomService()
-    {
-        return $this->services['security.secure_random'] = new \Symfony\Component\Security\Core\Util\SecureRandom('/var/www/sites/TremplinFoyerV1/app/cache/dev/secure_random.seed', $this->get('monolog.logger.security'));
-    }
-
-    /**
      * Gets the 'security.validator.user_password' service.
      *
      * This service is shared.
      * This method always returns the same instance of the service.
      *
-     * @return Symfony\Component\Security\Core\Validator\Constraints\UserPasswordValidator A Symfony\Component\Security\Core\Validator\Constraints\UserPasswordValidator instance.
+     * @return Symfony\Component\Security\Core\Validator\Constraint\UserPasswordValidator A Symfony\Component\Security\Core\Validator\Constraint\UserPasswordValidator instance.
      */
     protected function getSecurity_Validator_UserPasswordService()
     {
-        return $this->services['security.validator.user_password'] = new \Symfony\Component\Security\Core\Validator\Constraints\UserPasswordValidator($this->get('security.context'), $this->get('security.encoder_factory'));
+        return $this->services['security.validator.user_password'] = new \Symfony\Component\Security\Core\Validator\Constraint\UserPasswordValidator($this->get('security.context'), $this->get('security.encoder_factory'));
     }
 
     /**
@@ -2374,7 +2335,7 @@ class appDevDebugProjectContainer extends Container
      */
     protected function getSonata_Admin_Builder_OrmListService()
     {
-        return $this->services['sonata.admin.builder.orm_list'] = new \Sonata\DoctrineORMAdminBundle\Builder\ListBuilder($this->get('sonata.admin.guesser.orm_list_chain'), array('array' => 'SonataAdminBundle:CRUD:list_array.html.twig', 'boolean' => 'SonataAdminBundle:CRUD:list_boolean.html.twig', 'date' => 'SonataAdminBundle:CRUD:list_date.html.twig', 'time' => 'SonataAdminBundle:CRUD:list_time.html.twig', 'datetime' => 'SonataAdminBundle:CRUD:list_datetime.html.twig', 'text' => 'SonataAdminBundle:CRUD:base_list_field.html.twig', 'trans' => 'SonataAdminBundle:CRUD:list_trans.html.twig', 'string' => 'SonataAdminBundle:CRUD:base_list_field.html.twig', 'smallint' => 'SonataAdminBundle:CRUD:base_list_field.html.twig', 'bigint' => 'SonataAdminBundle:CRUD:base_list_field.html.twig', 'integer' => 'SonataAdminBundle:CRUD:base_list_field.html.twig', 'decimal' => 'SonataAdminBundle:CRUD:base_list_field.html.twig', 'identifier' => 'SonataAdminBundle:CRUD:base_list_field.html.twig', 'currency' => 'SonataAdminBundle:CRUD:list_currency.html.twig', 'percent' => 'SonataAdminBundle:CRUD:list_percent.html.twig'));
+        return $this->services['sonata.admin.builder.orm_list'] = new \Sonata\DoctrineORMAdminBundle\Builder\ListBuilder($this->get('sonata.admin.guesser.orm_list_chain'), array('array' => 'SonataAdminBundle:CRUD:list_array.html.twig', 'boolean' => 'SonataAdminBundle:CRUD:list_boolean.html.twig', 'date' => 'SonataAdminBundle:CRUD:list_date.html.twig', 'time' => 'SonataAdminBundle:CRUD:list_time.html.twig', 'datetime' => 'SonataAdminBundle:CRUD:list_datetime.html.twig', 'text' => 'SonataAdminBundle:CRUD:base_list_field.html.twig', 'trans' => 'SonataAdminBundle:CRUD:list_trans.html.twig', 'string' => 'SonataAdminBundle:CRUD:base_list_field.html.twig', 'smallint' => 'SonataAdminBundle:CRUD:base_list_field.html.twig', 'bigint' => 'SonataAdminBundle:CRUD:base_list_field.html.twig', 'integer' => 'SonataAdminBundle:CRUD:base_list_field.html.twig', 'decimal' => 'SonataAdminBundle:CRUD:base_list_field.html.twig', 'identifier' => 'SonataAdminBundle:CRUD:base_list_field.html.twig', 'currency' => 'SonataIntlBundle:CRUD:list_currency.html.twig', 'percent' => 'SonataIntlBundle:CRUD:list_percent.html.twig'));
     }
 
     /**
@@ -2387,7 +2348,7 @@ class appDevDebugProjectContainer extends Container
      */
     protected function getSonata_Admin_Builder_OrmShowService()
     {
-        return $this->services['sonata.admin.builder.orm_show'] = new \Sonata\DoctrineORMAdminBundle\Builder\ShowBuilder($this->get('sonata.admin.guesser.orm_show_chain'), array('array' => 'SonataAdminBundle:CRUD:show_array.html.twig', 'boolean' => 'SonataAdminBundle:CRUD:show_boolean.html.twig', 'date' => 'SonataAdminBundle:CRUD:show_date.html.twig', 'time' => 'SonataAdminBundle:CRUD:show_time.html.twig', 'datetime' => 'SonataAdminBundle:CRUD:show_datetime.html.twig', 'text' => 'SonataAdminBundle:CRUD:base_show_field.html.twig', 'trans' => 'SonataAdminBundle:CRUD:show_trans.html.twig', 'string' => 'SonataAdminBundle:CRUD:base_show_field.html.twig', 'smallint' => 'SonataAdminBundle:CRUD:base_show_field.html.twig', 'bigint' => 'SonataAdminBundle:CRUD:base_show_field.html.twig', 'integer' => 'SonataAdminBundle:CRUD:base_show_field.html.twig', 'decimal' => 'SonataAdminBundle:CRUD:base_show_field.html.twig', 'currency' => 'SonataAdminBundle:CRUD:base_currency.html.twig', 'percent' => 'SonataAdminBundle:CRUD:base_percent.html.twig'));
+        return $this->services['sonata.admin.builder.orm_show'] = new \Sonata\DoctrineORMAdminBundle\Builder\ShowBuilder($this->get('sonata.admin.guesser.orm_show_chain'), array('array' => 'SonataAdminBundle:CRUD:show_array.html.twig', 'boolean' => 'SonataAdminBundle:CRUD:show_boolean.html.twig', 'date' => 'SonataAdminBundle:CRUD:show_date.html.twig', 'time' => 'SonataAdminBundle:CRUD:show_time.html.twig', 'datetime' => 'SonataAdminBundle:CRUD:show_datetime.html.twig', 'text' => 'SonataAdminBundle:CRUD:base_show_field.html.twig', 'trans' => 'SonataAdminBundle:CRUD:show_trans.html.twig', 'string' => 'SonataAdminBundle:CRUD:base_show_field.html.twig', 'smallint' => 'SonataAdminBundle:CRUD:base_show_field.html.twig', 'bigint' => 'SonataAdminBundle:CRUD:base_show_field.html.twig', 'integer' => 'SonataAdminBundle:CRUD:base_show_field.html.twig', 'decimal' => 'SonataAdminBundle:CRUD:base_show_field.html.twig', 'currency' => 'SonataIntlBundle:CRUD:show_currency.html.twig', 'percent' => 'SonataIntlBundle:CRUD:show_percent.html.twig'));
     }
 
     /**
@@ -2980,10 +2941,10 @@ class appDevDebugProjectContainer extends Container
     {
         $this->services['sonata.admin.pool'] = $instance = new \Sonata\AdminBundle\Admin\Pool($this, 'Sonata Admin', 'bundles/sonataadmin/logo_title.png');
 
-        $instance->setTemplates(array('user_block' => 'SonataUserBundle:Admin/Core:user_block.html.twig', 'layout' => 'SonataAdminBundle::standard_layout.html.twig', 'ajax' => 'SonataAdminBundle::ajax_layout.html.twig', 'dashboard' => 'SonataAdminBundle:Core:dashboard.html.twig', 'list' => 'SonataAdminBundle:CRUD:list.html.twig', 'show' => 'SonataAdminBundle:CRUD:show.html.twig', 'edit' => 'SonataAdminBundle:CRUD:edit.html.twig', 'preview' => 'SonataAdminBundle:CRUD:preview.html.twig', 'history' => 'SonataAdminBundle:CRUD:history.html.twig', 'history_revision' => 'SonataAdminBundle:CRUD:history_revision.html.twig', 'action' => 'SonataAdminBundle:CRUD:action.html.twig', 'list_block' => 'SonataAdminBundle:Block:block_admin_list.html.twig', 'short_object_description' => 'SonataAdminBundle:Helper:short-object-description.html.twig', 'delete' => 'SonataAdminBundle:CRUD:delete.html.twig', 'batch' => 'SonataAdminBundle:CRUD:list__batch.html.twig', 'batch_confirmation' => 'SonataAdminBundle:CRUD:batch_confirmation.html.twig', 'inner_list_row' => 'SonataAdminBundle:CRUD:list_inner_row.html.twig', 'base_list_field' => 'SonataAdminBundle:CRUD:base_list_field.html.twig'));
-        $instance->setAdminServiceIds(array(0 => 'sonata.user.admin.user', 1 => 'sonata.user.admin.group'));
-        $instance->setAdminGroups(array('sonata_user' => array('label' => 'sonata_user', 'label_catalogue' => 'SonataUserBundle', 'items' => array(0 => 'sonata.user.admin.user', 1 => 'sonata.user.admin.group'))));
-        $instance->setAdminClasses(array('Application\\Sonata\\UserBundle\\Entity\\User' => 'sonata.user.admin.user', 'Application\\Sonata\\UserBundle\\Entity\\Group' => 'sonata.user.admin.group'));
+        $instance->setTemplates(array('user_block' => 'SonataUserBundle:Admin/Core:user_block.html.twig', 'layout' => 'SonataAdminBundle::standard_layout.html.twig', 'ajax' => 'SonataAdminBundle::ajax_layout.html.twig', 'dashboard' => 'SonataAdminBundle:Core:dashboard.html.twig', 'list' => 'SonataAdminBundle:CRUD:list.html.twig', 'show' => 'SonataAdminBundle:CRUD:show.html.twig', 'edit' => 'SonataAdminBundle:CRUD:edit.html.twig', 'preview' => 'SonataAdminBundle:CRUD:preview.html.twig', 'history' => 'SonataAdminBundle:CRUD:history.html.twig', 'history_revision' => 'SonataAdminBundle:CRUD:history_revision.html.twig', 'action' => 'SonataAdminBundle:CRUD:action.html.twig', 'list_block' => 'SonataAdminBundle:Block:block_admin_list.html.twig', 'short_object_description' => 'SonataAdminBundle:Helper:short-object-description.html.twig', 'delete' => 'SonataAdminBundle:CRUD:delete.html.twig', 'batch' => 'SonataAdminBundle:CRUD:list__batch.html.twig', 'batch_confirmation' => 'SonataAdminBundle:CRUD:batch_confirmation.html.twig'));
+        $instance->setAdminServiceIds(array(0 => 'sonata.user.admin.user', 1 => 'sonata.user.admin.group', 2 => 'sonata.news.admin.post', 3 => 'sonata.news.admin.comment', 4 => 'sonata.news.admin.category', 5 => 'sonata.news.admin.tag', 6 => 'sonata.media.admin.media', 7 => 'sonata.media.admin.gallery', 8 => 'sonata.media.admin.gallery_has_media'));
+        $instance->setAdminGroups(array('sonata_user' => array('label' => 'sonata_user', 'label_catalogue' => 'SonataUserBundle', 'items' => array(0 => 'sonata.user.admin.user', 1 => 'sonata.user.admin.group')), 'sonata_blog' => array('label' => 'sonata_blog', 'label_catalogue' => 'SonataNewsBundle', 'items' => array(0 => 'sonata.news.admin.post', 1 => 'sonata.news.admin.comment', 2 => 'sonata.news.admin.category', 3 => 'sonata.news.admin.tag')), 'sonata_media' => array('label' => 'sonata_media', 'label_catalogue' => 'SonataMediaBundle', 'items' => array(0 => 'sonata.media.admin.media', 1 => 'sonata.media.admin.gallery'))));
+        $instance->setAdminClasses(array('Application\\Sonata\\UserBundle\\Entity\\User' => 'sonata.user.admin.user', 'Application\\Sonata\\UserBundle\\Entity\\Group' => 'sonata.user.admin.group', 'Application\\Sonata\\NewsBundle\\Entity\\Post' => 'sonata.news.admin.post', 'Application\\Sonata\\NewsBundle\\Entity\\Comment' => 'sonata.news.admin.comment', 'Application\\Sonata\\NewsBundle\\Entity\\Category' => 'sonata.news.admin.category', 'Application\\Sonata\\NewsBundle\\Entity\\Tag' => 'sonata.news.admin.tag', 'Application\\Sonata\\MediaBundle\\Entity\\Media' => 'sonata.media.admin.media', 'Application\\Sonata\\MediaBundle\\Entity\\Gallery' => 'sonata.media.admin.gallery', 'Application\\Sonata\\MediaBundle\\Entity\\GalleryHasMedia' => 'sonata.media.admin.gallery_has_media'));
 
         return $instance;
     }
@@ -3037,7 +2998,7 @@ class appDevDebugProjectContainer extends Container
      */
     protected function getSonata_Admin_RouteLoaderService()
     {
-        return $this->services['sonata.admin.route_loader'] = new \Sonata\AdminBundle\Route\AdminPoolLoader($this->get('sonata.admin.pool'), array(0 => 'sonata.user.admin.user', 1 => 'sonata.user.admin.group'), $this);
+        return $this->services['sonata.admin.route_loader'] = new \Sonata\AdminBundle\Route\AdminPoolLoader($this->get('sonata.admin.pool'), array(0 => 'sonata.user.admin.user', 1 => 'sonata.user.admin.group', 2 => 'sonata.news.admin.post', 3 => 'sonata.news.admin.comment', 4 => 'sonata.news.admin.category', 5 => 'sonata.news.admin.tag', 6 => 'sonata.media.admin.media', 7 => 'sonata.media.admin.gallery', 8 => 'sonata.media.admin.gallery_has_media'), $this);
     }
 
     /**
@@ -3331,6 +3292,14 @@ class appDevDebugProjectContainer extends Container
         $this->services['sonata.easy_extends.doctrine.mapper'] = $instance = new \Sonata\EasyExtendsBundle\Mapper\DoctrineORMMapper($this->get('doctrine'), array());
 
         $instance->addAssociation('Application\\Sonata\\UserBundle\\Entity\\User', 'mapManyToMany', array(0 => array('fieldName' => 'groups', 'targetEntity' => 'Application\\Sonata\\UserBundle\\Entity\\Group', 'cascade' => array(), 'joinTable' => array('name' => 'fos_user_user_group', 'joinColumns' => array(0 => array('name' => 'user_id', 'referencedColumnName' => 'id')), 'inverseJoinColumns' => array(0 => array('name' => 'group_id', 'referencedColumnName' => 'id'))))));
+        $instance->addAssociation('Application\\Sonata\\NewsBundle\\Entity\\Tag', 'mapManyToMany', array(0 => array('fieldName' => 'posts', 'targetEntity' => 'Application\\Sonata\\NewsBundle\\Entity\\Post', 'cascade' => array(), 'mappedBy' => 'tags')));
+        $instance->addAssociation('Application\\Sonata\\NewsBundle\\Entity\\Post', 'mapOneToMany', array(0 => array('fieldName' => 'comments', 'targetEntity' => 'Application\\Sonata\\NewsBundle\\Entity\\Comment', 'cascade' => array(0 => 'remove', 1 => 'persist'), 'mappedBy' => 'post', 'orphanRemoval' => true, 'orderBy' => array('createdAt' => 'DESC'))));
+        $instance->addAssociation('Application\\Sonata\\NewsBundle\\Entity\\Post', 'mapManyToOne', array(0 => array('fieldName' => 'image', 'targetEntity' => 'Application\\Sonata\\MediaBundle\\Entity\\Media', 'cascade' => array(0 => 'remove', 1 => 'persist', 2 => 'refresh', 3 => 'merge', 4 => 'detach'), 'mappedBy' => NULL, 'inversedBy' => NULL, 'joinColumns' => array(0 => array('name' => 'image_id', 'referencedColumnName' => 'id')), 'orphanRemoval' => false), 1 => array('fieldName' => 'author', 'targetEntity' => 'Application\\Sonata\\UserBundle\\Entity\\User', 'cascade' => array(1 => 'persist'), 'mappedBy' => NULL, 'inversedBy' => NULL, 'joinColumns' => array(0 => array('name' => 'author_id', 'referencedColumnName' => 'id')), 'orphanRemoval' => false), 2 => array('fieldName' => 'category', 'targetEntity' => 'Application\\Sonata\\NewsBundle\\Entity\\Category', 'cascade' => array(1 => 'persist'), 'mappedBy' => NULL, 'inversedBy' => NULL, 'joinColumns' => array(0 => array('name' => 'category_id', 'referencedColumnName' => 'id')), 'orphanRemoval' => false)));
+        $instance->addAssociation('Application\\Sonata\\NewsBundle\\Entity\\Post', 'mapManyToMany', array(0 => array('fieldName' => 'tags', 'targetEntity' => 'Application\\Sonata\\NewsBundle\\Entity\\Tag', 'cascade' => array(1 => 'persist'), 'joinTable' => array('name' => 'news__post_tag', 'joinColumns' => array(0 => array('name' => 'post_id', 'referencedColumnName' => 'id')), 'inverseJoinColumns' => array(0 => array('name' => 'tag_id', 'referencedColumnName' => 'id'))))));
+        $instance->addAssociation('Application\\Sonata\\NewsBundle\\Entity\\Comment', 'mapManyToOne', array(0 => array('fieldName' => 'post', 'targetEntity' => 'Application\\Sonata\\NewsBundle\\Entity\\Post', 'cascade' => array(), 'mappedBy' => NULL, 'inversedBy' => NULL, 'joinColumns' => array(0 => array('name' => 'post_id', 'referencedColumnName' => 'id')), 'orphanRemoval' => false)));
+        $instance->addAssociation('Application\\Sonata\\MediaBundle\\Entity\\Media', 'mapOneToMany', array(0 => array('fieldName' => 'galleryHasMedias', 'targetEntity' => 'Application\\Sonata\\MediaBundle\\Entity\\GalleryHasMedia', 'cascade' => array(0 => 'persist'), 'mappedBy' => 'media', 'orphanRemoval' => false)));
+        $instance->addAssociation('Application\\Sonata\\MediaBundle\\Entity\\GalleryHasMedia', 'mapManyToOne', array(0 => array('fieldName' => 'gallery', 'targetEntity' => 'Application\\Sonata\\MediaBundle\\Entity\\Gallery', 'cascade' => array(0 => 'persist'), 'mappedBy' => NULL, 'inversedBy' => 'galleryHasMedias', 'joinColumns' => array(0 => array('name' => 'gallery_id', 'referencedColumnName' => 'id')), 'orphanRemoval' => false), 1 => array('fieldName' => 'media', 'targetEntity' => 'Application\\Sonata\\MediaBundle\\Entity\\Media', 'cascade' => array(0 => 'persist'), 'mappedBy' => NULL, 'inversedBy' => 'galleryHasMedias', 'joinColumns' => array(0 => array('name' => 'media_id', 'referencedColumnName' => 'id')), 'orphanRemoval' => false)));
+        $instance->addAssociation('Application\\Sonata\\MediaBundle\\Entity\\Gallery', 'mapOneToMany', array(0 => array('fieldName' => 'galleryHasMedias', 'targetEntity' => 'Application\\Sonata\\MediaBundle\\Entity\\GalleryHasMedia', 'cascade' => array(0 => 'persist'), 'mappedBy' => 'gallery', 'orphanRemoval' => true, 'orderBy' => array('position' => 'ASC'))));
 
         return $instance;
     }
@@ -3388,6 +3357,1158 @@ class appDevDebugProjectContainer extends Container
     }
 
     /**
+     * Gets the 'sonata.formatter.block.formatter' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\FormatterBundle\Block\FormatterBlockService A Sonata\FormatterBundle\Block\FormatterBlockService instance.
+     */
+    protected function getSonata_Formatter_Block_FormatterService()
+    {
+        return $this->services['sonata.formatter.block.formatter'] = new \Sonata\FormatterBundle\Block\FormatterBlockService('sonata.block.empty', $this->get('templating'));
+    }
+
+    /**
+     * Gets the 'sonata.formatter.form.type.selector' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\FormatterBundle\Form\Type\FormatterType A Sonata\FormatterBundle\Form\Type\FormatterType instance.
+     */
+    protected function getSonata_Formatter_Form_Type_SelectorService()
+    {
+        return $this->services['sonata.formatter.form.type.selector'] = new \Sonata\FormatterBundle\Form\Type\FormatterType($this->get('sonata.formatter.pool'), $this->get('translator.default'));
+    }
+
+    /**
+     * Gets the 'sonata.formatter.pool' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\FormatterBundle\Formatter\Pool A Sonata\FormatterBundle\Formatter\Pool instance.
+     */
+    protected function getSonata_Formatter_PoolService()
+    {
+        $a = $this->get('sonata.formatter.text.raw');
+
+        $this->services['sonata.formatter.pool'] = $instance = new \Sonata\FormatterBundle\Formatter\Pool($this->get('logger'));
+
+        $instance->add('markdown', $this->get('sonata.formatter.text.markdown'), $this->get('sonata.formatter.twig.env.markdown'));
+        $instance->add('text', $this->get('sonata.formatter.text.text'), $this->get('sonata.formatter.twig.env.text'));
+        $instance->add('rawhtml', $a, $this->get('sonata.formatter.twig.env.rawhtml'));
+        $instance->add('richhtml', $a, $this->get('sonata.formatter.twig.env.richhtml'));
+
+        return $instance;
+    }
+
+    /**
+     * Gets the 'sonata.formatter.text.markdown' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\FormatterBundle\Formatter\MarkdownFormatter A Sonata\FormatterBundle\Formatter\MarkdownFormatter instance.
+     */
+    protected function getSonata_Formatter_Text_MarkdownService()
+    {
+        return $this->services['sonata.formatter.text.markdown'] = new \Sonata\FormatterBundle\Formatter\MarkdownFormatter($this->get('markdown.parser'));
+    }
+
+    /**
+     * Gets the 'sonata.formatter.text.raw' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\FormatterBundle\Formatter\RawFormatter A Sonata\FormatterBundle\Formatter\RawFormatter instance.
+     */
+    protected function getSonata_Formatter_Text_RawService()
+    {
+        return $this->services['sonata.formatter.text.raw'] = new \Sonata\FormatterBundle\Formatter\RawFormatter();
+    }
+
+    /**
+     * Gets the 'sonata.formatter.text.text' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\FormatterBundle\Formatter\TextFormatter A Sonata\FormatterBundle\Formatter\TextFormatter instance.
+     */
+    protected function getSonata_Formatter_Text_TextService()
+    {
+        return $this->services['sonata.formatter.text.text'] = new \Sonata\FormatterBundle\Formatter\TextFormatter();
+    }
+
+    /**
+     * Gets the 'sonata.formatter.text.twigengine' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\FormatterBundle\Formatter\TwigFormatter A Sonata\FormatterBundle\Formatter\TwigFormatter instance.
+     */
+    protected function getSonata_Formatter_Text_TwigengineService()
+    {
+        return $this->services['sonata.formatter.text.twigengine'] = new \Sonata\FormatterBundle\Formatter\TwigFormatter($this->get('twig'));
+    }
+
+    /**
+     * Gets the 'sonata.formatter.twig.control_flow' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\FormatterBundle\Extension\ControlFlowExtension A Sonata\FormatterBundle\Extension\ControlFlowExtension instance.
+     */
+    protected function getSonata_Formatter_Twig_ControlFlowService()
+    {
+        return $this->services['sonata.formatter.twig.control_flow'] = new \Sonata\FormatterBundle\Extension\ControlFlowExtension();
+    }
+
+    /**
+     * Gets the 'sonata.formatter.twig.gist' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\FormatterBundle\Extension\GistExtension A Sonata\FormatterBundle\Extension\GistExtension instance.
+     */
+    protected function getSonata_Formatter_Twig_GistService()
+    {
+        return $this->services['sonata.formatter.twig.gist'] = new \Sonata\FormatterBundle\Extension\GistExtension();
+    }
+
+    /**
+     * Gets the 'sonata.intl.locale_detector.request' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\IntlBundle\Locale\RequestDetector A Sonata\IntlBundle\Locale\RequestDetector instance.
+     */
+    protected function getSonata_Intl_LocaleDetector_RequestService()
+    {
+        return $this->services['sonata.intl.locale_detector.request'] = new \Sonata\IntlBundle\Locale\RequestDetector($this, 'fr');
+    }
+
+    /**
+     * Gets the 'sonata.intl.templating.helper.datetime' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\IntlBundle\Templating\Helper\DateTimeHelper A Sonata\IntlBundle\Templating\Helper\DateTimeHelper instance.
+     */
+    protected function getSonata_Intl_Templating_Helper_DatetimeService()
+    {
+        return $this->services['sonata.intl.templating.helper.datetime'] = new \Sonata\IntlBundle\Templating\Helper\DateTimeHelper($this->get('sonata.intl.timezone_detector.default'), 'UTF-8', $this->get('sonata.intl.locale_detector.request'));
+    }
+
+    /**
+     * Gets the 'sonata.intl.templating.helper.locale' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\IntlBundle\Templating\Helper\LocaleHelper A Sonata\IntlBundle\Templating\Helper\LocaleHelper instance.
+     */
+    protected function getSonata_Intl_Templating_Helper_LocaleService()
+    {
+        return $this->services['sonata.intl.templating.helper.locale'] = new \Sonata\IntlBundle\Templating\Helper\LocaleHelper('UTF-8', $this->get('sonata.intl.locale_detector.request'));
+    }
+
+    /**
+     * Gets the 'sonata.intl.templating.helper.number' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\IntlBundle\Templating\Helper\NumberHelper A Sonata\IntlBundle\Templating\Helper\NumberHelper instance.
+     */
+    protected function getSonata_Intl_Templating_Helper_NumberService()
+    {
+        return $this->services['sonata.intl.templating.helper.number'] = new \Sonata\IntlBundle\Templating\Helper\NumberHelper('UTF-8', $this->get('sonata.intl.locale_detector.request'));
+    }
+
+    /**
+     * Gets the 'sonata.intl.timezone_detector.default' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\IntlBundle\Timezone\LocaleBasedTimezoneDetector A Sonata\IntlBundle\Timezone\LocaleBasedTimezoneDetector instance.
+     */
+    protected function getSonata_Intl_TimezoneDetector_DefaultService()
+    {
+        return $this->services['sonata.intl.timezone_detector.default'] = new \Sonata\IntlBundle\Timezone\LocaleBasedTimezoneDetector($this->get('sonata.intl.locale_detector.request'), 'Europe/Paris', array());
+    }
+
+    /**
+     * Gets the 'sonata.media.adapter.filesystem.local' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\MediaBundle\Filesystem\Local A Sonata\MediaBundle\Filesystem\Local instance.
+     */
+    protected function getSonata_Media_Adapter_Filesystem_LocalService()
+    {
+        return $this->services['sonata.media.adapter.filesystem.local'] = new \Sonata\MediaBundle\Filesystem\Local('/var/www/sites/TremplinFoyerV1/app/../web/uploads/media', false);
+    }
+
+    /**
+     * Gets the 'sonata.media.adapter.image.gd' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Imagine\Gd\Imagine A Imagine\Gd\Imagine instance.
+     */
+    protected function getSonata_Media_Adapter_Image_GdService()
+    {
+        return $this->services['sonata.media.adapter.image.gd'] = new \Imagine\Gd\Imagine();
+    }
+
+    /**
+     * Gets the 'sonata.media.adapter.image.gmagick' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Imagine\Gmagick\Imagine A Imagine\Gmagick\Imagine instance.
+     */
+    protected function getSonata_Media_Adapter_Image_GmagickService()
+    {
+        return $this->services['sonata.media.adapter.image.gmagick'] = new \Imagine\Gmagick\Imagine();
+    }
+
+    /**
+     * Gets the 'sonata.media.adapter.image.imagick' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Imagine\Imagick\Imagine A Imagine\Imagick\Imagine instance.
+     */
+    protected function getSonata_Media_Adapter_Image_ImagickService()
+    {
+        return $this->services['sonata.media.adapter.image.imagick'] = new \Imagine\Imagick\Imagine();
+    }
+
+    /**
+     * Gets the 'sonata.media.adapter.service.s3' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return AmazonS3 A AmazonS3 instance.
+     */
+    protected function getSonata_Media_Adapter_Service_S3Service()
+    {
+        return $this->services['sonata.media.adapter.service.s3'] = new \AmazonS3(array());
+    }
+
+    /**
+     * Gets the 'sonata.media.admin.gallery' service.
+     *
+     * @return Sonata\MediaBundle\Admin\GalleryAdmin A Sonata\MediaBundle\Admin\GalleryAdmin instance.
+     */
+    protected function getSonata_Media_Admin_GalleryService()
+    {
+        $instance = new \Sonata\MediaBundle\Admin\GalleryAdmin('sonata.media.admin.gallery', 'Application\\Sonata\\MediaBundle\\Entity\\Gallery', 'SonataMediaBundle:GalleryAdmin', $this->get('sonata.media.pool'));
+
+        $instance->setTranslationDomain('SonataMediaBundle');
+        $instance->setLabelTranslatorStrategy($this->get('sonata.admin.label.strategy.underscore'));
+        $instance->setManagerType('orm');
+        $instance->setModelManager($this->get('sonata.admin.manager.orm'));
+        $instance->setFormContractor($this->get('sonata.admin.builder.orm_form'));
+        $instance->setShowBuilder($this->get('sonata.admin.builder.orm_show'));
+        $instance->setListBuilder($this->get('sonata.admin.builder.orm_list'));
+        $instance->setDatagridBuilder($this->get('sonata.admin.builder.orm_datagrid'));
+        $instance->setTranslator($this->get('translator.default'));
+        $instance->setConfigurationPool($this->get('sonata.admin.pool'));
+        $instance->setRouteGenerator($this->get('sonata.admin.route.default_generator'));
+        $instance->setValidator($this->get('validator'));
+        $instance->setSecurityHandler($this->get('sonata.admin.security.handler'));
+        $instance->setMenuFactory($this->get('knp_menu.factory'));
+        $instance->setRouteBuilder($this->get('sonata.admin.route.path_info'));
+        $instance->setLabel('gallery');
+        $instance->setPersistFilters(false);
+        $instance->setTemplates(array('user_block' => 'SonataUserBundle:Admin/Core:user_block.html.twig', 'layout' => 'SonataAdminBundle::standard_layout.html.twig', 'ajax' => 'SonataAdminBundle::ajax_layout.html.twig', 'dashboard' => 'SonataAdminBundle:Core:dashboard.html.twig', 'list' => 'SonataMediaBundle:GalleryAdmin:list.html.twig', 'show' => 'SonataAdminBundle:CRUD:show.html.twig', 'edit' => 'SonataAdminBundle:CRUD:edit.html.twig', 'history' => 'SonataAdminBundle:CRUD:history.html.twig', 'history_revision' => 'SonataAdminBundle:CRUD:history_revision.html.twig', 'action' => 'SonataAdminBundle:CRUD:action.html.twig', 'short_object_description' => 'SonataAdminBundle:Helper:short-object-description.html.twig', 'preview' => 'SonataAdminBundle:CRUD:preview.html.twig', 'list_block' => 'SonataAdminBundle:Block:block_admin_list.html.twig', 'delete' => 'SonataAdminBundle:CRUD:delete.html.twig', 'batch' => 'SonataAdminBundle:CRUD:list__batch.html.twig', 'batch_confirmation' => 'SonataAdminBundle:CRUD:batch_confirmation.html.twig'));
+        $instance->setSecurityInformation(array());
+        $instance->initialize();
+        $instance->setFormTheme(array(0 => 'SonataDoctrineORMAdminBundle:Form:form_admin_fields.html.twig'));
+        $instance->setFilterTheme(array(0 => 'SonataDoctrineORMAdminBundle:Form:filter_admin_fields.html.twig'));
+
+        return $instance;
+    }
+
+    /**
+     * Gets the 'sonata.media.admin.gallery_has_media' service.
+     *
+     * @return Sonata\MediaBundle\Admin\GalleryHasMediaAdmin A Sonata\MediaBundle\Admin\GalleryHasMediaAdmin instance.
+     */
+    protected function getSonata_Media_Admin_GalleryHasMediaService()
+    {
+        $instance = new \Sonata\MediaBundle\Admin\GalleryHasMediaAdmin('sonata.media.admin.gallery_has_media', 'Application\\Sonata\\MediaBundle\\Entity\\GalleryHasMedia', 'SonataAdminBundle:CRUD');
+
+        $instance->setTranslationDomain('SonataMediaBundle');
+        $instance->setLabelTranslatorStrategy($this->get('sonata.admin.label.strategy.underscore'));
+        $instance->setManagerType('orm');
+        $instance->setModelManager($this->get('sonata.admin.manager.orm'));
+        $instance->setFormContractor($this->get('sonata.admin.builder.orm_form'));
+        $instance->setShowBuilder($this->get('sonata.admin.builder.orm_show'));
+        $instance->setListBuilder($this->get('sonata.admin.builder.orm_list'));
+        $instance->setDatagridBuilder($this->get('sonata.admin.builder.orm_datagrid'));
+        $instance->setTranslator($this->get('translator.default'));
+        $instance->setConfigurationPool($this->get('sonata.admin.pool'));
+        $instance->setRouteGenerator($this->get('sonata.admin.route.default_generator'));
+        $instance->setValidator($this->get('validator'));
+        $instance->setSecurityHandler($this->get('sonata.admin.security.handler'));
+        $instance->setMenuFactory($this->get('knp_menu.factory'));
+        $instance->setRouteBuilder($this->get('sonata.admin.route.path_info'));
+        $instance->setLabel('gallery_has_media');
+        $instance->setPersistFilters(false);
+        $instance->setTemplates(array('user_block' => 'SonataUserBundle:Admin/Core:user_block.html.twig', 'layout' => 'SonataAdminBundle::standard_layout.html.twig', 'ajax' => 'SonataAdminBundle::ajax_layout.html.twig', 'dashboard' => 'SonataAdminBundle:Core:dashboard.html.twig', 'list' => 'SonataAdminBundle:CRUD:list.html.twig', 'show' => 'SonataAdminBundle:CRUD:show.html.twig', 'edit' => 'SonataAdminBundle:CRUD:edit.html.twig', 'history' => 'SonataAdminBundle:CRUD:history.html.twig', 'history_revision' => 'SonataAdminBundle:CRUD:history_revision.html.twig', 'action' => 'SonataAdminBundle:CRUD:action.html.twig', 'short_object_description' => 'SonataAdminBundle:Helper:short-object-description.html.twig', 'preview' => 'SonataAdminBundle:CRUD:preview.html.twig', 'list_block' => 'SonataAdminBundle:Block:block_admin_list.html.twig', 'delete' => 'SonataAdminBundle:CRUD:delete.html.twig', 'batch' => 'SonataAdminBundle:CRUD:list__batch.html.twig', 'batch_confirmation' => 'SonataAdminBundle:CRUD:batch_confirmation.html.twig'));
+        $instance->setSecurityInformation(array());
+        $instance->initialize();
+        $instance->setFormTheme(array(0 => 'SonataDoctrineORMAdminBundle:Form:form_admin_fields.html.twig'));
+        $instance->setFilterTheme(array(0 => 'SonataDoctrineORMAdminBundle:Form:filter_admin_fields.html.twig'));
+
+        return $instance;
+    }
+
+    /**
+     * Gets the 'sonata.media.admin.media' service.
+     *
+     * @return Sonata\MediaBundle\Admin\ORM\MediaAdmin A Sonata\MediaBundle\Admin\ORM\MediaAdmin instance.
+     */
+    protected function getSonata_Media_Admin_MediaService()
+    {
+        $instance = new \Sonata\MediaBundle\Admin\ORM\MediaAdmin('sonata.media.admin.media', 'Application\\Sonata\\MediaBundle\\Entity\\Media', 'SonataMediaBundle:MediaAdmin', $this->get('sonata.media.pool'));
+
+        $instance->setModelManager($this->get('sonata.media.admin.media.manager'));
+        $instance->setTranslationDomain('SonataMediaBundle');
+        $instance->setLabelTranslatorStrategy($this->get('sonata.admin.label.strategy.underscore'));
+        $instance->setManagerType('orm');
+        $instance->setFormContractor($this->get('sonata.admin.builder.orm_form'));
+        $instance->setShowBuilder($this->get('sonata.admin.builder.orm_show'));
+        $instance->setListBuilder($this->get('sonata.admin.builder.orm_list'));
+        $instance->setDatagridBuilder($this->get('sonata.admin.builder.orm_datagrid'));
+        $instance->setTranslator($this->get('translator.default'));
+        $instance->setConfigurationPool($this->get('sonata.admin.pool'));
+        $instance->setRouteGenerator($this->get('sonata.admin.route.default_generator'));
+        $instance->setValidator($this->get('validator'));
+        $instance->setSecurityHandler($this->get('sonata.admin.security.handler'));
+        $instance->setMenuFactory($this->get('knp_menu.factory'));
+        $instance->setRouteBuilder($this->get('sonata.admin.route.path_info'));
+        $instance->setLabel('media');
+        $instance->setPersistFilters(false);
+        $instance->setTemplates(array('user_block' => 'SonataUserBundle:Admin/Core:user_block.html.twig', 'layout' => 'SonataAdminBundle::standard_layout.html.twig', 'ajax' => 'SonataAdminBundle::ajax_layout.html.twig', 'dashboard' => 'SonataAdminBundle:Core:dashboard.html.twig', 'list' => 'SonataMediaBundle:MediaAdmin:list.html.twig', 'show' => 'SonataAdminBundle:CRUD:show.html.twig', 'edit' => 'SonataAdminBundle:CRUD:edit.html.twig', 'history' => 'SonataAdminBundle:CRUD:history.html.twig', 'history_revision' => 'SonataAdminBundle:CRUD:history_revision.html.twig', 'action' => 'SonataAdminBundle:CRUD:action.html.twig', 'short_object_description' => 'SonataAdminBundle:Helper:short-object-description.html.twig', 'preview' => 'SonataAdminBundle:CRUD:preview.html.twig', 'list_block' => 'SonataAdminBundle:Block:block_admin_list.html.twig', 'delete' => 'SonataAdminBundle:CRUD:delete.html.twig', 'batch' => 'SonataAdminBundle:CRUD:list__batch.html.twig', 'batch_confirmation' => 'SonataAdminBundle:CRUD:batch_confirmation.html.twig'));
+        $instance->setSecurityInformation(array());
+        $instance->initialize();
+        $instance->setFormTheme(array(0 => 'SonataDoctrineORMAdminBundle:Form:form_admin_fields.html.twig'));
+        $instance->setFilterTheme(array(0 => 'SonataDoctrineORMAdminBundle:Form:filter_admin_fields.html.twig'));
+
+        return $instance;
+    }
+
+    /**
+     * Gets the 'sonata.media.admin.media.manager' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\MediaBundle\Admin\Manager\DoctrineORMManager A Sonata\MediaBundle\Admin\Manager\DoctrineORMManager instance.
+     */
+    protected function getSonata_Media_Admin_Media_ManagerService()
+    {
+        return $this->services['sonata.media.admin.media.manager'] = new \Sonata\MediaBundle\Admin\Manager\DoctrineORMManager($this->get('doctrine'), $this->get('sonata.media.manager.media'));
+    }
+
+    /**
+     * Gets the 'sonata.media.block.feature_media' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\MediaBundle\Block\FeatureMediaBlockService A Sonata\MediaBundle\Block\FeatureMediaBlockService instance.
+     */
+    protected function getSonata_Media_Block_FeatureMediaService()
+    {
+        return $this->services['sonata.media.block.feature_media'] = new \Sonata\MediaBundle\Block\FeatureMediaBlockService('sonata.media.block.feature_media', $this->get('templating'), $this, $this->get('sonata.media.manager.media'));
+    }
+
+    /**
+     * Gets the 'sonata.media.block.gallery' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\MediaBundle\Block\GalleryBlockService A Sonata\MediaBundle\Block\GalleryBlockService instance.
+     */
+    protected function getSonata_Media_Block_GalleryService()
+    {
+        return $this->services['sonata.media.block.gallery'] = new \Sonata\MediaBundle\Block\GalleryBlockService('sonata.media.block.gallery', $this->get('templating'), $this, $this->get('sonata.media.manager.gallery'));
+    }
+
+    /**
+     * Gets the 'sonata.media.block.media' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\MediaBundle\Block\MediaBlockService A Sonata\MediaBundle\Block\MediaBlockService instance.
+     */
+    protected function getSonata_Media_Block_MediaService()
+    {
+        return $this->services['sonata.media.block.media'] = new \Sonata\MediaBundle\Block\MediaBlockService('sonata.media.block.media', $this->get('templating'), $this, $this->get('sonata.media.manager.media'));
+    }
+
+    /**
+     * Gets the 'sonata.media.buzz.browser' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Buzz\Browser A Buzz\Browser instance.
+     */
+    protected function getSonata_Media_Buzz_BrowserService()
+    {
+        return $this->services['sonata.media.buzz.browser'] = new \Buzz\Browser($this->get('sonata.media.buzz.connector.file_get_contents'));
+    }
+
+    /**
+     * Gets the 'sonata.media.buzz.connector.curl' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Buzz\Client\Curl A Buzz\Client\Curl instance.
+     */
+    protected function getSonata_Media_Buzz_Connector_CurlService()
+    {
+        return $this->services['sonata.media.buzz.connector.curl'] = new \Buzz\Client\Curl();
+    }
+
+    /**
+     * Gets the 'sonata.media.buzz.connector.file_get_contents' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Buzz\Client\FileGetContents A Buzz\Client\FileGetContents instance.
+     */
+    protected function getSonata_Media_Buzz_Connector_FileGetContentsService()
+    {
+        return $this->services['sonata.media.buzz.connector.file_get_contents'] = new \Buzz\Client\FileGetContents();
+    }
+
+    /**
+     * Gets the 'sonata.media.cdn.server' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\MediaBundle\CDN\Server A Sonata\MediaBundle\CDN\Server instance.
+     */
+    protected function getSonata_Media_Cdn_ServerService()
+    {
+        return $this->services['sonata.media.cdn.server'] = new \Sonata\MediaBundle\CDN\Server('/uploads/media');
+    }
+
+    /**
+     * Gets the 'sonata.media.doctrine.event_subscriber' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\MediaBundle\Listener\ORM\MediaEventSubscriber A Sonata\MediaBundle\Listener\ORM\MediaEventSubscriber instance.
+     */
+    protected function getSonata_Media_Doctrine_EventSubscriberService()
+    {
+        return $this->services['sonata.media.doctrine.event_subscriber'] = new \Sonata\MediaBundle\Listener\ORM\MediaEventSubscriber($this);
+    }
+
+    /**
+     * Gets the 'sonata.media.filesystem.local' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Gaufrette\Filesystem A Gaufrette\Filesystem instance.
+     */
+    protected function getSonata_Media_Filesystem_LocalService()
+    {
+        return $this->services['sonata.media.filesystem.local'] = new \Gaufrette\Filesystem($this->get('sonata.media.adapter.filesystem.local'));
+    }
+
+    /**
+     * Gets the 'sonata.media.form.type.media' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\MediaBundle\Form\Type\MediaType A Sonata\MediaBundle\Form\Type\MediaType instance.
+     */
+    protected function getSonata_Media_Form_Type_MediaService()
+    {
+        return $this->services['sonata.media.form.type.media'] = new \Sonata\MediaBundle\Form\Type\MediaType($this->get('sonata.media.pool'), 'Application\\Sonata\\MediaBundle\\Entity\\Media');
+    }
+
+    /**
+     * Gets the 'sonata.media.formatter.twig' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\MediaBundle\Twig\Extension\FormatterMediaExtension A Sonata\MediaBundle\Twig\Extension\FormatterMediaExtension instance.
+     */
+    protected function getSonata_Media_Formatter_TwigService()
+    {
+        return $this->services['sonata.media.formatter.twig'] = new \Sonata\MediaBundle\Twig\Extension\FormatterMediaExtension($this->get('sonata.media.twig.extension'));
+    }
+
+    /**
+     * Gets the 'sonata.media.generator.default' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\MediaBundle\Generator\DefaultGenerator A Sonata\MediaBundle\Generator\DefaultGenerator instance.
+     */
+    protected function getSonata_Media_Generator_DefaultService()
+    {
+        return $this->services['sonata.media.generator.default'] = new \Sonata\MediaBundle\Generator\DefaultGenerator();
+    }
+
+    /**
+     * Gets the 'sonata.media.manager.gallery' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\MediaBundle\Entity\GalleryManager A Sonata\MediaBundle\Entity\GalleryManager instance.
+     */
+    protected function getSonata_Media_Manager_GalleryService()
+    {
+        return $this->services['sonata.media.manager.gallery'] = new \Sonata\MediaBundle\Entity\GalleryManager($this->get('doctrine.orm.default_entity_manager'), 'Application\\Sonata\\MediaBundle\\Entity\\Gallery');
+    }
+
+    /**
+     * Gets the 'sonata.media.manager.media' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\MediaBundle\Entity\MediaManager A Sonata\MediaBundle\Entity\MediaManager instance.
+     */
+    protected function getSonata_Media_Manager_MediaService()
+    {
+        return $this->services['sonata.media.manager.media'] = new \Sonata\MediaBundle\Entity\MediaManager($this->get('sonata.media.pool'), $this->get('doctrine.orm.default_entity_manager'), 'Application\\Sonata\\MediaBundle\\Entity\\Media');
+    }
+
+    /**
+     * Gets the 'sonata.media.metadata.amazon' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\MediaBundle\Metadata\AmazonMetadataBuilder A Sonata\MediaBundle\Metadata\AmazonMetadataBuilder instance.
+     */
+    protected function getSonata_Media_Metadata_AmazonService()
+    {
+        return $this->services['sonata.media.metadata.amazon'] = new \Sonata\MediaBundle\Metadata\AmazonMetadataBuilder();
+    }
+
+    /**
+     * Gets the 'sonata.media.metadata.noop' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\MediaBundle\Metadata\NoopMetadataBuilder A Sonata\MediaBundle\Metadata\NoopMetadataBuilder instance.
+     */
+    protected function getSonata_Media_Metadata_NoopService()
+    {
+        return $this->services['sonata.media.metadata.noop'] = new \Sonata\MediaBundle\Metadata\NoopMetadataBuilder();
+    }
+
+    /**
+     * Gets the 'sonata.media.metadata.proxy' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\MediaBundle\Metadata\ProxyMetadataBuilder A Sonata\MediaBundle\Metadata\ProxyMetadataBuilder instance.
+     */
+    protected function getSonata_Media_Metadata_ProxyService()
+    {
+        return $this->services['sonata.media.metadata.proxy'] = new \Sonata\MediaBundle\Metadata\ProxyMetadataBuilder($this, array());
+    }
+
+    /**
+     * Gets the 'sonata.media.pool' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\MediaBundle\Provider\Pool A Sonata\MediaBundle\Provider\Pool instance.
+     */
+    protected function getSonata_Media_PoolService()
+    {
+        $this->services['sonata.media.pool'] = $instance = new \Sonata\MediaBundle\Provider\Pool('default');
+
+        $instance->addContext('default', array(0 => 'sonata.media.provider.dailymotion', 1 => 'sonata.media.provider.youtube', 2 => 'sonata.media.provider.image', 3 => 'sonata.media.provider.file'), array('default_small' => array('width' => 100, 'quality' => 70, 'height' => false, 'format' => 'jpg', 'constraint' => true), 'default_big' => array('width' => 500, 'quality' => 70, 'height' => false, 'format' => 'jpg', 'constraint' => true)), array('strategy' => 'sonata.media.security.superadmin_strategy', 'mode' => 'http'));
+        $instance->addDownloadSecurity('sonata.media.security.superadmin_strategy', $this->get('sonata.media.security.superadmin_strategy'));
+        $instance->addProvider('sonata.media.provider.image', $this->get('sonata.media.provider.image'));
+        $instance->addProvider('sonata.media.provider.file', $this->get('sonata.media.provider.file'));
+        $instance->addProvider('sonata.media.provider.youtube', $this->get('sonata.media.provider.youtube'));
+        $instance->addProvider('sonata.media.provider.dailymotion', $this->get('sonata.media.provider.dailymotion'));
+        $instance->addProvider('sonata.media.provider.vimeo', $this->get('sonata.media.provider.vimeo'));
+
+        return $instance;
+    }
+
+    /**
+     * Gets the 'sonata.media.provider.dailymotion' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\MediaBundle\Provider\DailyMotionProvider A Sonata\MediaBundle\Provider\DailyMotionProvider instance.
+     */
+    protected function getSonata_Media_Provider_DailymotionService()
+    {
+        $this->services['sonata.media.provider.dailymotion'] = $instance = new \Sonata\MediaBundle\Provider\DailyMotionProvider('sonata.media.provider.dailymotion', $this->get('sonata.media.filesystem.local'), $this->get('sonata.media.cdn.server'), $this->get('sonata.media.generator.default'), $this->get('sonata.media.thumbnail.format'), $this->get('sonata.media.buzz.browser'), $this->get('sonata.media.metadata.proxy'));
+
+        $instance->setTemplates(array('helper_thumbnail' => 'SonataMediaBundle:Provider:thumbnail.html.twig', 'helper_view' => 'SonataMediaBundle:Provider:view_dailymotion.html.twig'));
+        $instance->addFormat('default_small', array('width' => 100, 'quality' => 70, 'height' => false, 'format' => 'jpg', 'constraint' => true));
+        $instance->addFormat('default_big', array('width' => 500, 'quality' => 70, 'height' => false, 'format' => 'jpg', 'constraint' => true));
+        $instance->setResizer($this->get('sonata.media.resizer.simple'));
+        $instance->addFormat('admin', array('quality' => 80, 'width' => 100, 'format' => 'jpg', 'height' => false, 'constraint' => true));
+
+        return $instance;
+    }
+
+    /**
+     * Gets the 'sonata.media.provider.file' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\MediaBundle\Provider\FileProvider A Sonata\MediaBundle\Provider\FileProvider instance.
+     */
+    protected function getSonata_Media_Provider_FileService()
+    {
+        $this->services['sonata.media.provider.file'] = $instance = new \Sonata\MediaBundle\Provider\FileProvider('sonata.media.provider.file', $this->get('sonata.media.filesystem.local'), $this->get('sonata.media.cdn.server'), $this->get('sonata.media.generator.default'), $this->get('sonata.media.thumbnail.format'), array(0 => 'pdf', 1 => 'txt', 2 => 'rtf', 3 => 'doc', 4 => 'docx', 5 => 'xls', 6 => 'xlsx', 7 => 'ppt', 8 => 'pttx', 9 => 'odt', 10 => 'odg', 11 => 'odp', 12 => 'ods', 13 => 'odc', 14 => 'odf', 15 => 'odb', 16 => 'csv', 17 => 'xml'), array(0 => 'application/pdf', 1 => 'application/x-pdf', 2 => 'application/rtf', 3 => 'text/html', 4 => 'text/rtf', 5 => 'text/plain', 6 => 'application/excel', 7 => 'application/msword', 8 => 'application/vnd.ms-excel', 9 => 'application/vnd.ms-powerpoint', 10 => 'application/vnd.ms-powerpoint', 11 => 'application/vnd.oasis.opendocument.text', 12 => 'application/vnd.oasis.opendocument.graphics', 13 => 'application/vnd.oasis.opendocument.presentation', 14 => 'application/vnd.oasis.opendocument.spreadsheet', 15 => 'application/vnd.oasis.opendocument.chart', 16 => 'application/vnd.oasis.opendocument.formula', 17 => 'application/vnd.oasis.opendocument.database', 18 => 'application/vnd.oasis.opendocument.image', 19 => 'text/comma-separated-values', 20 => 'text/xml', 21 => 'application/xml', 22 => 'application/zip'), $this->get('sonata.media.metadata.proxy'));
+
+        $instance->setTemplates(array('helper_thumbnail' => 'SonataMediaBundle:Provider:thumbnail.html.twig', 'helper_view' => 'SonataMediaBundle:Provider:view_file.html.twig'));
+        $instance->addFormat('default_small', array('width' => 100, 'quality' => 70, 'height' => false, 'format' => 'jpg', 'constraint' => true));
+        $instance->addFormat('default_big', array('width' => 500, 'quality' => 70, 'height' => false, 'format' => 'jpg', 'constraint' => true));
+        $instance->addFormat('admin', array('quality' => 80, 'width' => 100, 'format' => 'jpg', 'height' => false, 'constraint' => true));
+
+        return $instance;
+    }
+
+    /**
+     * Gets the 'sonata.media.provider.image' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\MediaBundle\Provider\ImageProvider A Sonata\MediaBundle\Provider\ImageProvider instance.
+     */
+    protected function getSonata_Media_Provider_ImageService()
+    {
+        $this->services['sonata.media.provider.image'] = $instance = new \Sonata\MediaBundle\Provider\ImageProvider('sonata.media.provider.image', $this->get('sonata.media.filesystem.local'), $this->get('sonata.media.cdn.server'), $this->get('sonata.media.generator.default'), $this->get('sonata.media.thumbnail.format'), array(0 => 'jpg', 1 => 'png', 2 => 'jpeg'), array(0 => 'image/pjpeg', 1 => 'image/jpeg', 2 => 'image/png', 3 => 'image/x-png'), $this->get('sonata.media.adapter.image.gd'), $this->get('sonata.media.metadata.proxy'));
+
+        $instance->setTemplates(array('helper_thumbnail' => 'SonataMediaBundle:Provider:thumbnail.html.twig', 'helper_view' => 'SonataMediaBundle:Provider:view_image.html.twig'));
+        $instance->addFormat('default_small', array('width' => 100, 'quality' => 70, 'height' => false, 'format' => 'jpg', 'constraint' => true));
+        $instance->addFormat('default_big', array('width' => 500, 'quality' => 70, 'height' => false, 'format' => 'jpg', 'constraint' => true));
+        $instance->setResizer($this->get('sonata.media.resizer.simple'));
+        $instance->addFormat('admin', array('quality' => 80, 'width' => 100, 'format' => 'jpg', 'height' => false, 'constraint' => true));
+
+        return $instance;
+    }
+
+    /**
+     * Gets the 'sonata.media.provider.vimeo' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\MediaBundle\Provider\VimeoProvider A Sonata\MediaBundle\Provider\VimeoProvider instance.
+     */
+    protected function getSonata_Media_Provider_VimeoService()
+    {
+        $this->services['sonata.media.provider.vimeo'] = $instance = new \Sonata\MediaBundle\Provider\VimeoProvider('sonata.media.provider.vimeo', $this->get('sonata.media.filesystem.local'), $this->get('sonata.media.cdn.server'), $this->get('sonata.media.generator.default'), $this->get('sonata.media.thumbnail.format'), $this->get('sonata.media.buzz.browser'), $this->get('sonata.media.metadata.proxy'));
+
+        $instance->setTemplates(array('helper_thumbnail' => 'SonataMediaBundle:Provider:thumbnail.html.twig', 'helper_view' => 'SonataMediaBundle:Provider:view_vimeo.html.twig'));
+        $instance->setResizer($this->get('sonata.media.resizer.simple'));
+        $instance->addFormat('admin', array('quality' => 80, 'width' => 100, 'format' => 'jpg', 'height' => false, 'constraint' => true));
+
+        return $instance;
+    }
+
+    /**
+     * Gets the 'sonata.media.provider.youtube' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\MediaBundle\Provider\YouTubeProvider A Sonata\MediaBundle\Provider\YouTubeProvider instance.
+     */
+    protected function getSonata_Media_Provider_YoutubeService()
+    {
+        $this->services['sonata.media.provider.youtube'] = $instance = new \Sonata\MediaBundle\Provider\YouTubeProvider('sonata.media.provider.youtube', $this->get('sonata.media.filesystem.local'), $this->get('sonata.media.cdn.server'), $this->get('sonata.media.generator.default'), $this->get('sonata.media.thumbnail.format'), $this->get('sonata.media.buzz.browser'), $this->get('sonata.media.metadata.proxy'));
+
+        $instance->setTemplates(array('helper_thumbnail' => 'SonataMediaBundle:Provider:thumbnail.html.twig', 'helper_view' => 'SonataMediaBundle:Provider:view_youtube.html.twig'));
+        $instance->addFormat('default_small', array('width' => 100, 'quality' => 70, 'height' => false, 'format' => 'jpg', 'constraint' => true));
+        $instance->addFormat('default_big', array('width' => 500, 'quality' => 70, 'height' => false, 'format' => 'jpg', 'constraint' => true));
+        $instance->setResizer($this->get('sonata.media.resizer.simple'));
+        $instance->addFormat('admin', array('quality' => 80, 'width' => 100, 'format' => 'jpg', 'height' => false, 'constraint' => true));
+
+        return $instance;
+    }
+
+    /**
+     * Gets the 'sonata.media.resizer.simple' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\MediaBundle\Resizer\SimpleResizer A Sonata\MediaBundle\Resizer\SimpleResizer instance.
+     */
+    protected function getSonata_Media_Resizer_SimpleService()
+    {
+        return $this->services['sonata.media.resizer.simple'] = new \Sonata\MediaBundle\Resizer\SimpleResizer($this->get('sonata.media.adapter.image.gd'), 'inset', $this->get('sonata.media.metadata.proxy'));
+    }
+
+    /**
+     * Gets the 'sonata.media.resizer.square' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\MediaBundle\Resizer\SquareResizer A Sonata\MediaBundle\Resizer\SquareResizer instance.
+     */
+    protected function getSonata_Media_Resizer_SquareService()
+    {
+        return $this->services['sonata.media.resizer.square'] = new \Sonata\MediaBundle\Resizer\SquareResizer($this->get('sonata.media.adapter.image.gd'), 'inset', $this->get('sonata.media.metadata.proxy'));
+    }
+
+    /**
+     * Gets the 'sonata.media.security.connected_strategy' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\MediaBundle\Security\RolesDownloadStrategy A Sonata\MediaBundle\Security\RolesDownloadStrategy instance.
+     */
+    protected function getSonata_Media_Security_ConnectedStrategyService()
+    {
+        return $this->services['sonata.media.security.connected_strategy'] = new \Sonata\MediaBundle\Security\RolesDownloadStrategy($this->get('translator.default'), $this->get('security.context'), array(0 => 'IS_AUTHENTICATED_FULLY', 1 => 'IS_AUTHENTICATED_REMEMBERED'));
+    }
+
+    /**
+     * Gets the 'sonata.media.security.forbidden_strategy' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\MediaBundle\Security\ForbiddenDownloadStrategy A Sonata\MediaBundle\Security\ForbiddenDownloadStrategy instance.
+     */
+    protected function getSonata_Media_Security_ForbiddenStrategyService()
+    {
+        return $this->services['sonata.media.security.forbidden_strategy'] = new \Sonata\MediaBundle\Security\ForbiddenDownloadStrategy($this->get('translator.default'));
+    }
+
+    /**
+     * Gets the 'sonata.media.security.public_strategy' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\MediaBundle\Security\PublicDownloadStrategy A Sonata\MediaBundle\Security\PublicDownloadStrategy instance.
+     */
+    protected function getSonata_Media_Security_PublicStrategyService()
+    {
+        return $this->services['sonata.media.security.public_strategy'] = new \Sonata\MediaBundle\Security\PublicDownloadStrategy($this->get('translator.default'));
+    }
+
+    /**
+     * Gets the 'sonata.media.security.superadmin_strategy' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\MediaBundle\Security\RolesDownloadStrategy A Sonata\MediaBundle\Security\RolesDownloadStrategy instance.
+     */
+    protected function getSonata_Media_Security_SuperadminStrategyService()
+    {
+        return $this->services['sonata.media.security.superadmin_strategy'] = new \Sonata\MediaBundle\Security\RolesDownloadStrategy($this->get('translator.default'), $this->get('security.context'), array(0 => 'ROLE_SUPER_ADMIN', 1 => 'ROLE_ADMIN'));
+    }
+
+    /**
+     * Gets the 'sonata.media.thumbnail.format' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\MediaBundle\Thumbnail\FormatThumbnail A Sonata\MediaBundle\Thumbnail\FormatThumbnail instance.
+     */
+    protected function getSonata_Media_Thumbnail_FormatService()
+    {
+        return $this->services['sonata.media.thumbnail.format'] = new \Sonata\MediaBundle\Thumbnail\FormatThumbnail('jpg');
+    }
+
+    /**
+     * Gets the 'sonata.media.twig.extension' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\MediaBundle\Twig\Extension\MediaExtension A Sonata\MediaBundle\Twig\Extension\MediaExtension instance.
+     */
+    protected function getSonata_Media_Twig_ExtensionService()
+    {
+        return $this->services['sonata.media.twig.extension'] = new \Sonata\MediaBundle\Twig\Extension\MediaExtension($this->get('sonata.media.pool'), $this->get('sonata.media.manager.media'));
+    }
+
+    /**
+     * Gets the 'sonata.media.validator.format' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\MediaBundle\Validator\FormatValidator A Sonata\MediaBundle\Validator\FormatValidator instance.
+     */
+    protected function getSonata_Media_Validator_FormatService()
+    {
+        return $this->services['sonata.media.validator.format'] = new \Sonata\MediaBundle\Validator\FormatValidator($this->get('sonata.media.pool'));
+    }
+
+    /**
+     * Gets the 'sonata.news.admin.category' service.
+     *
+     * @return Sonata\NewsBundle\Admin\CategoryAdmin A Sonata\NewsBundle\Admin\CategoryAdmin instance.
+     */
+    protected function getSonata_News_Admin_CategoryService()
+    {
+        $instance = new \Sonata\NewsBundle\Admin\CategoryAdmin('sonata.news.admin.category', 'Application\\Sonata\\NewsBundle\\Entity\\Category', 'SonataAdminBundle:CRUD');
+
+        $instance->setTranslationDomain('SonataNewsBundle');
+        $instance->setLabelTranslatorStrategy($this->get('sonata.admin.label.strategy.underscore'));
+        $instance->setManagerType('orm');
+        $instance->setModelManager($this->get('sonata.admin.manager.orm'));
+        $instance->setFormContractor($this->get('sonata.admin.builder.orm_form'));
+        $instance->setShowBuilder($this->get('sonata.admin.builder.orm_show'));
+        $instance->setListBuilder($this->get('sonata.admin.builder.orm_list'));
+        $instance->setDatagridBuilder($this->get('sonata.admin.builder.orm_datagrid'));
+        $instance->setTranslator($this->get('translator.default'));
+        $instance->setConfigurationPool($this->get('sonata.admin.pool'));
+        $instance->setRouteGenerator($this->get('sonata.admin.route.default_generator'));
+        $instance->setValidator($this->get('validator'));
+        $instance->setSecurityHandler($this->get('sonata.admin.security.handler'));
+        $instance->setMenuFactory($this->get('knp_menu.factory'));
+        $instance->setRouteBuilder($this->get('sonata.admin.route.path_info'));
+        $instance->setLabel('categories');
+        $instance->setPersistFilters(false);
+        $instance->setTemplates(array('user_block' => 'SonataUserBundle:Admin/Core:user_block.html.twig', 'layout' => 'SonataAdminBundle::standard_layout.html.twig', 'ajax' => 'SonataAdminBundle::ajax_layout.html.twig', 'dashboard' => 'SonataAdminBundle:Core:dashboard.html.twig', 'list' => 'SonataAdminBundle:CRUD:list.html.twig', 'show' => 'SonataAdminBundle:CRUD:show.html.twig', 'edit' => 'SonataAdminBundle:CRUD:edit.html.twig', 'history' => 'SonataAdminBundle:CRUD:history.html.twig', 'history_revision' => 'SonataAdminBundle:CRUD:history_revision.html.twig', 'action' => 'SonataAdminBundle:CRUD:action.html.twig', 'short_object_description' => 'SonataAdminBundle:Helper:short-object-description.html.twig', 'preview' => 'SonataAdminBundle:CRUD:preview.html.twig', 'list_block' => 'SonataAdminBundle:Block:block_admin_list.html.twig', 'delete' => 'SonataAdminBundle:CRUD:delete.html.twig', 'batch' => 'SonataAdminBundle:CRUD:list__batch.html.twig', 'batch_confirmation' => 'SonataAdminBundle:CRUD:batch_confirmation.html.twig'));
+        $instance->setSecurityInformation(array());
+        $instance->initialize();
+        $instance->setFormTheme(array(0 => 'SonataDoctrineORMAdminBundle:Form:form_admin_fields.html.twig'));
+        $instance->setFilterTheme(array(0 => 'SonataDoctrineORMAdminBundle:Form:filter_admin_fields.html.twig'));
+
+        return $instance;
+    }
+
+    /**
+     * Gets the 'sonata.news.admin.comment' service.
+     *
+     * @return Sonata\NewsBundle\Admin\CommentAdmin A Sonata\NewsBundle\Admin\CommentAdmin instance.
+     */
+    protected function getSonata_News_Admin_CommentService()
+    {
+        $instance = new \Sonata\NewsBundle\Admin\CommentAdmin('sonata.news.admin.comment', 'Application\\Sonata\\NewsBundle\\Entity\\Comment', 'SonataNewsBundle:CommentAdmin');
+
+        $instance->setTranslationDomain('SonataNewsBundle');
+        $instance->setCommentManager($this->get('sonata.news.manager.comment'));
+        $instance->setLabelTranslatorStrategy($this->get('sonata.admin.label.strategy.underscore'));
+        $instance->setManagerType('orm');
+        $instance->setModelManager($this->get('sonata.admin.manager.orm'));
+        $instance->setFormContractor($this->get('sonata.admin.builder.orm_form'));
+        $instance->setShowBuilder($this->get('sonata.admin.builder.orm_show'));
+        $instance->setListBuilder($this->get('sonata.admin.builder.orm_list'));
+        $instance->setDatagridBuilder($this->get('sonata.admin.builder.orm_datagrid'));
+        $instance->setTranslator($this->get('translator.default'));
+        $instance->setConfigurationPool($this->get('sonata.admin.pool'));
+        $instance->setRouteGenerator($this->get('sonata.admin.route.default_generator'));
+        $instance->setValidator($this->get('validator'));
+        $instance->setSecurityHandler($this->get('sonata.admin.security.handler'));
+        $instance->setMenuFactory($this->get('knp_menu.factory'));
+        $instance->setRouteBuilder($this->get('sonata.admin.route.path_info'));
+        $instance->setLabel('comments');
+        $instance->setPersistFilters(false);
+        $instance->setTemplates(array('user_block' => 'SonataUserBundle:Admin/Core:user_block.html.twig', 'layout' => 'SonataAdminBundle::standard_layout.html.twig', 'ajax' => 'SonataAdminBundle::ajax_layout.html.twig', 'dashboard' => 'SonataAdminBundle:Core:dashboard.html.twig', 'list' => 'SonataAdminBundle:CRUD:list.html.twig', 'show' => 'SonataAdminBundle:CRUD:show.html.twig', 'edit' => 'SonataAdminBundle:CRUD:edit.html.twig', 'history' => 'SonataAdminBundle:CRUD:history.html.twig', 'history_revision' => 'SonataAdminBundle:CRUD:history_revision.html.twig', 'action' => 'SonataAdminBundle:CRUD:action.html.twig', 'short_object_description' => 'SonataAdminBundle:Helper:short-object-description.html.twig', 'preview' => 'SonataAdminBundle:CRUD:preview.html.twig', 'list_block' => 'SonataAdminBundle:Block:block_admin_list.html.twig', 'delete' => 'SonataAdminBundle:CRUD:delete.html.twig', 'batch' => 'SonataAdminBundle:CRUD:list__batch.html.twig', 'batch_confirmation' => 'SonataAdminBundle:CRUD:batch_confirmation.html.twig'));
+        $instance->setSecurityInformation(array());
+        $instance->initialize();
+        $instance->setFormTheme(array(0 => 'SonataDoctrineORMAdminBundle:Form:form_admin_fields.html.twig'));
+        $instance->setFilterTheme(array(0 => 'SonataDoctrineORMAdminBundle:Form:filter_admin_fields.html.twig'));
+
+        return $instance;
+    }
+
+    /**
+     * Gets the 'sonata.news.admin.post' service.
+     *
+     * @return Sonata\NewsBundle\Admin\PostAdmin A Sonata\NewsBundle\Admin\PostAdmin instance.
+     */
+    protected function getSonata_News_Admin_PostService()
+    {
+        $a = $this->get('sonata.news.manager.comment');
+        $b = $this->get('sonata.admin.label.strategy.underscore');
+        $c = $this->get('sonata.admin.manager.orm');
+        $d = $this->get('sonata.admin.builder.orm_form');
+        $e = $this->get('sonata.admin.builder.orm_show');
+        $f = $this->get('sonata.admin.builder.orm_list');
+        $g = $this->get('sonata.admin.builder.orm_datagrid');
+        $h = $this->get('translator.default');
+        $i = $this->get('sonata.admin.pool');
+        $j = $this->get('sonata.admin.route.default_generator');
+        $k = $this->get('validator');
+        $l = $this->get('sonata.admin.security.handler');
+        $m = $this->get('knp_menu.factory');
+        $n = $this->get('sonata.admin.route.path_info');
+
+        $o = new \Sonata\NewsBundle\Admin\CommentAdmin('sonata.news.admin.comment', 'Application\\Sonata\\NewsBundle\\Entity\\Comment', 'SonataNewsBundle:CommentAdmin');
+        $o->setTranslationDomain('SonataNewsBundle');
+        $o->setCommentManager($a);
+        $o->setLabelTranslatorStrategy($b);
+        $o->setManagerType('orm');
+        $o->setModelManager($c);
+        $o->setFormContractor($d);
+        $o->setShowBuilder($e);
+        $o->setListBuilder($f);
+        $o->setDatagridBuilder($g);
+        $o->setTranslator($h);
+        $o->setConfigurationPool($i);
+        $o->setRouteGenerator($j);
+        $o->setValidator($k);
+        $o->setSecurityHandler($l);
+        $o->setMenuFactory($m);
+        $o->setRouteBuilder($n);
+        $o->setLabel('comments');
+        $o->setPersistFilters(false);
+        $o->setTemplates(array('user_block' => 'SonataUserBundle:Admin/Core:user_block.html.twig', 'layout' => 'SonataAdminBundle::standard_layout.html.twig', 'ajax' => 'SonataAdminBundle::ajax_layout.html.twig', 'dashboard' => 'SonataAdminBundle:Core:dashboard.html.twig', 'list' => 'SonataAdminBundle:CRUD:list.html.twig', 'show' => 'SonataAdminBundle:CRUD:show.html.twig', 'edit' => 'SonataAdminBundle:CRUD:edit.html.twig', 'history' => 'SonataAdminBundle:CRUD:history.html.twig', 'history_revision' => 'SonataAdminBundle:CRUD:history_revision.html.twig', 'action' => 'SonataAdminBundle:CRUD:action.html.twig', 'short_object_description' => 'SonataAdminBundle:Helper:short-object-description.html.twig', 'preview' => 'SonataAdminBundle:CRUD:preview.html.twig', 'list_block' => 'SonataAdminBundle:Block:block_admin_list.html.twig', 'delete' => 'SonataAdminBundle:CRUD:delete.html.twig', 'batch' => 'SonataAdminBundle:CRUD:list__batch.html.twig', 'batch_confirmation' => 'SonataAdminBundle:CRUD:batch_confirmation.html.twig'));
+        $o->setSecurityInformation(array());
+        $o->initialize();
+        $o->setFormTheme(array(0 => 'SonataDoctrineORMAdminBundle:Form:form_admin_fields.html.twig'));
+        $o->setFilterTheme(array(0 => 'SonataDoctrineORMAdminBundle:Form:filter_admin_fields.html.twig'));
+
+        $instance = new \Sonata\NewsBundle\Admin\PostAdmin('sonata.news.admin.post', 'Application\\Sonata\\NewsBundle\\Entity\\Post', 'SonataAdminBundle:CRUD');
+
+        $instance->setUserManager($this->get('fos_user.user_manager'));
+        $instance->setPoolFormatter($this->get('sonata.formatter.pool'));
+        $instance->addChild($o);
+        $instance->setTranslationDomain('SonataNewsBundle');
+        $instance->setCommentManager($a);
+        $instance->setLabelTranslatorStrategy($b);
+        $instance->setManagerType('orm');
+        $instance->setModelManager($c);
+        $instance->setFormContractor($d);
+        $instance->setShowBuilder($e);
+        $instance->setListBuilder($f);
+        $instance->setDatagridBuilder($g);
+        $instance->setTranslator($h);
+        $instance->setConfigurationPool($i);
+        $instance->setRouteGenerator($j);
+        $instance->setValidator($k);
+        $instance->setSecurityHandler($l);
+        $instance->setMenuFactory($m);
+        $instance->setRouteBuilder($n);
+        $instance->setLabel('posts');
+        $instance->setPersistFilters(false);
+        $instance->setTemplates(array('user_block' => 'SonataUserBundle:Admin/Core:user_block.html.twig', 'layout' => 'SonataAdminBundle::standard_layout.html.twig', 'ajax' => 'SonataAdminBundle::ajax_layout.html.twig', 'dashboard' => 'SonataAdminBundle:Core:dashboard.html.twig', 'list' => 'SonataAdminBundle:CRUD:list.html.twig', 'show' => 'SonataAdminBundle:CRUD:show.html.twig', 'edit' => 'SonataAdminBundle:CRUD:edit.html.twig', 'history' => 'SonataAdminBundle:CRUD:history.html.twig', 'history_revision' => 'SonataAdminBundle:CRUD:history_revision.html.twig', 'action' => 'SonataAdminBundle:CRUD:action.html.twig', 'short_object_description' => 'SonataAdminBundle:Helper:short-object-description.html.twig', 'preview' => 'SonataAdminBundle:CRUD:preview.html.twig', 'list_block' => 'SonataAdminBundle:Block:block_admin_list.html.twig', 'delete' => 'SonataAdminBundle:CRUD:delete.html.twig', 'batch' => 'SonataAdminBundle:CRUD:list__batch.html.twig', 'batch_confirmation' => 'SonataAdminBundle:CRUD:batch_confirmation.html.twig'));
+        $instance->setSecurityInformation(array());
+        $instance->initialize();
+        $instance->setFormTheme(array(0 => 'SonataDoctrineORMAdminBundle:Form:form_admin_fields.html.twig'));
+        $instance->setFilterTheme(array(0 => 'SonataDoctrineORMAdminBundle:Form:filter_admin_fields.html.twig'));
+
+        return $instance;
+    }
+
+    /**
+     * Gets the 'sonata.news.admin.tag' service.
+     *
+     * @return Sonata\NewsBundle\Admin\TagAdmin A Sonata\NewsBundle\Admin\TagAdmin instance.
+     */
+    protected function getSonata_News_Admin_TagService()
+    {
+        $instance = new \Sonata\NewsBundle\Admin\TagAdmin('sonata.news.admin.tag', 'Application\\Sonata\\NewsBundle\\Entity\\Tag', 'SonataAdminBundle:CRUD');
+
+        $instance->setTranslationDomain('SonataNewsBundle');
+        $instance->setLabelTranslatorStrategy($this->get('sonata.admin.label.strategy.underscore'));
+        $instance->setManagerType('orm');
+        $instance->setModelManager($this->get('sonata.admin.manager.orm'));
+        $instance->setFormContractor($this->get('sonata.admin.builder.orm_form'));
+        $instance->setShowBuilder($this->get('sonata.admin.builder.orm_show'));
+        $instance->setListBuilder($this->get('sonata.admin.builder.orm_list'));
+        $instance->setDatagridBuilder($this->get('sonata.admin.builder.orm_datagrid'));
+        $instance->setTranslator($this->get('translator.default'));
+        $instance->setConfigurationPool($this->get('sonata.admin.pool'));
+        $instance->setRouteGenerator($this->get('sonata.admin.route.default_generator'));
+        $instance->setValidator($this->get('validator'));
+        $instance->setSecurityHandler($this->get('sonata.admin.security.handler'));
+        $instance->setMenuFactory($this->get('knp_menu.factory'));
+        $instance->setRouteBuilder($this->get('sonata.admin.route.path_info'));
+        $instance->setLabel('tags');
+        $instance->setPersistFilters(false);
+        $instance->setTemplates(array('user_block' => 'SonataUserBundle:Admin/Core:user_block.html.twig', 'layout' => 'SonataAdminBundle::standard_layout.html.twig', 'ajax' => 'SonataAdminBundle::ajax_layout.html.twig', 'dashboard' => 'SonataAdminBundle:Core:dashboard.html.twig', 'list' => 'SonataAdminBundle:CRUD:list.html.twig', 'show' => 'SonataAdminBundle:CRUD:show.html.twig', 'edit' => 'SonataAdminBundle:CRUD:edit.html.twig', 'history' => 'SonataAdminBundle:CRUD:history.html.twig', 'history_revision' => 'SonataAdminBundle:CRUD:history_revision.html.twig', 'action' => 'SonataAdminBundle:CRUD:action.html.twig', 'short_object_description' => 'SonataAdminBundle:Helper:short-object-description.html.twig', 'preview' => 'SonataAdminBundle:CRUD:preview.html.twig', 'list_block' => 'SonataAdminBundle:Block:block_admin_list.html.twig', 'delete' => 'SonataAdminBundle:CRUD:delete.html.twig', 'batch' => 'SonataAdminBundle:CRUD:list__batch.html.twig', 'batch_confirmation' => 'SonataAdminBundle:CRUD:batch_confirmation.html.twig'));
+        $instance->setSecurityInformation(array());
+        $instance->initialize();
+        $instance->setFormTheme(array(0 => 'SonataDoctrineORMAdminBundle:Form:form_admin_fields.html.twig'));
+        $instance->setFilterTheme(array(0 => 'SonataDoctrineORMAdminBundle:Form:filter_admin_fields.html.twig'));
+
+        return $instance;
+    }
+
+    /**
+     * Gets the 'sonata.news.blog' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\NewsBundle\Model\Blog A Sonata\NewsBundle\Model\Blog instance.
+     */
+    protected function getSonata_News_BlogService()
+    {
+        return $this->services['sonata.news.blog'] = new \Sonata\NewsBundle\Model\Blog('Sonata Project', 'http://sonata-project.org', 'Cool bundles on top of Symfony2', $this->get('sonata.news.permalink.date'));
+    }
+
+    /**
+     * Gets the 'sonata.news.form.type.comment' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\NewsBundle\Form\Type\CommentType A Sonata\NewsBundle\Form\Type\CommentType instance.
+     */
+    protected function getSonata_News_Form_Type_CommentService()
+    {
+        return $this->services['sonata.news.form.type.comment'] = new \Sonata\NewsBundle\Form\Type\CommentType();
+    }
+
+    /**
+     * Gets the 'sonata.news.hash.generator' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\NewsBundle\Util\HashGenerator A Sonata\NewsBundle\Util\HashGenerator instance.
+     */
+    protected function getSonata_News_Hash_GeneratorService()
+    {
+        return $this->services['sonata.news.hash.generator'] = new \Sonata\NewsBundle\Util\HashGenerator('secureToken');
+    }
+
+    /**
+     * Gets the 'sonata.news.mailer' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\NewsBundle\Mailer\Mailer A Sonata\NewsBundle\Mailer\Mailer instance.
+     */
+    protected function getSonata_News_MailerService()
+    {
+        return $this->services['sonata.news.mailer'] = new \Sonata\NewsBundle\Mailer\Mailer($this->get('mailer'), $this->get('sonata.news.blog'), $this->get('sonata.news.hash.generator'), $this->get('router'), $this->get('templating'), array('notification' => array('emails' => array(0 => 'email@example.org', 1 => 'email2@example.org'), 'from' => 'no-reply@sonata-project.org', 'template' => 'SonataNewsBundle:Mail:comment_notification.txt.twig')));
+    }
+
+    /**
+     * Gets the 'sonata.news.manager.category' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\NewsBundle\Entity\CategoryManager A Sonata\NewsBundle\Entity\CategoryManager instance.
+     */
+    protected function getSonata_News_Manager_CategoryService()
+    {
+        return $this->services['sonata.news.manager.category'] = new \Sonata\NewsBundle\Entity\CategoryManager($this->get('doctrine.orm.default_entity_manager'), 'Application\\Sonata\\NewsBundle\\Entity\\Category');
+    }
+
+    /**
+     * Gets the 'sonata.news.manager.comment' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\NewsBundle\Entity\CommentManager A Sonata\NewsBundle\Entity\CommentManager instance.
+     */
+    protected function getSonata_News_Manager_CommentService()
+    {
+        return $this->services['sonata.news.manager.comment'] = new \Sonata\NewsBundle\Entity\CommentManager($this->get('doctrine.orm.default_entity_manager'), 'Application\\Sonata\\NewsBundle\\Entity\\Comment', $this->get('sonata.news.manager.post'));
+    }
+
+    /**
+     * Gets the 'sonata.news.manager.post' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\NewsBundle\Entity\PostManager A Sonata\NewsBundle\Entity\PostManager instance.
+     */
+    protected function getSonata_News_Manager_PostService()
+    {
+        return $this->services['sonata.news.manager.post'] = new \Sonata\NewsBundle\Entity\PostManager($this->get('doctrine.orm.default_entity_manager'), 'Application\\Sonata\\NewsBundle\\Entity\\Post');
+    }
+
+    /**
+     * Gets the 'sonata.news.manager.tag' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\NewsBundle\Entity\TagManager A Sonata\NewsBundle\Entity\TagManager instance.
+     */
+    protected function getSonata_News_Manager_TagService()
+    {
+        return $this->services['sonata.news.manager.tag'] = new \Sonata\NewsBundle\Entity\TagManager($this->get('doctrine.orm.default_entity_manager'), 'Application\\Sonata\\NewsBundle\\Entity\\Tag');
+    }
+
+    /**
+     * Gets the 'sonata.news.permalink.category' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\NewsBundle\Permalink\CategoryPermalink A Sonata\NewsBundle\Permalink\CategoryPermalink instance.
+     */
+    protected function getSonata_News_Permalink_CategoryService()
+    {
+        return $this->services['sonata.news.permalink.category'] = new \Sonata\NewsBundle\Permalink\CategoryPermalink();
+    }
+
+    /**
+     * Gets the 'sonata.news.permalink.date' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Sonata\NewsBundle\Permalink\DatePermalink A Sonata\NewsBundle\Permalink\DatePermalink instance.
+     */
+    protected function getSonata_News_Permalink_DateService()
+    {
+        return $this->services['sonata.news.permalink.date'] = new \Sonata\NewsBundle\Permalink\DatePermalink('%1$04d/%2$d/%3$d/%4$s');
+    }
+
+    /**
      * Gets the 'sonata.user.admin.group' service.
      *
      * @return Sonata\UserBundle\Admin\Entity\GroupAdmin A Sonata\UserBundle\Admin\Entity\GroupAdmin instance.
@@ -3413,7 +4534,7 @@ class appDevDebugProjectContainer extends Container
         $instance->setRouteBuilder($this->get('sonata.admin.route.path_info'));
         $instance->setLabel('groups');
         $instance->setPersistFilters(false);
-        $instance->setTemplates(array('user_block' => 'SonataUserBundle:Admin/Core:user_block.html.twig', 'layout' => 'SonataAdminBundle::standard_layout.html.twig', 'ajax' => 'SonataAdminBundle::ajax_layout.html.twig', 'dashboard' => 'SonataAdminBundle:Core:dashboard.html.twig', 'list' => 'SonataAdminBundle:CRUD:list.html.twig', 'show' => 'SonataAdminBundle:CRUD:show.html.twig', 'edit' => 'SonataAdminBundle:CRUD:edit.html.twig', 'history' => 'SonataAdminBundle:CRUD:history.html.twig', 'history_revision' => 'SonataAdminBundle:CRUD:history_revision.html.twig', 'action' => 'SonataAdminBundle:CRUD:action.html.twig', 'short_object_description' => 'SonataAdminBundle:Helper:short-object-description.html.twig', 'preview' => 'SonataAdminBundle:CRUD:preview.html.twig', 'list_block' => 'SonataAdminBundle:Block:block_admin_list.html.twig', 'delete' => 'SonataAdminBundle:CRUD:delete.html.twig', 'batch' => 'SonataAdminBundle:CRUD:list__batch.html.twig', 'batch_confirmation' => 'SonataAdminBundle:CRUD:batch_confirmation.html.twig', 'inner_list_row' => 'SonataAdminBundle:CRUD:list_inner_row.html.twig', 'base_list_field' => 'SonataAdminBundle:CRUD:base_list_field.html.twig'));
+        $instance->setTemplates(array('user_block' => 'SonataUserBundle:Admin/Core:user_block.html.twig', 'layout' => 'SonataAdminBundle::standard_layout.html.twig', 'ajax' => 'SonataAdminBundle::ajax_layout.html.twig', 'dashboard' => 'SonataAdminBundle:Core:dashboard.html.twig', 'list' => 'SonataAdminBundle:CRUD:list.html.twig', 'show' => 'SonataAdminBundle:CRUD:show.html.twig', 'edit' => 'SonataAdminBundle:CRUD:edit.html.twig', 'history' => 'SonataAdminBundle:CRUD:history.html.twig', 'history_revision' => 'SonataAdminBundle:CRUD:history_revision.html.twig', 'action' => 'SonataAdminBundle:CRUD:action.html.twig', 'short_object_description' => 'SonataAdminBundle:Helper:short-object-description.html.twig', 'preview' => 'SonataAdminBundle:CRUD:preview.html.twig', 'list_block' => 'SonataAdminBundle:Block:block_admin_list.html.twig', 'delete' => 'SonataAdminBundle:CRUD:delete.html.twig', 'batch' => 'SonataAdminBundle:CRUD:list__batch.html.twig', 'batch_confirmation' => 'SonataAdminBundle:CRUD:batch_confirmation.html.twig'));
         $instance->setSecurityInformation(array());
         $instance->initialize();
         $instance->setFormTheme(array(0 => 'SonataDoctrineORMAdminBundle:Form:form_admin_fields.html.twig'));
@@ -3449,7 +4570,7 @@ class appDevDebugProjectContainer extends Container
         $instance->setRouteBuilder($this->get('sonata.admin.route.path_info'));
         $instance->setLabel('users');
         $instance->setPersistFilters(false);
-        $instance->setTemplates(array('user_block' => 'SonataUserBundle:Admin/Core:user_block.html.twig', 'layout' => 'SonataAdminBundle::standard_layout.html.twig', 'ajax' => 'SonataAdminBundle::ajax_layout.html.twig', 'dashboard' => 'SonataAdminBundle:Core:dashboard.html.twig', 'list' => 'SonataAdminBundle:CRUD:list.html.twig', 'show' => 'SonataAdminBundle:CRUD:show.html.twig', 'edit' => 'SonataAdminBundle:CRUD:edit.html.twig', 'history' => 'SonataAdminBundle:CRUD:history.html.twig', 'history_revision' => 'SonataAdminBundle:CRUD:history_revision.html.twig', 'action' => 'SonataAdminBundle:CRUD:action.html.twig', 'short_object_description' => 'SonataAdminBundle:Helper:short-object-description.html.twig', 'preview' => 'SonataAdminBundle:CRUD:preview.html.twig', 'list_block' => 'SonataAdminBundle:Block:block_admin_list.html.twig', 'delete' => 'SonataAdminBundle:CRUD:delete.html.twig', 'batch' => 'SonataAdminBundle:CRUD:list__batch.html.twig', 'batch_confirmation' => 'SonataAdminBundle:CRUD:batch_confirmation.html.twig', 'inner_list_row' => 'SonataAdminBundle:CRUD:list_inner_row.html.twig', 'base_list_field' => 'SonataAdminBundle:CRUD:base_list_field.html.twig'));
+        $instance->setTemplates(array('user_block' => 'SonataUserBundle:Admin/Core:user_block.html.twig', 'layout' => 'SonataAdminBundle::standard_layout.html.twig', 'ajax' => 'SonataAdminBundle::ajax_layout.html.twig', 'dashboard' => 'SonataAdminBundle:Core:dashboard.html.twig', 'list' => 'SonataAdminBundle:CRUD:list.html.twig', 'show' => 'SonataAdminBundle:CRUD:show.html.twig', 'edit' => 'SonataAdminBundle:CRUD:edit.html.twig', 'history' => 'SonataAdminBundle:CRUD:history.html.twig', 'history_revision' => 'SonataAdminBundle:CRUD:history_revision.html.twig', 'action' => 'SonataAdminBundle:CRUD:action.html.twig', 'short_object_description' => 'SonataAdminBundle:Helper:short-object-description.html.twig', 'preview' => 'SonataAdminBundle:CRUD:preview.html.twig', 'list_block' => 'SonataAdminBundle:Block:block_admin_list.html.twig', 'delete' => 'SonataAdminBundle:CRUD:delete.html.twig', 'batch' => 'SonataAdminBundle:CRUD:list__batch.html.twig', 'batch_confirmation' => 'SonataAdminBundle:CRUD:batch_confirmation.html.twig'));
         $instance->setSecurityInformation(array());
         $instance->initialize();
         $instance->setFormTheme(array(0 => 'SonataDoctrineORMAdminBundle:Form:form_admin_fields.html.twig'));
@@ -3686,7 +4807,7 @@ class appDevDebugProjectContainer extends Container
      */
     protected function getTemplating_Helper_ActionsService()
     {
-        return $this->services['templating.helper.actions'] = new \Symfony\Bundle\FrameworkBundle\Templating\Helper\ActionsHelper($this->get('fragment.handler'));
+        return $this->services['templating.helper.actions'] = new \Symfony\Bundle\FrameworkBundle\Templating\Helper\ActionsHelper($this->get('http_kernel'));
     }
 
     /**
@@ -3729,11 +4850,7 @@ class appDevDebugProjectContainer extends Container
      */
     protected function getTemplating_Helper_FormService()
     {
-        $a = new \Symfony\Bundle\FrameworkBundle\Templating\PhpEngine($this->get('templating.name_parser'), $this, $this->get('templating.loader'), $this->get('templating.globals'));
-        $a->setCharset('UTF-8');
-        $a->setHelpers(array('slots' => 'templating.helper.slots', 'assets' => 'templating.helper.assets', 'request' => 'templating.helper.request', 'session' => 'templating.helper.session', 'router' => 'templating.helper.router', 'actions' => 'templating.helper.actions', 'code' => 'templating.helper.code', 'translator' => 'templating.helper.translator', 'form' => 'templating.helper.form', 'logout_url' => 'templating.helper.logout_url', 'security' => 'templating.helper.security', 'assetic' => 'assetic.helper.dynamic'));
-
-        return $this->services['templating.helper.form'] = new \Symfony\Bundle\FrameworkBundle\Templating\Helper\FormHelper(new \Symfony\Component\Form\FormRenderer(new \Symfony\Component\Form\Extension\Templating\TemplatingRendererEngine($a, array(0 => 'FrameworkBundle:Form')), $this->get('form.csrf_provider')));
+        return $this->services['templating.helper.form'] = new \Symfony\Bundle\FrameworkBundle\Templating\Helper\FormHelper(new \Symfony\Component\Form\FormRenderer(new \Symfony\Component\Form\Extension\Templating\TemplatingRendererEngine($this->get('templating.engine.php'), array(0 => 'FrameworkBundle:Form')), $this->get('form.csrf_provider')));
     }
 
     /**
@@ -4119,11 +5236,11 @@ class appDevDebugProjectContainer extends Container
      * This service is shared.
      * This method always returns the same instance of the service.
      *
-     * @return Symfony\Component\Translation\Loader\QtFileLoader A Symfony\Component\Translation\Loader\QtFileLoader instance.
+     * @return Symfony\Component\Translation\Loader\QtTranslationsLoader A Symfony\Component\Translation\Loader\QtTranslationsLoader instance.
      */
     protected function getTranslation_Loader_QtService()
     {
-        return $this->services['translation.loader.qt'] = new \Symfony\Component\Translation\Loader\QtFileLoader();
+        return $this->services['translation.loader.qt'] = new \Symfony\Component\Translation\Loader\QtTranslationsLoader();
     }
 
     /**
@@ -4205,12 +5322,10 @@ class appDevDebugProjectContainer extends Container
         $instance->setFallbackLocale('en');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Validator/Resources/translations/validators.de.xlf', 'de', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Validator/Resources/translations/validators.sr_Latn.xlf', 'sr_Latn', 'validators');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Validator/Resources/translations/validators.cy.xlf', 'cy', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Validator/Resources/translations/validators.sl.xlf', 'sl', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Validator/Resources/translations/validators.it.xlf', 'it', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Validator/Resources/translations/validators.nb.xlf', 'nb', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Validator/Resources/translations/validators.hu.xlf', 'hu', 'validators');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Validator/Resources/translations/validators.tr.xlf', 'tr', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Validator/Resources/translations/validators.he.xlf', 'he', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Validator/Resources/translations/validators.es.xlf', 'es', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Validator/Resources/translations/validators.lb.xlf', 'lb', 'validators');
@@ -4222,10 +5337,8 @@ class appDevDebugProjectContainer extends Container
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Validator/Resources/translations/validators.ru.xlf', 'ru', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Validator/Resources/translations/validators.pt.xlf', 'pt', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Validator/Resources/translations/validators.ro.xlf', 'ro', 'validators');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Validator/Resources/translations/validators.bg.xlf', 'bg', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Validator/Resources/translations/validators.lt.xlf', 'lt', 'validators');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Validator/Resources/translations/validators.uk.xlf', 'uk', 'validators');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Validator/Resources/translations/validators.no.xlf', 'no', 'validators');
+        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Validator/Resources/translations/validators.ua.xlf', 'ua', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Validator/Resources/translations/validators.sv.xlf', 'sv', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Validator/Resources/translations/validators.sk.xlf', 'sk', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Validator/Resources/translations/validators.eu.xlf', 'eu', 'validators');
@@ -4233,17 +5346,13 @@ class appDevDebugProjectContainer extends Container
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Validator/Resources/translations/validators.pt_BR.xlf', 'pt_BR', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Validator/Resources/translations/validators.da.xlf', 'da', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Validator/Resources/translations/validators.hr.xlf', 'hr', 'validators');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Validator/Resources/translations/validators.gl.xlf', 'gl', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Validator/Resources/translations/validators.nl.xlf', 'nl', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Validator/Resources/translations/validators.ca.xlf', 'ca', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Validator/Resources/translations/validators.id.xlf', 'id', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Validator/Resources/translations/validators.pl.xlf', 'pl', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Validator/Resources/translations/validators.sr_Cyrl.xlf', 'sr_Cyrl', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Validator/Resources/translations/validators.cs.xlf', 'cs', 'validators');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Validator/Resources/translations/validators.af.xlf', 'af', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Validator/Resources/translations/validators.en.xlf', 'en', 'validators');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Validator/Resources/translations/validators.sq.xlf', 'sq', 'validators');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Validator/Resources/translations/validators.ar.xlf', 'ar', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Validator/Resources/translations/validators.zh_CN.xlf', 'zh_CN', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Validator/Resources/translations/validators.fi.xlf', 'fi', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Form/Resources/translations/validators.de.xlf', 'de', 'validators');
@@ -4258,13 +5367,11 @@ class appDevDebugProjectContainer extends Container
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Form/Resources/translations/validators.mn.xlf', 'mn', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Form/Resources/translations/validators.et.xlf', 'et', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Form/Resources/translations/validators.ja.xlf', 'ja', 'validators');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Form/Resources/translations/validators.el.xlf', 'el', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Form/Resources/translations/validators.fr.xlf', 'fr', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Form/Resources/translations/validators.hy.xlf', 'hy', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Form/Resources/translations/validators.ru.xlf', 'ru', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Form/Resources/translations/validators.pt.xlf', 'pt', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Form/Resources/translations/validators.ro.xlf', 'ro', 'validators');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Form/Resources/translations/validators.bg.xlf', 'bg', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Form/Resources/translations/validators.lt.xlf', 'lt', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Form/Resources/translations/validators.ua.xlf', 'ua', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Form/Resources/translations/validators.sv.xlf', 'sv', 'validators');
@@ -4274,8 +5381,6 @@ class appDevDebugProjectContainer extends Container
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Form/Resources/translations/validators.pt_BR.xlf', 'pt_BR', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Form/Resources/translations/validators.da.xlf', 'da', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Form/Resources/translations/validators.hr.xlf', 'hr', 'validators');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Form/Resources/translations/validators.lv.xlf', 'lv', 'validators');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Form/Resources/translations/validators.gl.xlf', 'gl', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Form/Resources/translations/validators.nl.xlf', 'nl', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Form/Resources/translations/validators.ca.xlf', 'ca', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Form/Resources/translations/validators.id.xlf', 'id', 'validators');
@@ -4283,37 +5388,8 @@ class appDevDebugProjectContainer extends Container
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Form/Resources/translations/validators.sr_Cyrl.xlf', 'sr_Cyrl', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Form/Resources/translations/validators.cs.xlf', 'cs', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Form/Resources/translations/validators.en.xlf', 'en', 'validators');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Form/Resources/translations/validators.ar.xlf', 'ar', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Form/Resources/translations/validators.zh_CN.xlf', 'zh_CN', 'validators');
         $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Form/Resources/translations/validators.fi.xlf', 'fi', 'validators');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Security/Core/Exception/../../Resources/translations/security.tr.xlf', 'tr', 'security');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Security/Core/Exception/../../Resources/translations/security.sr_Latn.xlf', 'sr_Latn', 'security');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Security/Core/Exception/../../Resources/translations/security.ar.xlf', 'ar', 'security');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Security/Core/Exception/../../Resources/translations/security.ua.xlf', 'ua', 'security');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Security/Core/Exception/../../Resources/translations/security.ro.xlf', 'ro', 'security');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Security/Core/Exception/../../Resources/translations/security.gl.xlf', 'gl', 'security');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Security/Core/Exception/../../Resources/translations/security.ru.xlf', 'ru', 'security');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Security/Core/Exception/../../Resources/translations/security.de.xlf', 'de', 'security');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Security/Core/Exception/../../Resources/translations/security.sl.xlf', 'sl', 'security');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Security/Core/Exception/../../Resources/translations/security.sr_Cyrl.xlf', 'sr_Cyrl', 'security');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Security/Core/Exception/../../Resources/translations/security.sv.xlf', 'sv', 'security');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Security/Core/Exception/../../Resources/translations/security.sk.xlf', 'sk', 'security');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Security/Core/Exception/../../Resources/translations/security.en.xlf', 'en', 'security');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Security/Core/Exception/../../Resources/translations/security.fr.xlf', 'fr', 'security');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Security/Core/Exception/../../Resources/translations/security.hu.xlf', 'hu', 'security');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Security/Core/Exception/../../Resources/translations/security.pl.xlf', 'pl', 'security');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Security/Core/Exception/../../Resources/translations/security.fa.xlf', 'fa', 'security');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Security/Core/Exception/../../Resources/translations/security.no.xlf', 'no', 'security');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Security/Core/Exception/../../Resources/translations/security.nl.xlf', 'nl', 'security');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Security/Core/Exception/../../Resources/translations/security.it.xlf', 'it', 'security');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Security/Core/Exception/../../Resources/translations/security.cs.xlf', 'cs', 'security');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Security/Core/Exception/../../Resources/translations/security.ca.xlf', 'ca', 'security');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Security/Core/Exception/../../Resources/translations/security.da.xlf', 'da', 'security');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Security/Core/Exception/../../Resources/translations/security.es.xlf', 'es', 'security');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Security/Core/Exception/../../Resources/translations/security.pt_PT.xlf', 'pt_PT', 'security');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Security/Core/Exception/../../Resources/translations/security.lb.xlf', 'lb', 'security');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Security/Core/Exception/../../Resources/translations/security.pt_BR.xlf', 'pt_BR', 'security');
-        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/src/Tperroin/TremplinFoyerBundle/Resources/translations/messages.fr.xlf', 'fr', 'messages');
         $instance->addResource('yml', '/var/www/sites/TremplinFoyerV1/vendor/friendsofsymfony/user-bundle/FOS/UserBundle/Resources/translations/FOSUserBundle.fr.yml', 'fr', 'FOSUserBundle');
         $instance->addResource('yml', '/var/www/sites/TremplinFoyerV1/vendor/friendsofsymfony/user-bundle/FOS/UserBundle/Resources/translations/FOSUserBundle.nl.yml', 'nl', 'FOSUserBundle');
         $instance->addResource('yml', '/var/www/sites/TremplinFoyerV1/vendor/friendsofsymfony/user-bundle/FOS/UserBundle/Resources/translations/FOSUserBundle.sl.yml', 'sl', 'FOSUserBundle');
@@ -4411,6 +5487,20 @@ class appDevDebugProjectContainer extends Container
         $instance->addResource('xliff', '/var/www/sites/TremplinFoyerV1/vendor/sonata-project/user-bundle/Sonata/UserBundle/Resources/translations/SonataUserBundle.sl.xliff', 'sl', 'SonataUserBundle');
         $instance->addResource('xliff', '/var/www/sites/TremplinFoyerV1/vendor/sonata-project/user-bundle/Sonata/UserBundle/Resources/translations/SonataUserBundle.es.xliff', 'es', 'SonataUserBundle');
         $instance->addResource('xliff', '/var/www/sites/TremplinFoyerV1/vendor/sonata-project/user-bundle/Sonata/UserBundle/Resources/translations/SonataUserBundle.fr.xliff', 'fr', 'SonataUserBundle');
+        $instance->addResource('xliff', '/var/www/sites/TremplinFoyerV1/vendor/sonata-project/news-bundle/Sonata/NewsBundle/Resources/translations/SonataNewsBundle.de.xliff', 'de', 'SonataNewsBundle');
+        $instance->addResource('xliff', '/var/www/sites/TremplinFoyerV1/vendor/sonata-project/news-bundle/Sonata/NewsBundle/Resources/translations/SonataNewsBundle.es.xliff', 'es', 'SonataNewsBundle');
+        $instance->addResource('xliff', '/var/www/sites/TremplinFoyerV1/vendor/sonata-project/news-bundle/Sonata/NewsBundle/Resources/translations/SonataNewsBundle.en.xliff', 'en', 'SonataNewsBundle');
+        $instance->addResource('xliff', '/var/www/sites/TremplinFoyerV1/vendor/sonata-project/news-bundle/Sonata/NewsBundle/Resources/translations/SonataNewsBundle.fr.xliff', 'fr', 'SonataNewsBundle');
+        $instance->addResource('xliff', '/var/www/sites/TremplinFoyerV1/vendor/sonata-project/news-bundle/Sonata/NewsBundle/Resources/translations/SonataNewsBundle.ru.xliff', 'ru', 'SonataNewsBundle');
+        $instance->addResource('xliff', '/var/www/sites/TremplinFoyerV1/vendor/sonata-project/news-bundle/Sonata/NewsBundle/Resources/translations/SonataNewsBundle.sl.xliff', 'sl', 'SonataNewsBundle');
+        $instance->addResource('xliff', '/var/www/sites/TremplinFoyerV1/vendor/sonata-project/media-bundle/Sonata/MediaBundle/Resources/translations/SonataMediaBundle.de.xliff', 'de', 'SonataMediaBundle');
+        $instance->addResource('xliff', '/var/www/sites/TremplinFoyerV1/vendor/sonata-project/media-bundle/Sonata/MediaBundle/Resources/translations/SonataMediaBundle.nl.xliff', 'nl', 'SonataMediaBundle');
+        $instance->addResource('xliff', '/var/www/sites/TremplinFoyerV1/vendor/sonata-project/media-bundle/Sonata/MediaBundle/Resources/translations/SonataMediaBundle.fr.xliff', 'fr', 'SonataMediaBundle');
+        $instance->addResource('xliff', '/var/www/sites/TremplinFoyerV1/vendor/sonata-project/media-bundle/Sonata/MediaBundle/Resources/translations/SonataMediaBundle.sl.xliff', 'sl', 'SonataMediaBundle');
+        $instance->addResource('xliff', '/var/www/sites/TremplinFoyerV1/vendor/sonata-project/media-bundle/Sonata/MediaBundle/Resources/translations/SonataMediaBundle.en.xliff', 'en', 'SonataMediaBundle');
+        $instance->addResource('xliff', '/var/www/sites/TremplinFoyerV1/vendor/sonata-project/media-bundle/Sonata/MediaBundle/Resources/translations/SonataMediaBundle.es.xliff', 'es', 'SonataMediaBundle');
+        $instance->addResource('xliff', '/var/www/sites/TremplinFoyerV1/vendor/sonata-project/media-bundle/Sonata/MediaBundle/Resources/translations/SonataMediaBundle.pl.xliff', 'pl', 'SonataMediaBundle');
+        $instance->addResource('xlf', '/var/www/sites/TremplinFoyerV1/src/Tperroin/TremplinFoyerBundle/Resources/translations/messages.fr.xlf', 'fr', 'messages');
 
         return $instance;
     }
@@ -4426,44 +5516,46 @@ class appDevDebugProjectContainer extends Container
     protected function getTwigService()
     {
         $a = $this->get('security.context');
+        $b = $this->get('router');
+        $c = $this->get('markdown.parser');
 
-        $this->services['twig'] = $instance = new \Twig_Environment($this->get('twig.loader'), array('debug' => true, 'strict_variables' => true, 'exception_controller' => 'twig.controller.exception:showAction', 'cache' => '/var/www/sites/TremplinFoyerV1/app/cache/dev/twig', 'charset' => 'UTF-8', 'paths' => array()));
+        $d = new \Knp\Bundle\MarkdownBundle\Helper\MarkdownHelper($c);
+        $d->addParser(new \Knp\Bundle\MarkdownBundle\Parser\Preset\Min(), 'min');
+        $d->addParser(new \Knp\Bundle\MarkdownBundle\Parser\Preset\Light(), 'light');
+        $d->addParser(new \Knp\Bundle\MarkdownBundle\Parser\Preset\Medium(), 'medium');
+        $d->addParser($c, 'default');
+        $d->addParser(new \Knp\Bundle\MarkdownBundle\Parser\Preset\Flavored(), 'flavored');
+
+        $this->services['twig'] = $instance = new \Twig_Environment($this->get('twig.loader'), array('debug' => true, 'strict_variables' => true, 'exception_controller' => 'Symfony\\Bundle\\TwigBundle\\Controller\\ExceptionController::showAction', 'cache' => '/var/www/sites/TremplinFoyerV1/app/cache/dev/twig', 'charset' => 'UTF-8', 'paths' => array()));
 
         $instance->addExtension(new \Symfony\Bundle\SecurityBundle\Twig\Extension\LogoutUrlExtension($this->get('templating.helper.logout_url')));
         $instance->addExtension(new \Symfony\Bridge\Twig\Extension\SecurityExtension($a));
         $instance->addExtension(new \Symfony\Bridge\Twig\Extension\TranslationExtension($this->get('translator.default')));
         $instance->addExtension(new \Symfony\Bundle\TwigBundle\Extension\AssetsExtension($this));
         $instance->addExtension(new \Symfony\Bundle\TwigBundle\Extension\ActionsExtension($this));
-        $instance->addExtension(new \Symfony\Bridge\Twig\Extension\CodeExtension(NULL, '/var/www/sites/TremplinFoyerV1/app', 'UTF-8'));
-        $instance->addExtension(new \Symfony\Bridge\Twig\Extension\RoutingExtension($this->get('router')));
+        $instance->addExtension(new \Symfony\Bundle\TwigBundle\Extension\CodeExtension($this));
+        $instance->addExtension(new \Symfony\Bridge\Twig\Extension\RoutingExtension($b));
         $instance->addExtension(new \Symfony\Bridge\Twig\Extension\YamlExtension());
-        $instance->addExtension(new \Symfony\Bridge\Twig\Extension\HttpKernelExtension($this->get('fragment.handler')));
         $instance->addExtension(new \Symfony\Bridge\Twig\Extension\FormExtension(new \Symfony\Bridge\Twig\Form\TwigRenderer(new \Symfony\Bridge\Twig\Form\TwigRendererEngine(array(0 => 'form_div_layout.html.twig', 1 => 'SonataUserBundle:Form:form_admin_fields.html.twig')), $this->get('form.csrf_provider'))));
         $instance->addExtension(new \Twig_Extension_Debug());
         $instance->addExtension(new \Symfony\Bundle\AsseticBundle\Twig\AsseticExtension($this->get('assetic.asset_factory'), $this->get('templating.name_parser'), true, array(), array(), $this->get('assetic.value_supplier.default')));
         $instance->addExtension(new \Doctrine\Bundle\DoctrineBundle\Twig\DoctrineExtension());
         $instance->addExtension(new \JMS\SecurityExtraBundle\Twig\SecurityExtension($a));
-        $instance->addExtension(new \Sonata\BlockBundle\Twig\Extension\BlockExtension($this->get('sonata.block.manager'), array('sonata.admin.block.admin_list' => 'sonata.cache.noop'), $this->get('sonata.block.loader.chain'), $this->get('sonata.block.renderer.traceable'), NULL));
         $instance->addExtension($this->get('sonata.admin.twig.extension'));
+        $instance->addExtension(new \Sonata\BlockBundle\Twig\Extension\BlockExtension($this->get('sonata.block.manager'), array('sonata.admin.block.admin_list' => 'sonata.cache.noop'), $this->get('sonata.block.loader.chain'), $this->get('sonata.block.renderer.traceable'), NULL));
+        $instance->addExtension(new \Sonata\NewsBundle\Twig\Extension\NewsExtension($b, $this->get('sonata.news.manager.tag'), $this->get('sonata.news.blog')));
+        $instance->addExtension($this->get('sonata.media.twig.extension'));
+        $instance->addExtension(new \Sonata\IntlBundle\Twig\Extension\LocaleExtension($this->get('sonata.intl.templating.helper.locale')));
+        $instance->addExtension(new \Sonata\IntlBundle\Twig\Extension\NumberExtension($this->get('sonata.intl.templating.helper.number')));
+        $instance->addExtension(new \Sonata\IntlBundle\Twig\Extension\DateTimeExtension($this->get('sonata.intl.templating.helper.datetime')));
+        $instance->addExtension(new \Sonata\FormatterBundle\Twig\Extension\TextFormatterExtension($this->get('sonata.formatter.pool')));
+        $instance->addExtension(new \Knp\Bundle\MarkdownBundle\Twig\Extension\MarkdownTwigExtension($d));
         $instance->addExtension(new \Knp\Menu\Twig\MenuExtension(new \Knp\Menu\Twig\Helper($this->get('knp_menu.renderer_provider'), $this->get('knp_menu.menu_provider'))));
-        $instance->addGlobal('app', $this->get('templating.globals'));
+        $instance->addExtension($this->get('knp_paginator.twig.extension.pagination'));
         $instance->addGlobal('sonata_block', $this->get('sonata.block.twig.global'));
         $instance->addGlobal('sonata_user', $this->get('sonata.user.twig.global'));
 
         return $instance;
-    }
-
-    /**
-     * Gets the 'twig.controller.exception' service.
-     *
-     * This service is shared.
-     * This method always returns the same instance of the service.
-     *
-     * @return Symfony\Bundle\TwigBundle\Controller\ExceptionController A Symfony\Bundle\TwigBundle\Controller\ExceptionController instance.
-     */
-    protected function getTwig_Controller_ExceptionService()
-    {
-        return $this->services['twig.controller.exception'] = new \Symfony\Bundle\TwigBundle\Controller\ExceptionController($this->get('twig'), true);
     }
 
     /**
@@ -4476,7 +5568,7 @@ class appDevDebugProjectContainer extends Container
      */
     protected function getTwig_ExceptionListenerService()
     {
-        return $this->services['twig.exception_listener'] = new \Symfony\Component\HttpKernel\EventListener\ExceptionListener('twig.controller.exception:showAction', $this->get('monolog.logger.request'));
+        return $this->services['twig.exception_listener'] = new \Symfony\Component\HttpKernel\EventListener\ExceptionListener('Symfony\\Bundle\\TwigBundle\\Controller\\ExceptionController::showAction', $this->get('monolog.logger.request'));
     }
 
     /**
@@ -4492,21 +5584,6 @@ class appDevDebugProjectContainer extends Container
         $this->services['twig.loader'] = $instance = new \Symfony\Bundle\TwigBundle\Loader\FilesystemLoader($this->get('templating.locator'), $this->get('templating.name_parser'));
 
         $instance->addPath('/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Bridge/Twig/Resources/views/Form');
-        $instance->addPath('/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Bundle/FrameworkBundle/Resources/views', 'Framework');
-        $instance->addPath('/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Bundle/SecurityBundle/Resources/views', 'Security');
-        $instance->addPath('/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Bundle/TwigBundle/Resources/views', 'Twig');
-        $instance->addPath('/var/www/sites/TremplinFoyerV1/vendor/symfony/swiftmailer-bundle/Symfony/Bundle/SwiftmailerBundle/Resources/views', 'Swiftmailer');
-        $instance->addPath('/var/www/sites/TremplinFoyerV1/vendor/doctrine/doctrine-bundle/Doctrine/Bundle/DoctrineBundle/Resources/views', 'Doctrine');
-        $instance->addPath('/var/www/sites/TremplinFoyerV1/src/Tperroin/TremplinFoyerBundle/Resources/views', 'TperroinTremplinFoyer');
-        $instance->addPath('/var/www/sites/TremplinFoyerV1/vendor/sonata-project/block-bundle/Sonata/BlockBundle/Resources/views', 'SonataBlock');
-        $instance->addPath('/var/www/sites/TremplinFoyerV1/vendor/friendsofsymfony/user-bundle/FOS/UserBundle/Resources/views', 'FOSUser');
-        $instance->addPath('/var/www/sites/TremplinFoyerV1/vendor/sonata-project/admin-bundle/Sonata/AdminBundle/Resources/views', 'SonataAdmin');
-        $instance->addPath('/var/www/sites/TremplinFoyerV1/vendor/sonata-project/doctrine-orm-admin-bundle/Sonata/DoctrineORMAdminBundle/Resources/views', 'SonataDoctrineORMAdmin');
-        $instance->addPath('/var/www/sites/TremplinFoyerV1/vendor/sonata-project/user-bundle/Sonata/UserBundle/Resources/views', 'SonataUser');
-        $instance->addPath('/var/www/sites/TremplinFoyerV1/src/Application/Sonata/UserBundle/Resources/views', 'ApplicationSonataUser');
-        $instance->addPath('/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Bundle/WebProfilerBundle/Resources/views', 'WebProfiler');
-        $instance->addPath('/var/www/sites/TremplinFoyerV1/vendor/sensio/distribution-bundle/Sensio/Bundle/DistributionBundle/Resources/views', 'SensioDistribution');
-        $instance->addPath('/var/www/sites/TremplinFoyerV1/app/Resources/views');
         $instance->addPath('/var/www/sites/TremplinFoyerV1/vendor/knplabs/knp-menu/src/Knp/Menu/Resources/views');
 
         return $instance;
@@ -4526,19 +5603,6 @@ class appDevDebugProjectContainer extends Container
     }
 
     /**
-     * Gets the 'uri_signer' service.
-     *
-     * This service is shared.
-     * This method always returns the same instance of the service.
-     *
-     * @return Symfony\Component\HttpKernel\UriSigner A Symfony\Component\HttpKernel\UriSigner instance.
-     */
-    protected function getUriSignerService()
-    {
-        return $this->services['uri_signer'] = new \Symfony\Component\HttpKernel\UriSigner('e2c9b193afaf1eed3dbeb0d23159fafd');
-    }
-
-    /**
      * Gets the 'validator' service.
      *
      * This service is shared.
@@ -4548,46 +5612,7 @@ class appDevDebugProjectContainer extends Container
      */
     protected function getValidatorService()
     {
-        return $this->services['validator'] = new \Symfony\Component\Validator\Validator($this->get('validator.mapping.class_metadata_factory'), $this->get('validator.validator_factory'), $this->get('translator.default'), 'validators', array(0 => $this->get('doctrine.orm.validator_initializer'), 1 => new \FOS\UserBundle\Validator\Initializer($this->get('fos_user.user_manager'))));
-    }
-
-    /**
-     * Gets the 'web_profiler.controller.exception' service.
-     *
-     * This service is shared.
-     * This method always returns the same instance of the service.
-     *
-     * @return Symfony\Bundle\WebProfilerBundle\Controller\ExceptionController A Symfony\Bundle\WebProfilerBundle\Controller\ExceptionController instance.
-     */
-    protected function getWebProfiler_Controller_ExceptionService()
-    {
-        return $this->services['web_profiler.controller.exception'] = new \Symfony\Bundle\WebProfilerBundle\Controller\ExceptionController($this->get('profiler'), $this->get('twig'), true);
-    }
-
-    /**
-     * Gets the 'web_profiler.controller.profiler' service.
-     *
-     * This service is shared.
-     * This method always returns the same instance of the service.
-     *
-     * @return Symfony\Bundle\WebProfilerBundle\Controller\ProfilerController A Symfony\Bundle\WebProfilerBundle\Controller\ProfilerController instance.
-     */
-    protected function getWebProfiler_Controller_ProfilerService()
-    {
-        return $this->services['web_profiler.controller.profiler'] = new \Symfony\Bundle\WebProfilerBundle\Controller\ProfilerController($this->get('router'), $this->get('profiler'), $this->get('twig'), array('data_collector.config' => array(0 => 'config', 1 => '@WebProfiler/Collector/config.html.twig'), 'data_collector.request' => array(0 => 'request', 1 => '@WebProfiler/Collector/request.html.twig'), 'data_collector.exception' => array(0 => 'exception', 1 => '@WebProfiler/Collector/exception.html.twig'), 'data_collector.events' => array(0 => 'events', 1 => '@WebProfiler/Collector/events.html.twig'), 'data_collector.logger' => array(0 => 'logger', 1 => '@WebProfiler/Collector/logger.html.twig'), 'data_collector.time' => array(0 => 'time', 1 => '@WebProfiler/Collector/time.html.twig'), 'data_collector.memory' => array(0 => 'memory', 1 => '@WebProfiler/Collector/memory.html.twig'), 'data_collector.router' => array(0 => 'router', 1 => '@WebProfiler/Collector/router.html.twig'), 'data_collector.security' => array(0 => 'security', 1 => 'SecurityBundle:Collector:security'), 'swiftmailer.data_collector' => array(0 => 'swiftmailer', 1 => 'SwiftmailerBundle:Collector:swiftmailer'), 'data_collector.doctrine' => array(0 => 'db', 1 => 'DoctrineBundle:Collector:db'), 'sonata.block.data_collector' => array(0 => 'block', 1 => 'SonataBlockBundle:Profiler:block.html.twig')), 'bottom');
-    }
-
-    /**
-     * Gets the 'web_profiler.controller.router' service.
-     *
-     * This service is shared.
-     * This method always returns the same instance of the service.
-     *
-     * @return Symfony\Bundle\WebProfilerBundle\Controller\RouterController A Symfony\Bundle\WebProfilerBundle\Controller\RouterController instance.
-     */
-    protected function getWebProfiler_Controller_RouterService()
-    {
-        return $this->services['web_profiler.controller.router'] = new \Symfony\Bundle\WebProfilerBundle\Controller\RouterController($this->get('profiler'), $this->get('twig'), $this->get('router'));
+        return $this->services['validator'] = new \Symfony\Component\Validator\Validator($this->get('validator.mapping.class_metadata_factory'), $this->get('validator.validator_factory'), array(0 => $this->get('doctrine.orm.validator_initializer'), 1 => new \FOS\UserBundle\Validator\Initializer($this->get('fos_user.user_manager'))));
     }
 
     /**
@@ -4600,7 +5625,7 @@ class appDevDebugProjectContainer extends Container
      */
     protected function getWebProfiler_DebugToolbarService()
     {
-        return $this->services['web_profiler.debug_toolbar'] = new \Symfony\Bundle\WebProfilerBundle\EventListener\WebDebugToolbarListener($this->get('twig'), false, 2, 'bottom');
+        return $this->services['web_profiler.debug_toolbar'] = new \Symfony\Bundle\WebProfilerBundle\EventListener\WebDebugToolbarListener($this->get('templating'), false, 2, 'bottom');
     }
 
     /**
@@ -4611,6 +5636,16 @@ class appDevDebugProjectContainer extends Container
     protected function getDatabaseConnectionService()
     {
         return $this->get('doctrine.dbal.default_connection');
+    }
+
+    /**
+     * Gets the debug.event_dispatcher service alias.
+     *
+     * @return Symfony\Component\HttpKernel\Debug\ContainerAwareTraceableEventDispatcher An instance of the event_dispatcher service
+     */
+    protected function getDebug_EventDispatcherService()
+    {
+        return $this->get('event_dispatcher');
     }
 
     /**
@@ -4626,7 +5661,7 @@ class appDevDebugProjectContainer extends Container
     /**
      * Gets the doctrine.orm.entity_manager service alias.
      *
-     * @return EntityManager51640d77010bd_546a8d27f194334ee012bfe64f629947b07e4919\__CG__\Doctrine\ORM\EntityManager An instance of the doctrine.orm.default_entity_manager service
+     * @return EntityManager516424e6b2bd4_546a8d27f194334ee012bfe64f629947b07e4919\__CG__\Doctrine\ORM\EntityManager An instance of the doctrine.orm.default_entity_manager service
      */
     protected function getDoctrine_Orm_EntityManagerService()
     {
@@ -4671,6 +5706,56 @@ class appDevDebugProjectContainer extends Container
     protected function getSonata_Block_RendererService()
     {
         return $this->get('sonata.block.renderer.traceable');
+    }
+
+    /**
+     * Gets the sonata.intl.locale_detector service alias.
+     *
+     * @return Sonata\IntlBundle\Locale\RequestDetector An instance of the sonata.intl.locale_detector.request service
+     */
+    protected function getSonata_Intl_LocaleDetectorService()
+    {
+        return $this->get('sonata.intl.locale_detector.request');
+    }
+
+    /**
+     * Gets the sonata.intl.timezone_detector service alias.
+     *
+     * @return Sonata\IntlBundle\Timezone\LocaleBasedTimezoneDetector An instance of the sonata.intl.timezone_detector.default service
+     */
+    protected function getSonata_Intl_TimezoneDetectorService()
+    {
+        return $this->get('sonata.intl.timezone_detector.default');
+    }
+
+    /**
+     * Gets the sonata.media.entity_manager service alias.
+     *
+     * @return EntityManager516424e6b2bd4_546a8d27f194334ee012bfe64f629947b07e4919\__CG__\Doctrine\ORM\EntityManager An instance of the doctrine.orm.default_entity_manager service
+     */
+    protected function getSonata_Media_EntityManagerService()
+    {
+        return $this->get('doctrine.orm.default_entity_manager');
+    }
+
+    /**
+     * Gets the sonata.news.entity_manager service alias.
+     *
+     * @return EntityManager516424e6b2bd4_546a8d27f194334ee012bfe64f629947b07e4919\__CG__\Doctrine\ORM\EntityManager An instance of the doctrine.orm.default_entity_manager service
+     */
+    protected function getSonata_News_EntityManagerService()
+    {
+        return $this->get('doctrine.orm.default_entity_manager');
+    }
+
+    /**
+     * Gets the sonata.news.permalink.generator service alias.
+     *
+     * @return Sonata\NewsBundle\Permalink\DatePermalink An instance of the sonata.news.permalink.date service
+     */
+    protected function getSonata_News_Permalink_GeneratorService()
+    {
+        return $this->get('sonata.news.permalink.date');
     }
 
     /**
@@ -4793,23 +5878,6 @@ class appDevDebugProjectContainer extends Container
     }
 
     /**
-     * Gets the 'jms_di_extra.controller_resolver' service.
-     *
-     * This service is shared.
-     * This method always returns the same instance of the service.
-     *
-     * This service is private.
-     * If you want to be able to request this service from the container directly,
-     * make it public, otherwise you might end up with broken code.
-     *
-     * @return JMS\DiExtraBundle\HttpKernel\ControllerResolver A JMS\DiExtraBundle\HttpKernel\ControllerResolver instance.
-     */
-    protected function getJmsDiExtra_ControllerResolverService()
-    {
-        return $this->services['jms_di_extra.controller_resolver'] = new \JMS\DiExtraBundle\HttpKernel\ControllerResolver($this, $this->get('controller_name_converter'), $this->get('monolog.logger.request'));
-    }
-
-    /**
      * Gets the 'router.request_context' service.
      *
      * This service is shared.
@@ -4824,6 +5892,27 @@ class appDevDebugProjectContainer extends Container
     protected function getRouter_RequestContextService()
     {
         return $this->services['router.request_context'] = new \Symfony\Component\Routing\RequestContext('', 'GET', 'localhost', 'http', 80, 443);
+    }
+
+    /**
+     * Gets the 'security.access.decision_manager' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * This service is private.
+     * If you want to be able to request this service from the container directly,
+     * make it public, otherwise you might end up with broken code.
+     *
+     * @return Symfony\Component\Security\Core\Authorization\AccessDecisionManager A Symfony\Component\Security\Core\Authorization\AccessDecisionManager instance.
+     */
+    protected function getSecurity_Access_DecisionManagerService()
+    {
+        $a = new \JMS\SecurityExtraBundle\Security\Authorization\Expression\LazyLoadingExpressionVoter(new \JMS\SecurityExtraBundle\Security\Authorization\Expression\ContainerAwareExpressionHandler($this));
+        $a->setLazyCompiler($this, 'security.expressions.compiler');
+        $a->setCacheDir('/var/www/sites/TremplinFoyerV1/app/cache/dev/jms_security/expressions');
+
+        return $this->services['security.access.decision_manager'] = new \Symfony\Component\Security\Core\Authorization\AccessDecisionManager(array(0 => $a, 1 => new \Symfony\Component\Security\Core\Authorization\Voter\RoleHierarchyVoter($this->get('security.role_hierarchy')), 2 => new \Symfony\Component\Security\Core\Authorization\Voter\AuthenticatedVoter($this->get('security.authentication.trust_resolver'))), 'affirmative', false, true);
     }
 
     /**
@@ -4891,7 +5980,7 @@ class appDevDebugProjectContainer extends Container
         $b = $this->get('security.user_checker');
         $c = $this->get('security.encoder_factory');
 
-        $this->services['security.authentication.manager'] = $instance = new \Symfony\Component\Security\Core\Authentication\AuthenticationProviderManager(array(0 => new \Symfony\Component\Security\Core\Authentication\Provider\DaoAuthenticationProvider($a, $b, 'admin', $c, true), 1 => new \Symfony\Component\Security\Core\Authentication\Provider\AnonymousAuthenticationProvider('51640d76b7a9b'), 2 => new \Symfony\Component\Security\Core\Authentication\Provider\DaoAuthenticationProvider($a, $b, 'main', $c, true), 3 => new \Symfony\Component\Security\Core\Authentication\Provider\AnonymousAuthenticationProvider('51640d76b7a9b')), true);
+        $this->services['security.authentication.manager'] = $instance = new \Symfony\Component\Security\Core\Authentication\AuthenticationProviderManager(array(0 => new \Symfony\Component\Security\Core\Authentication\Provider\DaoAuthenticationProvider($a, $b, 'admin', $c, true), 1 => new \Symfony\Component\Security\Core\Authentication\Provider\AnonymousAuthenticationProvider('516424e674c8d'), 2 => new \Symfony\Component\Security\Core\Authentication\Provider\DaoAuthenticationProvider($a, $b, 'main', $c, true), 3 => new \Symfony\Component\Security\Core\Authentication\Provider\AnonymousAuthenticationProvider('516424e674c8d')), true);
 
         $instance->setEventDispatcher($this->get('event_dispatcher'));
 
@@ -4930,23 +6019,6 @@ class appDevDebugProjectContainer extends Container
     protected function getSecurity_ChannelListenerService()
     {
         return $this->services['security.channel_listener'] = new \Symfony\Component\Security\Http\Firewall\ChannelListener($this->get('security.access_map'), new \Symfony\Component\Security\Http\EntryPoint\RetryAuthenticationEntryPoint(80, 443), $this->get('monolog.logger.security'));
-    }
-
-    /**
-     * Gets the 'security.expressions.handler' service.
-     *
-     * This service is shared.
-     * This method always returns the same instance of the service.
-     *
-     * This service is private.
-     * If you want to be able to request this service from the container directly,
-     * make it public, otherwise you might end up with broken code.
-     *
-     * @return JMS\SecurityExtraBundle\Security\Authorization\Expression\ContainerAwareExpressionHandler A JMS\SecurityExtraBundle\Security\Authorization\Expression\ContainerAwareExpressionHandler instance.
-     */
-    protected function getSecurity_Expressions_HandlerService()
-    {
-        return $this->services['security.expressions.handler'] = new \JMS\SecurityExtraBundle\Security\Authorization\Expression\ContainerAwareExpressionHandler($this);
     }
 
     /**
@@ -5039,11 +6111,115 @@ class appDevDebugProjectContainer extends Container
     {
         $this->services['sonata.block.manager'] = $instance = new \Sonata\BlockBundle\Block\BlockServiceManager($this, true, $this->get('logger'));
 
+        $instance->add('sonata.admin.block.admin_list', 'sonata.admin.block.admin_list');
         $instance->add('sonata.block.service.empty', 'sonata.block.service.empty');
         $instance->add('sonata.block.service.text', 'sonata.block.service.text');
         $instance->add('sonata.block.service.rss', 'sonata.block.service.rss');
-        $instance->add('sonata.admin.block.admin_list', 'sonata.admin.block.admin_list');
         $instance->add('sonata.admin_doctrine_orm.block.audit', 'sonata.admin_doctrine_orm.block.audit');
+        $instance->add('sonata.media.block.media', 'sonata.media.block.media');
+        $instance->add('sonata.media.block.feature_media', 'sonata.media.block.feature_media');
+        $instance->add('sonata.media.block.gallery', 'sonata.media.block.gallery');
+        $instance->add('sonata.formatter.block.formatter', 'sonata.formatter.block.formatter');
+
+        return $instance;
+    }
+
+    /**
+     * Gets the 'sonata.formatter.twig.env.markdown' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * This service is private.
+     * If you want to be able to request this service from the container directly,
+     * make it public, otherwise you might end up with broken code.
+     *
+     * @return Twig_Environment A Twig_Environment instance.
+     */
+    protected function getSonata_Formatter_Twig_Env_MarkdownService()
+    {
+        $this->services['sonata.formatter.twig.env.markdown'] = $instance = new \Twig_Environment(new \Sonata\FormatterBundle\Twig\Loader\LoaderSelector(new \Twig_Loader_String(), $this->get('twig.loader')), array('debug' => false, 'strict_variables' => false, 'charset' => 'UTF-8'));
+
+        $instance->addExtension(new \Twig_Extension_Sandbox(new \Sonata\FormatterBundle\Twig\SecurityPolicyContenairAware($this, array(0 => 'sonata.formatter.twig.control_flow', 1 => 'sonata.formatter.twig.gist', 2 => 'sonata.media.formatter.twig')), true));
+        $instance->addExtension($this->get('sonata.formatter.twig.control_flow'));
+        $instance->addExtension($this->get('sonata.formatter.twig.gist'));
+        $instance->addExtension($this->get('sonata.media.formatter.twig'));
+        $instance->setLexer(new \Twig_Lexer($instance, array('tag_comment' => array(0 => '<#', 1 => '#>'), 'tag_block' => array(0 => '<%', 1 => '%>'), 'tag_variable' => array(0 => '<%=', 1 => '%>'))));
+
+        return $instance;
+    }
+
+    /**
+     * Gets the 'sonata.formatter.twig.env.rawhtml' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * This service is private.
+     * If you want to be able to request this service from the container directly,
+     * make it public, otherwise you might end up with broken code.
+     *
+     * @return Twig_Environment A Twig_Environment instance.
+     */
+    protected function getSonata_Formatter_Twig_Env_RawhtmlService()
+    {
+        $this->services['sonata.formatter.twig.env.rawhtml'] = $instance = new \Twig_Environment(new \Sonata\FormatterBundle\Twig\Loader\LoaderSelector(new \Twig_Loader_String(), $this->get('twig.loader')), array('debug' => false, 'strict_variables' => false, 'charset' => 'UTF-8'));
+
+        $instance->addExtension(new \Twig_Extension_Sandbox(new \Sonata\FormatterBundle\Twig\SecurityPolicyContenairAware($this, array(0 => 'sonata.formatter.twig.control_flow', 1 => 'sonata.formatter.twig.gist', 2 => 'sonata.media.formatter.twig')), true));
+        $instance->addExtension($this->get('sonata.formatter.twig.control_flow'));
+        $instance->addExtension($this->get('sonata.formatter.twig.gist'));
+        $instance->addExtension($this->get('sonata.media.formatter.twig'));
+        $instance->setLexer(new \Twig_Lexer($instance, array('tag_comment' => array(0 => '<#', 1 => '#>'), 'tag_block' => array(0 => '<%', 1 => '%>'), 'tag_variable' => array(0 => '<%=', 1 => '%>'))));
+
+        return $instance;
+    }
+
+    /**
+     * Gets the 'sonata.formatter.twig.env.richhtml' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * This service is private.
+     * If you want to be able to request this service from the container directly,
+     * make it public, otherwise you might end up with broken code.
+     *
+     * @return Twig_Environment A Twig_Environment instance.
+     */
+    protected function getSonata_Formatter_Twig_Env_RichhtmlService()
+    {
+        $this->services['sonata.formatter.twig.env.richhtml'] = $instance = new \Twig_Environment(new \Sonata\FormatterBundle\Twig\Loader\LoaderSelector(new \Twig_Loader_String(), $this->get('twig.loader')), array('debug' => false, 'strict_variables' => false, 'charset' => 'UTF-8'));
+
+        $instance->addExtension(new \Twig_Extension_Sandbox(new \Sonata\FormatterBundle\Twig\SecurityPolicyContenairAware($this, array(0 => 'sonata.formatter.twig.control_flow', 1 => 'sonata.formatter.twig.gist', 2 => 'sonata.media.formatter.twig')), true));
+        $instance->addExtension($this->get('sonata.formatter.twig.control_flow'));
+        $instance->addExtension($this->get('sonata.formatter.twig.gist'));
+        $instance->addExtension($this->get('sonata.media.formatter.twig'));
+        $instance->setLexer(new \Twig_Lexer($instance, array('tag_comment' => array(0 => '<#', 1 => '#>'), 'tag_block' => array(0 => '<%', 1 => '%>'), 'tag_variable' => array(0 => '<%=', 1 => '%>'))));
+
+        return $instance;
+    }
+
+    /**
+     * Gets the 'sonata.formatter.twig.env.text' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * This service is private.
+     * If you want to be able to request this service from the container directly,
+     * make it public, otherwise you might end up with broken code.
+     *
+     * @return Twig_Environment A Twig_Environment instance.
+     */
+    protected function getSonata_Formatter_Twig_Env_TextService()
+    {
+        $this->services['sonata.formatter.twig.env.text'] = $instance = new \Twig_Environment(new \Sonata\FormatterBundle\Twig\Loader\LoaderSelector(new \Twig_Loader_String(), $this->get('twig.loader')), array('debug' => false, 'strict_variables' => false, 'charset' => 'UTF-8'));
+
+        $instance->addExtension(new \Twig_Extension_Sandbox(new \Sonata\FormatterBundle\Twig\SecurityPolicyContenairAware($this, array(0 => 'sonata.formatter.twig.control_flow', 1 => 'sonata.formatter.twig.gist', 2 => 'sonata.media.formatter.twig')), true));
+        $instance->addExtension($this->get('sonata.formatter.twig.control_flow'));
+        $instance->addExtension($this->get('sonata.formatter.twig.gist'));
+        $instance->addExtension($this->get('sonata.media.formatter.twig'));
+        $instance->setLexer(new \Twig_Lexer($instance, array('tag_comment' => array(0 => '<#', 1 => '#>'), 'tag_block' => array(0 => '<%', 1 => '%>'), 'tag_variable' => array(0 => '<%=', 1 => '%>'))));
 
         return $instance;
     }
@@ -5063,6 +6239,28 @@ class appDevDebugProjectContainer extends Container
     protected function getSwiftmailer_Transport_EventdispatcherService()
     {
         return $this->services['swiftmailer.transport.eventdispatcher'] = new \Swift_Events_SimpleEventDispatcher();
+    }
+
+    /**
+     * Gets the 'templating.engine.php' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * This service is private.
+     * If you want to be able to request this service from the container directly,
+     * make it public, otherwise you might end up with broken code.
+     *
+     * @return Symfony\Bundle\FrameworkBundle\Templating\PhpEngine A Symfony\Bundle\FrameworkBundle\Templating\PhpEngine instance.
+     */
+    protected function getTemplating_Engine_PhpService()
+    {
+        $this->services['templating.engine.php'] = $instance = new \Symfony\Bundle\FrameworkBundle\Templating\PhpEngine($this->get('templating.name_parser'), $this, $this->get('templating.loader'), $this->get('templating.globals'));
+
+        $instance->setCharset('UTF-8');
+        $instance->setHelpers(array('slots' => 'templating.helper.slots', 'assets' => 'templating.helper.assets', 'request' => 'templating.helper.request', 'session' => 'templating.helper.session', 'router' => 'templating.helper.router', 'actions' => 'templating.helper.actions', 'code' => 'templating.helper.code', 'translator' => 'templating.helper.translator', 'form' => 'templating.helper.form', 'logout_url' => 'templating.helper.logout_url', 'security' => 'templating.helper.security', 'assetic' => 'assetic.helper.dynamic', 'locale' => 'sonata.intl.templating.helper.locale', 'number' => 'sonata.intl.templating.helper.number', 'datetime' => 'sonata.intl.templating.helper.datetime', 'markdown' => 'templating.helper.markdown', 'knp_pagination' => 'knp_paginator.templating.helper.pagination'));
+
+        return $instance;
     }
 
     /**
@@ -5096,7 +6294,7 @@ class appDevDebugProjectContainer extends Container
      */
     protected function getValidator_Mapping_ClassMetadataFactoryService()
     {
-        return $this->services['validator.mapping.class_metadata_factory'] = new \Symfony\Component\Validator\Mapping\ClassMetadataFactory(new \Symfony\Component\Validator\Mapping\Loader\LoaderChain(array(0 => new \Symfony\Component\Validator\Mapping\Loader\AnnotationLoader($this->get('annotation_reader')), 1 => new \Symfony\Component\Validator\Mapping\Loader\StaticMethodLoader(), 2 => new \Symfony\Component\Validator\Mapping\Loader\XmlFilesLoader(array(0 => '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Form/Resources/config/validation.xml', 1 => '/var/www/sites/TremplinFoyerV1/vendor/friendsofsymfony/user-bundle/FOS/UserBundle/Resources/config/validation.xml', 2 => '/var/www/sites/TremplinFoyerV1/vendor/friendsofsymfony/user-bundle/FOS/UserBundle/Resources/config/validation/orm.xml')), 3 => new \Symfony\Component\Validator\Mapping\Loader\YamlFilesLoader(array()))), NULL);
+        return $this->services['validator.mapping.class_metadata_factory'] = new \Symfony\Component\Validator\Mapping\ClassMetadataFactory(new \Symfony\Component\Validator\Mapping\Loader\LoaderChain(array(0 => new \Symfony\Component\Validator\Mapping\Loader\AnnotationLoader($this->get('annotation_reader')), 1 => new \Symfony\Component\Validator\Mapping\Loader\StaticMethodLoader(), 2 => new \Symfony\Component\Validator\Mapping\Loader\XmlFilesLoader(array(0 => '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Form/Resources/config/validation.xml', 1 => '/var/www/sites/TremplinFoyerV1/vendor/friendsofsymfony/user-bundle/FOS/UserBundle/Resources/config/validation.xml', 2 => '/var/www/sites/TremplinFoyerV1/vendor/sonata-project/news-bundle/Sonata/NewsBundle/Resources/config/validation.xml', 3 => '/var/www/sites/TremplinFoyerV1/vendor/sonata-project/media-bundle/Sonata/MediaBundle/Resources/config/validation.xml', 4 => '/var/www/sites/TremplinFoyerV1/vendor/friendsofsymfony/user-bundle/FOS/UserBundle/Resources/config/validation/orm.xml')), 3 => new \Symfony\Component\Validator\Mapping\Loader\YamlFilesLoader(array()))), NULL);
     }
 
     /**
@@ -5113,7 +6311,7 @@ class appDevDebugProjectContainer extends Container
      */
     protected function getValidator_ValidatorFactoryService()
     {
-        return $this->services['validator.validator_factory'] = new \Symfony\Bundle\FrameworkBundle\Validator\ConstraintValidatorFactory($this, array('security.validator.user_password' => 'security.validator.user_password', 'doctrine.orm.validator.unique' => 'doctrine.orm.validator.unique', 'sonata.admin.validator.inline' => 'sonata.admin.validator.inline'));
+        return $this->services['validator.validator_factory'] = new \Symfony\Bundle\FrameworkBundle\Validator\ConstraintValidatorFactory($this, array('security.validator.user_password' => 'security.validator.user_password', 'doctrine.orm.validator.unique' => 'doctrine.orm.validator.unique', 'sonata.admin.validator.inline' => 'sonata.admin.validator.inline', 'sonata.media.validator.format' => 'sonata.media.validator.format'));
     }
 
     /**
@@ -5123,7 +6321,7 @@ class appDevDebugProjectContainer extends Container
     {
         $name = strtolower($name);
 
-        if (!(isset($this->parameters[$name]) || array_key_exists($name, $this->parameters))) {
+        if (!array_key_exists($name, $this->parameters)) {
             throw new InvalidArgumentException(sprintf('The parameter "%s" must be defined.', $name));
         }
 
@@ -5135,9 +6333,7 @@ class appDevDebugProjectContainer extends Container
      */
     public function hasParameter($name)
     {
-        $name = strtolower($name);
-
-        return isset($this->parameters[$name]) || array_key_exists($name, $this->parameters);
+        return array_key_exists(strtolower($name), $this->parameters);
     }
 
     /**
@@ -5185,16 +6381,25 @@ class appDevDebugProjectContainer extends Container
                 'JMSAopBundle' => 'JMS\\AopBundle\\JMSAopBundle',
                 'JMSDiExtraBundle' => 'JMS\\DiExtraBundle\\JMSDiExtraBundle',
                 'JMSSecurityExtraBundle' => 'JMS\\SecurityExtraBundle\\JMSSecurityExtraBundle',
-                'TperroinTremplinFoyerBundle' => 'Tperroin\\TremplinFoyerBundle\\TperroinTremplinFoyerBundle',
-                'SonataBlockBundle' => 'Sonata\\BlockBundle\\SonataBlockBundle',
                 'FOSUserBundle' => 'FOS\\UserBundle\\FOSUserBundle',
                 'SonatajQueryBundle' => 'Sonata\\jQueryBundle\\SonatajQueryBundle',
                 'SonataAdminBundle' => 'Sonata\\AdminBundle\\SonataAdminBundle',
+                'SonataBlockBundle' => 'Sonata\\BlockBundle\\SonataBlockBundle',
                 'SonataDoctrineORMAdminBundle' => 'Sonata\\DoctrineORMAdminBundle\\SonataDoctrineORMAdminBundle',
-                'KnpMenuBundle' => 'Knp\\Bundle\\MenuBundle\\KnpMenuBundle',
                 'SonataUserBundle' => 'Sonata\\UserBundle\\SonataUserBundle',
                 'SonataEasyExtendsBundle' => 'Sonata\\EasyExtendsBundle\\SonataEasyExtendsBundle',
+                'ApplicationSonataNewsBundle' => 'Application\\Sonata\\NewsBundle\\ApplicationSonataNewsBundle',
                 'ApplicationSonataUserBundle' => 'Application\\Sonata\\UserBundle\\ApplicationSonataUserBundle',
+                'ApplicationSonataMediaBundle' => 'Application\\Sonata\\MediaBundle\\ApplicationSonataMediaBundle',
+                'SonataMarkItUpBundle' => 'Sonata\\MarkItUpBundle\\SonataMarkItUpBundle',
+                'SonataNewsBundle' => 'Sonata\\NewsBundle\\SonataNewsBundle',
+                'SonataMediaBundle' => 'Sonata\\MediaBundle\\SonataMediaBundle',
+                'SonataIntlBundle' => 'Sonata\\IntlBundle\\SonataIntlBundle',
+                'SonataFormatterBundle' => 'Sonata\\FormatterBundle\\SonataFormatterBundle',
+                'KnpMarkdownBundle' => 'Knp\\Bundle\\MarkdownBundle\\KnpMarkdownBundle',
+                'KnpMenuBundle' => 'Knp\\Bundle\\MenuBundle\\KnpMenuBundle',
+                'KnpPaginatorBundle' => 'Knp\\Bundle\\PaginatorBundle\\KnpPaginatorBundle',
+                'TperroinTremplinFoyerBundle' => 'Tperroin\\TremplinFoyerBundle\\TperroinTremplinFoyerBundle',
                 'WebProfilerBundle' => 'Symfony\\Bundle\\WebProfilerBundle\\WebProfilerBundle',
                 'SensioDistributionBundle' => 'Sensio\\Bundle\\DistributionBundle\\SensioDistributionBundle',
                 'SensioGeneratorBundle' => 'Sensio\\Bundle\\GeneratorBundle\\SensioGeneratorBundle',
@@ -5211,7 +6416,7 @@ class appDevDebugProjectContainer extends Container
             'mailer_host' => '127.0.0.1',
             'mailer_user' => NULL,
             'mailer_password' => NULL,
-            'locale' => 'en',
+            'locale' => 'fr',
             'secret' => 'e2c9b193afaf1eed3dbeb0d23159fafd',
             'database_path' => NULL,
             'controller_resolver.class' => 'Symfony\\Bundle\\FrameworkBundle\\Controller\\ControllerResolver',
@@ -5225,12 +6430,6 @@ class appDevDebugProjectContainer extends Container
             'cache_warmer.class' => 'Symfony\\Component\\HttpKernel\\CacheWarmer\\CacheWarmerAggregate',
             'cache_clearer.class' => 'Symfony\\Component\\HttpKernel\\CacheClearer\\ChainCacheClearer',
             'file_locator.class' => 'Symfony\\Component\\HttpKernel\\Config\\FileLocator',
-            'uri_signer.class' => 'Symfony\\Component\\HttpKernel\\UriSigner',
-            'fragment.handler.class' => 'Symfony\\Component\\HttpKernel\\Fragment\\FragmentHandler',
-            'fragment.renderer.inline.class' => 'Symfony\\Component\\HttpKernel\\Fragment\\InlineFragmentRenderer',
-            'fragment.renderer.hinclude.class' => 'Symfony\\Bundle\\FrameworkBundle\\Fragment\\ContainerAwareHIncludeFragmentRenderer',
-            'fragment.renderer.hinclude.global_template' => NULL,
-            'fragment.path' => '/_fragment',
             'translator.class' => 'Symfony\\Bundle\\FrameworkBundle\\Translation\\Translator',
             'translator.identity.class' => 'Symfony\\Component\\Translation\\IdentityTranslator',
             'translator.selector.class' => 'Symfony\\Component\\Translation\\MessageSelector',
@@ -5239,7 +6438,7 @@ class appDevDebugProjectContainer extends Container
             'translation.loader.xliff.class' => 'Symfony\\Component\\Translation\\Loader\\XliffFileLoader',
             'translation.loader.po.class' => 'Symfony\\Component\\Translation\\Loader\\PoFileLoader',
             'translation.loader.mo.class' => 'Symfony\\Component\\Translation\\Loader\\MoFileLoader',
-            'translation.loader.qt.class' => 'Symfony\\Component\\Translation\\Loader\\QtFileLoader',
+            'translation.loader.qt.class' => 'Symfony\\Component\\Translation\\Loader\\QtTranslationsLoader',
             'translation.loader.csv.class' => 'Symfony\\Component\\Translation\\Loader\\CsvFileLoader',
             'translation.loader.res.class' => 'Symfony\\Component\\Translation\\Loader\\IcuResFileLoader',
             'translation.loader.dat.class' => 'Symfony\\Component\\Translation\\Loader\\IcuDatFileLoader',
@@ -5257,17 +6456,13 @@ class appDevDebugProjectContainer extends Container
             'translation.loader.class' => 'Symfony\\Bundle\\FrameworkBundle\\Translation\\TranslationLoader',
             'translation.extractor.class' => 'Symfony\\Component\\Translation\\Extractor\\ChainExtractor',
             'translation.writer.class' => 'Symfony\\Component\\Translation\\Writer\\TranslationWriter',
-            'debug.event_dispatcher.class' => 'Symfony\\Component\\HttpKernel\\Debug\\TraceableEventDispatcher',
-            'debug.stopwatch.class' => 'Symfony\\Component\\Stopwatch\\Stopwatch',
+            'debug.event_dispatcher.class' => 'Symfony\\Component\\HttpKernel\\Debug\\ContainerAwareTraceableEventDispatcher',
+            'debug.stopwatch.class' => 'Symfony\\Component\\HttpKernel\\Debug\\Stopwatch',
             'debug.container.dump' => '/var/www/sites/TremplinFoyerV1/app/cache/dev/appDevDebugProjectContainer.xml',
-            'debug.controller_resolver.class' => 'Symfony\\Component\\HttpKernel\\Controller\\TraceableControllerResolver',
-            'debug.deprecation_logger_listener.class' => 'Symfony\\Component\\HttpKernel\\EventListener\\DeprecationLoggerListener',
+            'debug.controller_resolver.class' => 'Symfony\\Bundle\\FrameworkBundle\\Controller\\TraceableControllerResolver',
             'kernel.secret' => 'e2c9b193afaf1eed3dbeb0d23159fafd',
-            'kernel.trusted_proxies' => array(
-
-            ),
             'kernel.trust_proxy_headers' => false,
-            'kernel.default_locale' => 'en',
+            'kernel.default_locale' => 'fr',
             'session.class' => 'Symfony\\Component\\HttpFoundation\\Session\\Session',
             'session.flashbag.class' => 'Symfony\\Component\\HttpFoundation\\Session\\Flash\\FlashBag',
             'session.attribute_bag.class' => 'Symfony\\Component\\HttpFoundation\\Session\\Attribute\\AttributeBag',
@@ -5284,44 +6479,9 @@ class appDevDebugProjectContainer extends Container
             'form.factory.class' => 'Symfony\\Component\\Form\\FormFactory',
             'form.extension.class' => 'Symfony\\Component\\Form\\Extension\\DependencyInjection\\DependencyInjectionExtension',
             'form.type_guesser.validator.class' => 'Symfony\\Component\\Form\\Extension\\Validator\\ValidatorTypeGuesser',
-            'property_accessor.class' => 'Symfony\\Component\\PropertyAccess\\PropertyAccessor',
             'form.csrf_provider.class' => 'Symfony\\Component\\Form\\Extension\\Csrf\\CsrfProvider\\SessionCsrfProvider',
             'form.type_extension.csrf.enabled' => true,
             'form.type_extension.csrf.field_name' => '_token',
-            'templating.engine.delegating.class' => 'Symfony\\Bundle\\FrameworkBundle\\Templating\\DelegatingEngine',
-            'templating.name_parser.class' => 'Symfony\\Bundle\\FrameworkBundle\\Templating\\TemplateNameParser',
-            'templating.filename_parser.class' => 'Symfony\\Bundle\\FrameworkBundle\\Templating\\TemplateFilenameParser',
-            'templating.cache_warmer.template_paths.class' => 'Symfony\\Bundle\\FrameworkBundle\\CacheWarmer\\TemplatePathsCacheWarmer',
-            'templating.locator.class' => 'Symfony\\Bundle\\FrameworkBundle\\Templating\\Loader\\TemplateLocator',
-            'templating.loader.filesystem.class' => 'Symfony\\Bundle\\FrameworkBundle\\Templating\\Loader\\FilesystemLoader',
-            'templating.loader.cache.class' => 'Symfony\\Component\\Templating\\Loader\\CacheLoader',
-            'templating.loader.chain.class' => 'Symfony\\Component\\Templating\\Loader\\ChainLoader',
-            'templating.finder.class' => 'Symfony\\Bundle\\FrameworkBundle\\CacheWarmer\\TemplateFinder',
-            'templating.engine.php.class' => 'Symfony\\Bundle\\FrameworkBundle\\Templating\\PhpEngine',
-            'templating.helper.slots.class' => 'Symfony\\Component\\Templating\\Helper\\SlotsHelper',
-            'templating.helper.assets.class' => 'Symfony\\Component\\Templating\\Helper\\CoreAssetsHelper',
-            'templating.helper.actions.class' => 'Symfony\\Bundle\\FrameworkBundle\\Templating\\Helper\\ActionsHelper',
-            'templating.helper.router.class' => 'Symfony\\Bundle\\FrameworkBundle\\Templating\\Helper\\RouterHelper',
-            'templating.helper.request.class' => 'Symfony\\Bundle\\FrameworkBundle\\Templating\\Helper\\RequestHelper',
-            'templating.helper.session.class' => 'Symfony\\Bundle\\FrameworkBundle\\Templating\\Helper\\SessionHelper',
-            'templating.helper.code.class' => 'Symfony\\Bundle\\FrameworkBundle\\Templating\\Helper\\CodeHelper',
-            'templating.helper.translator.class' => 'Symfony\\Bundle\\FrameworkBundle\\Templating\\Helper\\TranslatorHelper',
-            'templating.helper.form.class' => 'Symfony\\Bundle\\FrameworkBundle\\Templating\\Helper\\FormHelper',
-            'templating.form.engine.class' => 'Symfony\\Component\\Form\\Extension\\Templating\\TemplatingRendererEngine',
-            'templating.form.renderer.class' => 'Symfony\\Component\\Form\\FormRenderer',
-            'templating.globals.class' => 'Symfony\\Bundle\\FrameworkBundle\\Templating\\GlobalVariables',
-            'templating.asset.path_package.class' => 'Symfony\\Bundle\\FrameworkBundle\\Templating\\Asset\\PathPackage',
-            'templating.asset.url_package.class' => 'Symfony\\Component\\Templating\\Asset\\UrlPackage',
-            'templating.asset.package_factory.class' => 'Symfony\\Bundle\\FrameworkBundle\\Templating\\Asset\\PackageFactory',
-            'templating.helper.code.file_link_format' => NULL,
-            'templating.helper.form.resources' => array(
-                0 => 'FrameworkBundle:Form',
-            ),
-            'templating.debugger.class' => 'Symfony\\Bundle\\FrameworkBundle\\Templating\\Debugger',
-            'templating.loader.cache.path' => NULL,
-            'templating.engines' => array(
-                0 => 'twig',
-            ),
             'validator.class' => 'Symfony\\Component\\Validator\\Validator',
             'validator.mapping.class_metadata_factory.class' => 'Symfony\\Component\\Validator\\Mapping\\ClassMetadataFactory',
             'validator.mapping.cache.apc.class' => 'Symfony\\Component\\Validator\\Mapping\\Cache\\ApcCache',
@@ -5335,13 +6495,13 @@ class appDevDebugProjectContainer extends Container
             'validator.mapping.loader.xml_files_loader.mapping_files' => array(
                 0 => '/var/www/sites/TremplinFoyerV1/vendor/symfony/symfony/src/Symfony/Component/Form/Resources/config/validation.xml',
                 1 => '/var/www/sites/TremplinFoyerV1/vendor/friendsofsymfony/user-bundle/FOS/UserBundle/Resources/config/validation.xml',
-                2 => '/var/www/sites/TremplinFoyerV1/vendor/friendsofsymfony/user-bundle/FOS/UserBundle/Resources/config/validation/orm.xml',
+                2 => '/var/www/sites/TremplinFoyerV1/vendor/sonata-project/news-bundle/Sonata/NewsBundle/Resources/config/validation.xml',
+                3 => '/var/www/sites/TremplinFoyerV1/vendor/sonata-project/media-bundle/Sonata/MediaBundle/Resources/config/validation.xml',
+                4 => '/var/www/sites/TremplinFoyerV1/vendor/friendsofsymfony/user-bundle/FOS/UserBundle/Resources/config/validation/orm.xml',
             ),
             'validator.mapping.loader.yaml_files_loader.mapping_files' => array(
 
             ),
-            'validator.translation_domain' => 'validators',
-            'fragment.listener.class' => 'Symfony\\Component\\HttpKernel\\EventListener\\FragmentListener',
             'profiler.class' => 'Symfony\\Component\\HttpKernel\\Profiler\\Profiler',
             'profiler_listener.class' => 'Symfony\\Component\\HttpKernel\\EventListener\\ProfilerListener',
             'data_collector.config.class' => 'Symfony\\Component\\HttpKernel\\DataCollector\\ConfigDataCollector',
@@ -5372,16 +6532,49 @@ class appDevDebugProjectContainer extends Container
             'router.options.matcher_base_class' => 'Symfony\\Bundle\\FrameworkBundle\\Routing\\RedirectableUrlMatcher',
             'router.options.matcher_dumper_class' => 'Symfony\\Component\\Routing\\Matcher\\Dumper\\PhpMatcherDumper',
             'router.cache_warmer.class' => 'Symfony\\Bundle\\FrameworkBundle\\CacheWarmer\\RouterCacheWarmer',
-            'router.options.matcher.cache_class' => 'appDevUrlMatcher',
-            'router.options.generator.cache_class' => 'appDevUrlGenerator',
+            'router.options.matcher.cache_class' => 'appdevUrlMatcher',
+            'router.options.generator.cache_class' => 'appdevUrlGenerator',
             'router_listener.class' => 'Symfony\\Component\\HttpKernel\\EventListener\\RouterListener',
             'router.request_context.host' => 'localhost',
             'router.request_context.scheme' => 'http',
-            'router.request_context.base_url' => '',
             'router.resource' => '/var/www/sites/TremplinFoyerV1/app/cache/dev/assetic/routing.yml',
-            'router.cache_class_prefix' => 'appDev',
             'request_listener.http_port' => 80,
             'request_listener.https_port' => 443,
+            'templating.engine.delegating.class' => 'Symfony\\Bundle\\FrameworkBundle\\Templating\\DelegatingEngine',
+            'templating.name_parser.class' => 'Symfony\\Bundle\\FrameworkBundle\\Templating\\TemplateNameParser',
+            'templating.filename_parser.class' => 'Symfony\\Bundle\\FrameworkBundle\\Templating\\TemplateFilenameParser',
+            'templating.cache_warmer.template_paths.class' => 'Symfony\\Bundle\\FrameworkBundle\\CacheWarmer\\TemplatePathsCacheWarmer',
+            'templating.locator.class' => 'Symfony\\Bundle\\FrameworkBundle\\Templating\\Loader\\TemplateLocator',
+            'templating.loader.filesystem.class' => 'Symfony\\Bundle\\FrameworkBundle\\Templating\\Loader\\FilesystemLoader',
+            'templating.loader.cache.class' => 'Symfony\\Component\\Templating\\Loader\\CacheLoader',
+            'templating.loader.chain.class' => 'Symfony\\Component\\Templating\\Loader\\ChainLoader',
+            'templating.finder.class' => 'Symfony\\Bundle\\FrameworkBundle\\CacheWarmer\\TemplateFinder',
+            'templating.engine.php.class' => 'Symfony\\Bundle\\FrameworkBundle\\Templating\\PhpEngine',
+            'templating.helper.slots.class' => 'Symfony\\Component\\Templating\\Helper\\SlotsHelper',
+            'templating.helper.assets.class' => 'Symfony\\Component\\Templating\\Helper\\CoreAssetsHelper',
+            'templating.helper.actions.class' => 'Symfony\\Bundle\\FrameworkBundle\\Templating\\Helper\\ActionsHelper',
+            'templating.helper.router.class' => 'Symfony\\Bundle\\FrameworkBundle\\Templating\\Helper\\RouterHelper',
+            'templating.helper.request.class' => 'Symfony\\Bundle\\FrameworkBundle\\Templating\\Helper\\RequestHelper',
+            'templating.helper.session.class' => 'Symfony\\Bundle\\FrameworkBundle\\Templating\\Helper\\SessionHelper',
+            'templating.helper.code.class' => 'Symfony\\Bundle\\FrameworkBundle\\Templating\\Helper\\CodeHelper',
+            'templating.helper.translator.class' => 'Symfony\\Bundle\\FrameworkBundle\\Templating\\Helper\\TranslatorHelper',
+            'templating.helper.form.class' => 'Symfony\\Bundle\\FrameworkBundle\\Templating\\Helper\\FormHelper',
+            'templating.form.engine.class' => 'Symfony\\Component\\Form\\Extension\\Templating\\TemplatingRendererEngine',
+            'templating.form.renderer.class' => 'Symfony\\Component\\Form\\FormRenderer',
+            'templating.globals.class' => 'Symfony\\Bundle\\FrameworkBundle\\Templating\\GlobalVariables',
+            'templating.asset.path_package.class' => 'Symfony\\Bundle\\FrameworkBundle\\Templating\\Asset\\PathPackage',
+            'templating.asset.url_package.class' => 'Symfony\\Component\\Templating\\Asset\\UrlPackage',
+            'templating.asset.package_factory.class' => 'Symfony\\Bundle\\FrameworkBundle\\Templating\\Asset\\PackageFactory',
+            'templating.helper.code.file_link_format' => NULL,
+            'templating.helper.form.resources' => array(
+                0 => 'FrameworkBundle:Form',
+            ),
+            'templating.hinclude.default_template' => NULL,
+            'templating.debugger.class' => 'Symfony\\Bundle\\FrameworkBundle\\Templating\\Debugger',
+            'templating.loader.cache.path' => NULL,
+            'templating.engines' => array(
+                0 => 'twig',
+            ),
             'annotations.reader.class' => 'Doctrine\\Common\\Annotations\\AnnotationReader',
             'annotations.cached_reader.class' => 'Doctrine\\Common\\Annotations\\CachedReader',
             'annotations.file_cache_reader.class' => 'Doctrine\\Common\\Annotations\\FileCacheReader',
@@ -5390,8 +6583,6 @@ class appDevDebugProjectContainer extends Container
             'security.encoder_factory.generic.class' => 'Symfony\\Component\\Security\\Core\\Encoder\\EncoderFactory',
             'security.encoder.digest.class' => 'Symfony\\Component\\Security\\Core\\Encoder\\MessageDigestPasswordEncoder',
             'security.encoder.plain.class' => 'Symfony\\Component\\Security\\Core\\Encoder\\PlaintextPasswordEncoder',
-            'security.encoder.pbkdf2.class' => 'Symfony\\Component\\Security\\Core\\Encoder\\Pbkdf2PasswordEncoder',
-            'security.encoder.bcrypt.class' => 'Symfony\\Component\\Security\\Core\\Encoder\\BCryptPasswordEncoder',
             'security.user.provider.in_memory.class' => 'Symfony\\Component\\Security\\Core\\User\\InMemoryUserProvider',
             'security.user.provider.in_memory.user.class' => 'Symfony\\Component\\Security\\Core\\User\\User',
             'security.user.provider.chain.class' => 'Symfony\\Component\\Security\\Core\\User\\ChainUserProvider',
@@ -5410,7 +6601,7 @@ class appDevDebugProjectContainer extends Container
             'security.matcher.class' => 'Symfony\\Component\\HttpFoundation\\RequestMatcher',
             'security.role_hierarchy.class' => 'Symfony\\Component\\Security\\Core\\Role\\RoleHierarchy',
             'security.http_utils.class' => 'Symfony\\Component\\Security\\Http\\HttpUtils',
-            'security.validator.user_password.class' => 'Symfony\\Component\\Security\\Core\\Validator\\Constraints\\UserPasswordValidator',
+            'security.validator.user_password.class' => 'Symfony\\Component\\Security\\Core\\Validator\\Constraint\\UserPasswordValidator',
             'security.authentication.retry_entry_point.class' => 'Symfony\\Component\\Security\\Http\\EntryPoint\\RetryAuthenticationEntryPoint',
             'security.channel_listener.class' => 'Symfony\\Component\\Security\\Http\\Firewall\\ChannelListener',
             'security.authentication.form_entry_point.class' => 'Symfony\\Component\\Security\\Http\\EntryPoint\\FormAuthenticationEntryPoint',
@@ -5466,24 +6657,21 @@ class appDevDebugProjectContainer extends Container
                 ),
             ),
             'twig.class' => 'Twig_Environment',
-            'twig.loader.filesystem.class' => 'Symfony\\Bundle\\TwigBundle\\Loader\\FilesystemLoader',
-            'twig.loader.chain.class' => 'Twig_Loader_Chain',
+            'twig.loader.class' => 'Symfony\\Bundle\\TwigBundle\\Loader\\FilesystemLoader',
             'templating.engine.twig.class' => 'Symfony\\Bundle\\TwigBundle\\TwigEngine',
             'twig.cache_warmer.class' => 'Symfony\\Bundle\\TwigBundle\\CacheWarmer\\TemplateCacheCacheWarmer',
             'twig.extension.trans.class' => 'Symfony\\Bridge\\Twig\\Extension\\TranslationExtension',
             'twig.extension.assets.class' => 'Symfony\\Bundle\\TwigBundle\\Extension\\AssetsExtension',
             'twig.extension.actions.class' => 'Symfony\\Bundle\\TwigBundle\\Extension\\ActionsExtension',
-            'twig.extension.code.class' => 'Symfony\\Bridge\\Twig\\Extension\\CodeExtension',
+            'twig.extension.code.class' => 'Symfony\\Bundle\\TwigBundle\\Extension\\CodeExtension',
             'twig.extension.routing.class' => 'Symfony\\Bridge\\Twig\\Extension\\RoutingExtension',
             'twig.extension.yaml.class' => 'Symfony\\Bridge\\Twig\\Extension\\YamlExtension',
             'twig.extension.form.class' => 'Symfony\\Bridge\\Twig\\Extension\\FormExtension',
-            'twig.extension.httpkernel.class' => 'Symfony\\Bridge\\Twig\\Extension\\HttpKernelExtension',
             'twig.form.engine.class' => 'Symfony\\Bridge\\Twig\\Form\\TwigRendererEngine',
             'twig.form.renderer.class' => 'Symfony\\Bridge\\Twig\\Form\\TwigRenderer',
             'twig.translation.extractor.class' => 'Symfony\\Bridge\\Twig\\Translation\\TwigExtractor',
             'twig.exception_listener.class' => 'Symfony\\Component\\HttpKernel\\EventListener\\ExceptionListener',
-            'twig.controller.exception.class' => 'Symfony\\Bundle\\TwigBundle\\Controller\\ExceptionController',
-            'twig.exception_listener.controller' => 'twig.controller.exception:showAction',
+            'twig.exception_listener.controller' => 'Symfony\\Bundle\\TwigBundle\\Controller\\ExceptionController::showAction',
             'twig.form.resources' => array(
                 0 => 'form_div_layout.html.twig',
                 1 => 'SonataUserBundle:Form:form_admin_fields.html.twig',
@@ -5491,7 +6679,7 @@ class appDevDebugProjectContainer extends Container
             'twig.options' => array(
                 'debug' => true,
                 'strict_variables' => true,
-                'exception_controller' => 'twig.controller.exception:showAction',
+                'exception_controller' => 'Symfony\\Bundle\\TwigBundle\\Controller\\ExceptionController::showAction',
                 'cache' => '/var/www/sites/TremplinFoyerV1/app/cache/dev/twig',
                 'charset' => 'UTF-8',
                 'paths' => array(
@@ -5515,7 +6703,6 @@ class appDevDebugProjectContainer extends Container
             'monolog.handler.swift_mailer.class' => 'Monolog\\Handler\\SwiftMailerHandler',
             'monolog.handler.native_mailer.class' => 'Monolog\\Handler\\NativeMailerHandler',
             'monolog.handler.socket.class' => 'Monolog\\Handler\\SocketHandler',
-            'monolog.handler.pushover.class' => 'Monolog\\Handler\\PushoverHandler',
             'monolog.handler.fingers_crossed.class' => 'Monolog\\Handler\\FingersCrossedHandler',
             'monolog.handler.fingers_crossed.error_level_activation_strategy.class' => 'Monolog\\Handler\\FingersCrossed\\ErrorLevelActivationStrategy',
             'monolog.handlers_to_channels' => array(
@@ -5687,13 +6874,9 @@ class appDevDebugProjectContainer extends Container
 
             ),
             'jms_di_extra.cache_dir' => '/var/www/sites/TremplinFoyerV1/app/cache/dev/jms_diextra',
-            'jms_di_extra.disable_grep' => false,
             'jms_di_extra.doctrine_integration' => true,
-            'jms_di_extra.cache_warmer.controller_file_blacklist' => array(
-
-            ),
-            'jms_di_extra.doctrine_integration.entity_manager.file' => '/var/www/sites/TremplinFoyerV1/app/cache/dev/jms_diextra/doctrine/EntityManager_51640d77010bd.php',
-            'jms_di_extra.doctrine_integration.entity_manager.class' => 'EntityManager51640d77010bd_546a8d27f194334ee012bfe64f629947b07e4919\\__CG__\\Doctrine\\ORM\\EntityManager',
+            'jms_di_extra.doctrine_integration.entity_manager.file' => '/var/www/sites/TremplinFoyerV1/app/cache/dev/jms_diextra/doctrine/EntityManager_516424e6b2bd4.php',
+            'jms_di_extra.doctrine_integration.entity_manager.class' => 'EntityManager516424e6b2bd4_546a8d27f194334ee012bfe64f629947b07e4919\\__CG__\\Doctrine\\ORM\\EntityManager',
             'security.secured_services' => array(
 
             ),
@@ -5701,7 +6884,6 @@ class appDevDebugProjectContainer extends Container
             'security.access.method_access_control' => array(
 
             ),
-            'security.access.remembering_access_decision_manager.class' => 'JMS\\SecurityExtraBundle\\Security\\Authorization\\RememberingAccessDecisionManager',
             'security.access.run_as_manager.class' => 'JMS\\SecurityExtraBundle\\Security\\Authorization\\RunAsManager',
             'security.authentication.provider.run_as.class' => 'JMS\\SecurityExtraBundle\\Security\\Authentication\\Provider\\RunAsAuthenticationProvider',
             'security.run_as.key' => 'RunAsToken',
@@ -5724,22 +6906,11 @@ class appDevDebugProjectContainer extends Container
             'security.expressions.expression.class' => 'JMS\\SecurityExtraBundle\\Security\\Authorization\\Expression\\Expression',
             'security.expressions.variable_compiler.class' => 'JMS\\SecurityExtraBundle\\Security\\Authorization\\Expression\\Compiler\\ContainerAwareVariableCompiler',
             'security.expressions.parameter_compiler.class' => 'JMS\\SecurityExtraBundle\\Security\\Authorization\\Expression\\Compiler\\ParameterExpressionCompiler',
-            'security.expressions.reverse_interpreter.class' => 'JMS\\SecurityExtraBundle\\Security\\Authorization\\Expression\\ReverseInterpreter',
             'security.extra.config_driver.class' => 'JMS\\SecurityExtraBundle\\Metadata\\Driver\\ConfigDriver',
             'security.extra.twig_extension.class' => 'JMS\\SecurityExtraBundle\\Twig\\SecurityExtension',
             'security.authenticated_voter.disabled' => false,
             'security.role_voter.disabled' => false,
             'security.acl_voter.disabled' => false,
-            'security.extra.iddqd_ignore_roles' => array(
-                0 => 'ROLE_PREVIOUS_ADMIN',
-            ),
-            'security.iddqd_aliases' => array(
-
-            ),
-            'sonata.block.service.empty.class' => 'Sonata\\BlockBundle\\Block\\Service\\EmptyBlockService',
-            'sonata.block.service.text.class' => 'Sonata\\BlockBundle\\Block\\Service\\TextBlockService',
-            'sonata.block.service.rss.class' => 'Sonata\\BlockBundle\\Block\\Service\\RssBlockService',
-            'sonata.block.exception.strategy.manager.class' => 'Sonata\\BlockBundle\\Exception\\Strategy\\StrategyManager',
             'fos_user.validator.password.class' => 'FOS\\UserBundle\\Validator\\PasswordValidator',
             'fos_user.validator.unique.class' => 'FOS\\UserBundle\\Validator\\UniqueValidator',
             'fos_user.security.interactive_login_listener.class' => 'FOS\\UserBundle\\Security\\InteractiveLoginListener',
@@ -5800,8 +6971,6 @@ class appDevDebugProjectContainer extends Container
                 'delete' => 'SonataAdminBundle:CRUD:delete.html.twig',
                 'batch' => 'SonataAdminBundle:CRUD:list__batch.html.twig',
                 'batch_confirmation' => 'SonataAdminBundle:CRUD:batch_confirmation.html.twig',
-                'inner_list_row' => 'SonataAdminBundle:CRUD:list_inner_row.html.twig',
-                'base_list_field' => 'SonataAdminBundle:CRUD:base_list_field.html.twig',
             ),
             'sonata.admin.configuration.admin_services' => array(
 
@@ -5845,6 +7014,10 @@ class appDevDebugProjectContainer extends Container
             'sonata.admin.security.mask.builder.class' => 'Sonata\\AdminBundle\\Security\\Acl\\Permission\\MaskBuilder',
             'sonata.admin.manipulator.acl.admin.class' => 'Sonata\\AdminBundle\\Util\\AdminAclManipulator',
             'sonata.admin.configuration.filters.persist' => false,
+            'sonata.block.service.empty.class' => 'Sonata\\BlockBundle\\Block\\Service\\EmptyBlockService',
+            'sonata.block.service.text.class' => 'Sonata\\BlockBundle\\Block\\Service\\TextBlockService',
+            'sonata.block.service.rss.class' => 'Sonata\\BlockBundle\\Block\\Service\\RssBlockService',
+            'sonata.block.exception.strategy.manager.class' => 'Sonata\\BlockBundle\\Exception\\Strategy\\StrategyManager',
             'sonata.admin.manipulator.acl.object.orm.class' => 'Sonata\\DoctrineORMAdminBundle\\Util\\ObjectAclManipulator',
             'sonata_doctrine_orm_admin.entity_manager' => NULL,
             'sonata_doctrine_orm_admin.templates' => array(
@@ -5863,8 +7036,8 @@ class appDevDebugProjectContainer extends Container
                         'integer' => 'SonataAdminBundle:CRUD:base_list_field.html.twig',
                         'decimal' => 'SonataAdminBundle:CRUD:base_list_field.html.twig',
                         'identifier' => 'SonataAdminBundle:CRUD:base_list_field.html.twig',
-                        'currency' => 'SonataAdminBundle:CRUD:list_currency.html.twig',
-                        'percent' => 'SonataAdminBundle:CRUD:list_percent.html.twig',
+                        'currency' => 'SonataIntlBundle:CRUD:list_currency.html.twig',
+                        'percent' => 'SonataIntlBundle:CRUD:list_percent.html.twig',
                     ),
                     'show' => array(
                         'array' => 'SonataAdminBundle:CRUD:show_array.html.twig',
@@ -5879,8 +7052,8 @@ class appDevDebugProjectContainer extends Container
                         'bigint' => 'SonataAdminBundle:CRUD:base_show_field.html.twig',
                         'integer' => 'SonataAdminBundle:CRUD:base_show_field.html.twig',
                         'decimal' => 'SonataAdminBundle:CRUD:base_show_field.html.twig',
-                        'currency' => 'SonataAdminBundle:CRUD:base_currency.html.twig',
-                        'percent' => 'SonataAdminBundle:CRUD:base_percent.html.twig',
+                        'currency' => 'SonataIntlBundle:CRUD:show_currency.html.twig',
+                        'percent' => 'SonataIntlBundle:CRUD:show_percent.html.twig',
                     ),
                 ),
                 'form' => array(
@@ -5890,23 +7063,6 @@ class appDevDebugProjectContainer extends Container
                     0 => 'SonataDoctrineORMAdminBundle:Form:filter_admin_fields.html.twig',
                 ),
             ),
-            'knp_menu.factory.class' => 'Knp\\Menu\\Silex\\RouterAwareFactory',
-            'knp_menu.helper.class' => 'Knp\\Menu\\Twig\\Helper',
-            'knp_menu.menu_provider.chain.class' => 'Knp\\Menu\\Provider\\ChainProvider',
-            'knp_menu.menu_provider.container_aware.class' => 'Knp\\Bundle\\MenuBundle\\Provider\\ContainerAwareProvider',
-            'knp_menu.menu_provider.builder_alias.class' => 'Knp\\Bundle\\MenuBundle\\Provider\\BuilderAliasProvider',
-            'knp_menu.renderer_provider.class' => 'Knp\\Bundle\\MenuBundle\\Renderer\\ContainerAwareProvider',
-            'knp_menu.renderer.list.class' => 'Knp\\Menu\\Renderer\\ListRenderer',
-            'knp_menu.renderer.list.options' => array(
-
-            ),
-            'knp_menu.twig.extension.class' => 'Knp\\Menu\\Twig\\MenuExtension',
-            'knp_menu.renderer.twig.class' => 'Knp\\Menu\\Renderer\\TwigRenderer',
-            'knp_menu.renderer.twig.options' => array(
-
-            ),
-            'knp_menu.renderer.twig.template' => 'knp_menu.html.twig',
-            'knp_menu.default_renderer' => 'twig',
             'sonata.user.admin.groupname' => 'sonata_user',
             'sonata.user.admin.user.class' => 'Sonata\\UserBundle\\Admin\\Entity\\UserAdmin',
             'sonata.user.admin.group.class' => 'Sonata\\UserBundle\\Admin\\Entity\\GroupAdmin',
@@ -5924,9 +7080,104 @@ class appDevDebugProjectContainer extends Container
                 0 => 'Profile',
                 1 => 'Default',
             ),
-            'web_profiler.controller.profiler.class' => 'Symfony\\Bundle\\WebProfilerBundle\\Controller\\ProfilerController',
-            'web_profiler.controller.router.class' => 'Symfony\\Bundle\\WebProfilerBundle\\Controller\\RouterController',
-            'web_profiler.controller.exception.class' => 'Symfony\\Bundle\\WebProfilerBundle\\Controller\\ExceptionController',
+            'sonata.news.manager.comment.class' => 'Sonata\\NewsBundle\\Entity\\CommentManager',
+            'sonata.news.manager.post.class' => 'Sonata\\NewsBundle\\Entity\\PostManager',
+            'sonata.news.manager.category.class' => 'Sonata\\NewsBundle\\Entity\\CategoryManager',
+            'sonata.news.manager.tag.class' => 'Sonata\\NewsBundle\\Entity\\TagManager',
+            'sonata.news.admin.post.entity' => 'Application\\Sonata\\NewsBundle\\Entity\\Post',
+            'sonata.news.admin.tag.entity' => 'Application\\Sonata\\NewsBundle\\Entity\\Tag',
+            'sonata.news.admin.comment.entity' => 'Application\\Sonata\\NewsBundle\\Entity\\Comment',
+            'sonata.news.admin.category.entity' => 'Application\\Sonata\\NewsBundle\\Entity\\Category',
+            'sonata.news.manager.post.entity' => 'Application\\Sonata\\NewsBundle\\Entity\\Post',
+            'sonata.news.manager.tag.entity' => 'Application\\Sonata\\NewsBundle\\Entity\\Tag',
+            'sonata.news.manager.comment.entity' => 'Application\\Sonata\\NewsBundle\\Entity\\Comment',
+            'sonata.news.manager.category.entity' => 'Application\\Sonata\\NewsBundle\\Entity\\Category',
+            'sonata.news.admin.post.class' => 'Sonata\\NewsBundle\\Admin\\PostAdmin',
+            'sonata.news.admin.post.controller' => 'SonataAdminBundle:CRUD',
+            'sonata.news.admin.post.translation_domain' => 'SonataNewsBundle',
+            'sonata.news.admin.category.class' => 'Sonata\\NewsBundle\\Admin\\CategoryAdmin',
+            'sonata.news.admin.category.controller' => 'SonataAdminBundle:CRUD',
+            'sonata.news.admin.category.translation_domain' => 'SonataNewsBundle',
+            'sonata.news.admin.comment.class' => 'Sonata\\NewsBundle\\Admin\\CommentAdmin',
+            'sonata.news.admin.comment.controller' => 'SonataNewsBundle:CommentAdmin',
+            'sonata.news.admin.comment.translation_domain' => 'SonataNewsBundle',
+            'sonata.news.admin.tag.class' => 'Sonata\\NewsBundle\\Admin\\TagAdmin',
+            'sonata.news.admin.tag.controller' => 'SonataAdminBundle:CRUD',
+            'sonata.news.admin.tag.translation_domain' => 'SonataNewsBundle',
+            'sonata.media.provider.image.class' => 'Sonata\\MediaBundle\\Provider\\ImageProvider',
+            'sonata.media.provider.file.class' => 'Sonata\\MediaBundle\\Provider\\FileProvider',
+            'sonata.media.provider.youtube.class' => 'Sonata\\MediaBundle\\Provider\\YouTubeProvider',
+            'sonata.media.provider.dailymotion.class' => 'Sonata\\MediaBundle\\Provider\\DailyMotionProvider',
+            'sonata.media.provider.vimeo.class' => 'Sonata\\MediaBundle\\Provider\\VimeoProvider',
+            'sonata.media.thumbnail.format' => 'Sonata\\MediaBundle\\Thumbnail\\FormatThumbnail',
+            'sonata.media.thumbnail.format.default' => 'jpg',
+            'sonata.media.thumbnail.liip_imagine' => 'Sonata\\MediaBundle\\Thumbnail\\LiipImagineThumbnail',
+            'sonata.media.pool.class' => 'Sonata\\MediaBundle\\Provider\\Pool',
+            'sonata.media.resizer.simple.class' => 'Sonata\\MediaBundle\\Resizer\\SimpleResizer',
+            'sonata.media.resizer.square.class' => 'Sonata\\MediaBundle\\Resizer\\SquareResizer',
+            'sonata.media.block.media.class' => 'Sonata\\MediaBundle\\Block\\MediaBlockService',
+            'sonata.media.block.feature_media.class' => 'Sonata\\MediaBundle\\Block\\FeatureMediaBlockService',
+            'sonata.media.block.gallery.class' => 'Sonata\\MediaBundle\\Block\\GalleryBlockService',
+            'sonata.media.metadata.proxy.class' => 'Sonata\\MediaBundle\\Metadata\\ProxyMetadataBuilder',
+            'sonata.media.metadata.amazon.class' => 'Sonata\\MediaBundle\\Metadata\\AmazonMetadataBuilder',
+            'sonata.media.metadata.noop.class' => 'Sonata\\MediaBundle\\Metadata\\NoopMetadataBuilder',
+            'sonata.media.manager.media.class' => 'Sonata\\MediaBundle\\Entity\\MediaManager',
+            'sonata.media.manager.gallery.class' => 'Sonata\\MediaBundle\\Entity\\GalleryManager',
+            'sonata.media.admin.media.class' => 'Sonata\\MediaBundle\\Admin\\ORM\\MediaAdmin',
+            'sonata.media.admin.media.controller' => 'SonataMediaBundle:MediaAdmin',
+            'sonata.media.admin.media.translation_domain' => 'SonataMediaBundle',
+            'sonata.media.admin.gallery.class' => 'Sonata\\MediaBundle\\Admin\\GalleryAdmin',
+            'sonata.media.admin.gallery.controller' => 'SonataMediaBundle:GalleryAdmin',
+            'sonata.media.admin.gallery.translation_domain' => 'SonataMediaBundle',
+            'sonata.media.admin.gallery_has_media.class' => 'Sonata\\MediaBundle\\Admin\\GalleryHasMediaAdmin',
+            'sonata.media.admin.gallery_has_media.controller' => 'SonataAdminBundle:CRUD',
+            'sonata.media.admin.gallery_has_media.translation_domain' => 'SonataMediaBundle',
+            'sonata.media.resizer.simple.adapter.mode' => 'inset',
+            'sonata.media.resizer.square.adapter.mode' => 'inset',
+            'sonata.media.admin.media.entity' => 'Application\\Sonata\\MediaBundle\\Entity\\Media',
+            'sonata.media.admin.gallery.entity' => 'Application\\Sonata\\MediaBundle\\Entity\\Gallery',
+            'sonata.media.admin.gallery_has_media.entity' => 'Application\\Sonata\\MediaBundle\\Entity\\GalleryHasMedia',
+            'sonata.media.media.class' => 'Application\\Sonata\\MediaBundle\\Entity\\Media',
+            'sonata.media.gallery.class' => 'Application\\Sonata\\MediaBundle\\Entity\\Gallery',
+            'sonata.intl.locale_detector.request.class' => 'Sonata\\IntlBundle\\Locale\\RequestDetector',
+            'sonata.intl.locale_detector.session.class' => 'Sonata\\IntlBundle\\Locale\\SessionDetector',
+            'sonata.intl.templating.helper.locale.class' => 'Sonata\\IntlBundle\\Templating\\Helper\\LocaleHelper',
+            'sonata.intl.templating.helper.number.class' => 'Sonata\\IntlBundle\\Templating\\Helper\\NumberHelper',
+            'sonata.intl.templating.helper.datetime.class' => 'Sonata\\IntlBundle\\Templating\\Helper\\DateTimeHelper',
+            'sonata.intl.timezone_detector.default.class' => 'Sonata\\IntlBundle\\Timezone\\LocaleBasedTimezoneDetector',
+            'sonata.intl.twig.helper.locale.class' => 'Sonata\\IntlBundle\\Twig\\Extension\\LocaleExtension',
+            'sonata.intl.twig.helper.number.class' => 'Sonata\\IntlBundle\\Twig\\Extension\\NumberExtension',
+            'sonata.intl.twig.helper.datetime.class' => 'Sonata\\IntlBundle\\Twig\\Extension\\DateTimeExtension',
+            'sonata.formatter.text.markdown.class' => 'Sonata\\FormatterBundle\\Formatter\\MarkdownFormatter',
+            'sonata.formatter.text.text.class' => 'Sonata\\FormatterBundle\\Formatter\\TextFormatter',
+            'sonata.formatter.text.raw.class' => 'Sonata\\FormatterBundle\\Formatter\\RawFormatter',
+            'sonata.formatter.text.twigengine.class' => 'Sonata\\FormatterBundle\\Formatter\\TwigFormatter',
+            'sonata.formatter.block.formatter.class' => 'Sonata\\FormatterBundle\\Block\\FormatterBlockService',
+            'templating.helper.markdown.class' => 'Knp\\Bundle\\MarkdownBundle\\Helper\\MarkdownHelper',
+            'knp_menu.factory.class' => 'Knp\\Menu\\Silex\\RouterAwareFactory',
+            'knp_menu.helper.class' => 'Knp\\Menu\\Twig\\Helper',
+            'knp_menu.menu_provider.chain.class' => 'Knp\\Menu\\Provider\\ChainProvider',
+            'knp_menu.menu_provider.container_aware.class' => 'Knp\\Bundle\\MenuBundle\\Provider\\ContainerAwareProvider',
+            'knp_menu.menu_provider.builder_alias.class' => 'Knp\\Bundle\\MenuBundle\\Provider\\BuilderAliasProvider',
+            'knp_menu.renderer_provider.class' => 'Knp\\Bundle\\MenuBundle\\Renderer\\ContainerAwareProvider',
+            'knp_menu.renderer.list.class' => 'Knp\\Menu\\Renderer\\ListRenderer',
+            'knp_menu.renderer.list.options' => array(
+
+            ),
+            'knp_menu.twig.extension.class' => 'Knp\\Menu\\Twig\\MenuExtension',
+            'knp_menu.renderer.twig.class' => 'Knp\\Menu\\Renderer\\TwigRenderer',
+            'knp_menu.renderer.twig.options' => array(
+
+            ),
+            'knp_menu.renderer.twig.template' => 'knp_menu.html.twig',
+            'knp_menu.default_renderer' => 'twig',
+            'knp_paginator.class' => 'Knp\\Component\\Pager\\Paginator',
+            'knp_paginator.templating.helper.pagination.class' => 'Knp\\Bundle\\PaginatorBundle\\Templating\\PaginationHelper',
+            'knp_paginator.helper.processor.class' => 'Knp\\Bundle\\PaginatorBundle\\Helper\\Processor',
+            'knp_paginator.template.pagination' => 'KnpPaginatorBundle:Pagination:sliding.html.twig',
+            'knp_paginator.template.filtration' => 'KnpPaginatorBundle:Pagination:filtration.html.twig',
+            'knp_paginator.template.sortable' => 'KnpPaginatorBundle:Pagination:sortable_link.html.twig',
+            'knp_paginator.page_range' => 5,
             'web_profiler.debug_toolbar.class' => 'Symfony\\Bundle\\WebProfilerBundle\\EventListener\\WebDebugToolbarListener',
             'web_profiler.debug_toolbar.intercept_redirects' => false,
             'web_profiler.debug_toolbar.mode' => 2,
@@ -5935,35 +7186,35 @@ class appDevDebugProjectContainer extends Container
             'data_collector.templates' => array(
                 'data_collector.config' => array(
                     0 => 'config',
-                    1 => '@WebProfiler/Collector/config.html.twig',
+                    1 => 'WebProfilerBundle:Collector:config',
                 ),
                 'data_collector.request' => array(
                     0 => 'request',
-                    1 => '@WebProfiler/Collector/request.html.twig',
+                    1 => 'WebProfilerBundle:Collector:request',
                 ),
                 'data_collector.exception' => array(
                     0 => 'exception',
-                    1 => '@WebProfiler/Collector/exception.html.twig',
+                    1 => 'WebProfilerBundle:Collector:exception',
                 ),
                 'data_collector.events' => array(
                     0 => 'events',
-                    1 => '@WebProfiler/Collector/events.html.twig',
+                    1 => 'WebProfilerBundle:Collector:events',
                 ),
                 'data_collector.logger' => array(
                     0 => 'logger',
-                    1 => '@WebProfiler/Collector/logger.html.twig',
+                    1 => 'WebProfilerBundle:Collector:logger',
                 ),
                 'data_collector.time' => array(
                     0 => 'time',
-                    1 => '@WebProfiler/Collector/time.html.twig',
+                    1 => 'WebProfilerBundle:Collector:time',
                 ),
                 'data_collector.memory' => array(
                     0 => 'memory',
-                    1 => '@WebProfiler/Collector/memory.html.twig',
+                    1 => 'WebProfilerBundle:Collector:memory',
                 ),
                 'data_collector.router' => array(
                     0 => 'router',
-                    1 => '@WebProfiler/Collector/router.html.twig',
+                    1 => 'WebProfilerBundle:Collector:router',
                 ),
                 'data_collector.security' => array(
                     0 => 'security',

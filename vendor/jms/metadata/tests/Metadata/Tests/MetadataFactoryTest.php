@@ -3,7 +3,9 @@
 namespace Metadata\Tests;
 
 use Metadata\PropertyMetadata;
+
 use Metadata\MergeableClassMetadata;
+
 use Metadata\ClassMetadata;
 use Metadata\MetadataFactory;
 
@@ -178,24 +180,5 @@ class MetadataFactoryTest extends \PHPUnit_Framework_TestCase
         $factory->setIncludeInterfaces(true);
 
         $factory->getMetadataForClass('Metadata\Tests\Fixtures\ComplexHierarchy\SubClassA');
-    }
-
-    public function testGetAllClassNames()
-    {
-        $driver = $this->getMock('Metadata\Driver\AdvancedDriverInterface');
-        $driver
-            ->expects($this->once())
-            ->method('getAllClassNames')
-            ->will($this->returnValue(array()));
-
-        $factory = new MetadataFactory($driver);
-        $this->assertSame(array(), $factory->getAllClassNames());
-    }
-
-    public function testGetAllClassNamesThrowsException()
-    {
-        $this->setExpectedException('RuntimeException');
-        $factory = new MetadataFactory($this->getMock('Metadata\Driver\DriverInterface'));
-        $factory->getAllClassNames();
     }
 }

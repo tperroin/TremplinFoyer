@@ -215,14 +215,12 @@ class ArgvInput extends Input
 
         $option = $this->definition->getOption($name);
 
-        if (null === $value && $option->acceptValue() && count($this->parsed)) {
+        if (null === $value && $option->acceptValue()) {
             // if option accepts an optional or mandatory argument
             // let's see if there is one provided
             $next = array_shift($this->parsed);
-            if (isset($next[0]) && '-' !== $next[0]) {
+            if ('-' !== $next[0]) {
                 $value = $next;
-            } elseif (empty($next)) {
-                $value = '';
             } else {
                 array_unshift($this->parsed, $next);
             }

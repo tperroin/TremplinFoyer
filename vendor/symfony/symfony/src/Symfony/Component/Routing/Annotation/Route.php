@@ -20,37 +20,30 @@ namespace Symfony\Component\Routing\Annotation;
  */
 class Route
 {
-    private $path;
+    private $pattern;
     private $name;
     private $requirements;
     private $options;
     private $defaults;
-    private $host;
-    private $methods;
-    private $schemes;
 
     /**
      * Constructor.
      *
      * @param array $data An array of key/value parameters.
-     *
-     * @throws \BadMethodCallException
      */
     public function __construct(array $data)
     {
         $this->requirements = array();
         $this->options = array();
         $this->defaults = array();
-        $this->methods = array();
-        $this->schemes = array();
 
         if (isset($data['value'])) {
-            $data['path'] = $data['value'];
+            $data['pattern'] = $data['value'];
             unset($data['value']);
         }
 
         foreach ($data as $key => $value) {
-            $method = 'set'.str_replace('_', '', $key);
+            $method = 'set'.$key;
             if (!method_exists($this, $method)) {
                 throw new \BadMethodCallException(sprintf("Unknown property '%s' on annotation '%s'.", $key, get_class($this)));
             }
@@ -58,40 +51,14 @@ class Route
         }
     }
 
-    /**
-     * @deprecated Deprecated in 2.2, to be removed in 3.0. Use setPath instead.
-     */
     public function setPattern($pattern)
     {
-        $this->path = $pattern;
+        $this->pattern = $pattern;
     }
 
-    /**
-     * @deprecated Deprecated in 2.2, to be removed in 3.0. Use getPath instead.
-     */
     public function getPattern()
     {
-        return $this->path;
-    }
-
-    public function setPath($path)
-    {
-        $this->path = $path;
-    }
-
-    public function getPath()
-    {
-        return $this->path;
-    }
-
-    public function setHost($pattern)
-    {
-        $this->host = $pattern;
-    }
-
-    public function getHost()
-    {
-        return $this->host;
+        return $this->pattern;
     }
 
     public function setName($name)
@@ -132,25 +99,5 @@ class Route
     public function getDefaults()
     {
         return $this->defaults;
-    }
-
-    public function setSchemes($schemes)
-    {
-        $this->schemes = is_array($schemes) ? $schemes : array($schemes);
-    }
-
-    public function getSchemes()
-    {
-        return $this->schemes;
-    }
-
-    public function setMethods($methods)
-    {
-        $this->methods = is_array($methods) ? $methods : array($methods);
-    }
-
-    public function getMethods()
-    {
-        return $this->methods;
     }
 }

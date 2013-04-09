@@ -47,12 +47,10 @@ abstract class Loader implements LoaderInterface
      *
      * @param mixed  $resource A Resource
      * @param string $type     The resource type
-     *
-     * @return mixed
      */
     public function import($resource, $type = null)
     {
-        return $this->resolve($resource)->load($resource, $type);
+        $this->resolve($resource)->load($resource, $type);
     }
 
     /**

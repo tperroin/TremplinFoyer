@@ -49,33 +49,14 @@ class StoreTest extends \PHPUnit_Framework_TestCase
         $this->assertEmpty($this->getStoreMetadata('/nothing'));
     }
 
-    public function testUnlockFileThatDoesExist()
-    {
-        $cacheKey = $this->storeSimpleEntry();
-        $this->store->lock($this->request);
-
-        $this->assertTrue($this->store->unlock($this->request));
-    }
-
-    public function testUnlockFileThatDoesNotExist()
-    {
-        $this->assertFalse($this->store->unlock($this->request));
-    }
-
     public function testRemovesEntriesForKeyWithPurge()
     {
         $request = Request::create('/foo');
         $this->store->write($request, new Response('foo'));
-
-        $metadata = $this->getStoreMetadata($request);
-        $this->assertNotEmpty($metadata);
+        $this->assertNotEmpty($this->getStoreMetadata($request));
 
         $this->assertTrue($this->store->purge('/foo'));
         $this->assertEmpty($this->getStoreMetadata($request));
-
-        // cached content should be kept after purging
-        $path = $this->store->getPath($metadata[0][1]['x-content-digest'][0]);
-        $this->assertTrue(is_file($path));
 
         $this->assertFalse($this->store->purge('/bar'));
     }
@@ -211,18 +192,6 @@ class StoreTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals($this->getStorePath('en'.sha1('test 3')), $this->store->lookup($req3)->getContent());
 
         $this->assertCount(2, $this->getStoreMetadata($key));
-    }
-
-    public function testLocking()
-    {
-        $req = Request::create('/test', 'get', array(), array(), array(), array('HTTP_FOO' => 'Foo', 'HTTP_BAR' => 'Bar'));
-        $this->assertTrue($this->store->lock($req));
-
-        $path = $this->store->lock($req);
-        $this->assertTrue($this->store->isLocked($req));
-
-        $this->store->unlock($req);
-        $this->assertFalse($this->store->isLocked($req));
     }
 
     protected function storeSimpleEntry($path = null, $headers = array())

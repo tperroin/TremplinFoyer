@@ -21,9 +21,9 @@ interface ConstraintValidatorInterface
     /**
      * Initializes the constraint validator.
      *
-     * @param ExecutionContextInterface $context The current validation context
+     * @param ExecutionContext $context The current validation context
      */
-    public function initialize(ExecutionContextInterface $context);
+    public function initialize(ExecutionContext $context);
 
     /**
      * Checks if the passed value is valid.

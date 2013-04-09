@@ -38,7 +38,6 @@ class DefaultExpressionHandler implements ExpressionHandlerInterface
     {
         $context = array(
             'token' => $token,
-            'user'  => $token->getUser(),
             'object' => $object,
             'trust_resolver' => $this->trustResolver,
         );

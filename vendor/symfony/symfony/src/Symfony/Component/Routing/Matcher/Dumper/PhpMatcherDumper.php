@@ -19,7 +19,6 @@ use Symfony\Component\Routing\RouteCollection;
  *
  * @author Fabien Potencier <fabien@symfony.com>
  * @author Tobias Schultze <http://tobion.de>
- * @author Arnaud Le Blanc <arnaud.lb@gmail.com>
  */
 class PhpMatcherDumper extends MatcherDumper
 {
@@ -37,7 +36,7 @@ class PhpMatcherDumper extends MatcherDumper
      */
     public function dump(array $options = array())
     {
-        $options = array_replace(array(
+        $options = array_merge(array(
             'class'      => 'ProjectUrlMatcher',
             'base_class' => 'Symfony\\Component\\Routing\\Matcher\\UrlMatcher',
         ), $options);
@@ -100,73 +99,56 @@ EOF;
     }
 
     /**
-     * Generates PHP code to match a RouteCollection with all its routes.
+     * Counts the number of routes as direct child of the RouteCollection.
      *
-     * @param RouteCollection $routes               A RouteCollection instance
-     * @param Boolean         $supportsRedirections Whether redirections are supported by the base class
+     * @param RouteCollection $routes A RouteCollection instance
      *
-     * @return string PHP code
+     * @return integer Number of Routes
      */
-    private function compileRoutes(RouteCollection $routes, $supportsRedirections)
+    private function countDirectChildRoutes(RouteCollection $routes)
     {
-        $fetchedHost = false;
-
-        $groups = $this->groupRoutesByHostRegex($routes);
-        $code = '';
-
-        foreach ($groups as $collection) {
-            if (null !== $regex = $collection->getAttribute('host_regex')) {
-                if (!$fetchedHost) {
-                    $code .= "        \$host = \$this->context->getHost();\n\n";
-                    $fetchedHost = true;
-                }
-
-                $code .= sprintf("        if (preg_match(%s, \$host, \$hostMatches)) {\n", var_export($regex, true));
-            }
-
-            $tree = $this->buildPrefixTree($collection);
-            $groupCode = $this->compilePrefixRoutes($tree, $supportsRedirections);
-
-            if (null !== $regex) {
-                // apply extra indention at each line (except empty ones)
-                $groupCode = preg_replace('/^.{2,}$/m', '    $0', $groupCode);
-                $code .= $groupCode;
-                $code .= "        }\n\n";
-            } else {
-                $code .= $groupCode;
+        $count = 0;
+        foreach ($routes as $route) {
+            if ($route instanceof Route) {
+                $count++;
             }
         }
 
-        return $code;
+        return $count;
     }
 
     /**
-     * Generates PHP code recursively to match a tree of routes
+     * Generates PHP code recursively to match a RouteCollection with all child routes and child collections.
      *
-     * @param DumperPrefixCollection $collection           A DumperPrefixCollection instance
-     * @param Boolean                $supportsRedirections Whether redirections are supported by the base class
-     * @param string                 $parentPrefix         Prefix of the parent collection
+     * @param RouteCollection $routes               A RouteCollection instance
+     * @param Boolean         $supportsRedirections Whether redirections are supported by the base class
+     * @param string|null     $parentPrefix         The prefix of the parent collection used to optimize the code
      *
      * @return string PHP code
      */
-    private function compilePrefixRoutes(DumperPrefixCollection $collection, $supportsRedirections, $parentPrefix = '')
+    private function compileRoutes(RouteCollection $routes, $supportsRedirections, $parentPrefix = null)
     {
         $code = '';
-        $prefix = $collection->getPrefix();
-        $optimizable = 1 < strlen($prefix) && 1 < count($collection->all());
-        $optimizedPrefix = $parentPrefix;
 
+        $prefix = $routes->getPrefix();
+        $countDirectChildRoutes = $this->countDirectChildRoutes($routes);
+        $countAllChildRoutes = count($routes->all());
+        // Can the matching be optimized by wrapping it with the prefix condition
+        // - no need to optimize if current prefix is the same as the parent prefix
+        // - if $countDirectChildRoutes === 0, the sub-collections can do their own optimizations (in case there are any)
+        // - it's not worth wrapping a single child route
+        // - prefixes with variables cannot be optimized because routes within the collection might have different requirements for the same variable
+        $optimizable = '' !== $prefix && $prefix !== $parentPrefix && $countDirectChildRoutes > 0 && $countAllChildRoutes > 1 && false === strpos($prefix, '{');
         if ($optimizable) {
-            $optimizedPrefix = $prefix;
-
             $code .= sprintf("    if (0 === strpos(\$pathinfo, %s)) {\n", var_export($prefix, true));
         }
 
-        foreach ($collection as $route) {
-            if ($route instanceof DumperCollection) {
-                $code .= $this->compilePrefixRoutes($route, $supportsRedirections, $optimizedPrefix);
-            } else {
-                $code .= $this->compileRoute($route->getRoute(), $route->getName(), $supportsRedirections, $optimizedPrefix)."\n";
+        foreach ($routes as $name => $route) {
+            if ($route instanceof Route) {
+                // a single route in a sub-collection is not wrapped so it should do its own optimization in ->compileRoute with $parentPrefix = null
+                $code .= $this->compileRoute($route, $name, $supportsRedirections, 1 === $countAllChildRoutes ? null : $prefix)."\n";
+            } elseif ($countAllChildRoutes - $countDirectChildRoutes > 0) { // we can stop iterating recursively if we already know there are no more routes
+                $code .= $this->compileRoutes($route, $supportsRedirections, $prefix);
             }
         }
 
@@ -179,6 +161,7 @@ EOF;
         return $code;
     }
 
+
     /**
      * Compiles a single Route to PHP code used to match it against the path info.
      *
@@ -188,8 +171,6 @@ EOF;
      * @param string|null $parentPrefix         The prefix of the parent collection used to optimize the code
      *
      * @return string PHP code
-     *
-     * @throws \LogicException
      */
     private function compileRoute(Route $route, $name, $supportsRedirections, $parentPrefix = null)
     {
@@ -198,7 +179,6 @@ EOF;
         $conditions = array();
         $hasTrailingSlash = false;
         $matches = false;
-        $hostMatches = false;
         $methods = array();
 
         if ($req = $route->getRequirement('_method')) {
@@ -211,7 +191,7 @@ EOF;
 
         $supportsTrailingSlash = $supportsRedirections && (!$methods || in_array('HEAD', $methods));
 
-        if (!count($compiledRoute->getPathVariables()) && false !== preg_match('#^(.)\^(?P<url>.*?)\$\1#', $compiledRoute->getRegex(), $m)) {
+        if (!count($compiledRoute->getVariables()) && false !== preg_match('#^(.)\^(?<url>.*?)\$\1#', $compiledRoute->getRegex(), $m)) {
             if ($supportsTrailingSlash && substr($m['url'], -1) === '/') {
                 $conditions[] = sprintf("rtrim(\$pathinfo, '/') === %s", var_export(rtrim(str_replace('\\', '', $m['url']), '/'), true));
                 $hasTrailingSlash = true;
@@ -231,10 +211,6 @@ EOF;
             $conditions[] = sprintf("preg_match(%s, \$pathinfo, \$matches)", var_export($regex, true));
 
             $matches = true;
-        }
-
-        if ($compiledRoute->getHostVariables()) {
-            $hostMatches = true;
         }
 
         $conditions = implode(' && ', $conditions);
@@ -295,21 +271,14 @@ EOF;
         }
 
         // optimize parameters array
-        if ($matches || $hostMatches) {
-            $vars = array();
-            if ($hostMatches) {
-                $vars[] = '$hostMatches';
-            }
-            if ($matches) {
-                $vars[] = '$matches';
-            }
-            $vars[] = "array('_route' => '$name')";
-
-            $code .= sprintf("            return \$this->mergeDefaults(array_replace(%s), %s);\n"
-                , implode(', ', $vars), str_replace("\n", '', var_export($route->getDefaults(), true)));
-
+        if (true === $matches && $route->getDefaults()) {
+            $code .= sprintf("            return array_merge(\$this->mergeDefaults(\$matches, %s), array('_route' => '%s'));\n"
+                , str_replace("\n", '', var_export($route->getDefaults(), true)), $name);
+        } elseif (true === $matches) {
+            $code .= sprintf("            \$matches['_route'] = '%s';\n\n", $name);
+            $code .= "            return \$matches;\n";
         } elseif ($route->getDefaults()) {
-            $code .= sprintf("            return %s;\n", str_replace("\n", '', var_export(array_replace($route->getDefaults(), array('_route' => $name)), true)));
+            $code .= sprintf("            return %s;\n", str_replace("\n", '', var_export(array_merge($route->getDefaults(), array('_route' => $name)), true)));
         } else {
             $code .= sprintf("            return array('_route' => '%s');\n", $name);
         }
@@ -320,59 +289,5 @@ EOF;
         }
 
         return $code;
-    }
-
-    /**
-     * Groups consecutive routes having the same host regex.
-     *
-     * The result is a collection of collections of routes having the same host regex.
-     *
-     * @param RouteCollection $routes A flat RouteCollection
-     *
-     * @return DumperCollection A collection with routes grouped by host regex in sub-collections
-     */
-    private function groupRoutesByHostRegex(RouteCollection $routes)
-    {
-        $groups = new DumperCollection();
-
-        $currentGroup = new DumperCollection();
-        $currentGroup->setAttribute('host_regex', null);
-        $groups->add($currentGroup);
-
-        foreach ($routes as $name => $route) {
-            $hostRegex = $route->compile()->getHostRegex();
-            if ($currentGroup->getAttribute('host_regex') !== $hostRegex) {
-                $currentGroup = new DumperCollection();
-                $currentGroup->setAttribute('host_regex', $hostRegex);
-                $groups->add($currentGroup);
-            }
-            $currentGroup->add(new DumperRoute($name, $route));
-        }
-
-        return $groups;
-    }
-
-    /**
-     * Organizes the routes into a prefix tree.
-     *
-     * Routes order is preserved such that traversing the tree will traverse the
-     * routes in the origin order.
-     *
-     * @param DumperCollection $collection A collection of routes
-     *
-     * @return DumperPrefixCollection
-     */
-    private function buildPrefixTree(DumperCollection $collection)
-    {
-        $tree = new DumperPrefixCollection();
-        $current = $tree;
-
-        foreach ($collection as $route) {
-            $current = $current->addPrefixRoute($route);
-        }
-
-        $tree->mergeSlashNodes();
-
-        return $tree;
     }
 }

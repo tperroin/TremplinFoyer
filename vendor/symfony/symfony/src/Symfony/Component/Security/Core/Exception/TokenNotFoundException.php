@@ -1,4 +1,5 @@
 <?php
+namespace Symfony\Component\Security\Core\Exception;
 
 /*
  * This file is part of the Symfony package.
@@ -9,21 +10,11 @@
  * file that was distributed with this source code.
  */
 
-namespace Symfony\Component\Security\Core\Exception;
-
 /**
  * TokenNotFoundException is thrown if a Token cannot be found.
  *
  * @author Johannes M. Schmitt <schmittjoh@gmail.com>
- * @author Alexander <iam.asm89@gmail.com>
  */
 class TokenNotFoundException extends AuthenticationException
 {
-    /**
-     * {@inheritDoc}
-     */
-    public function getMessageKey()
-    {
-        return 'No token could be found.';
-    }
 }

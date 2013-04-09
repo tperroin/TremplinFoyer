@@ -39,8 +39,6 @@ class RequestHelper extends Helper
      * @param string $key     The name of the parameter
      * @param string $default A default value
      *
-     * @return mixed
-     *
      * @see Symfony\Component\HttpFoundation\Request::get()
      */
     public function getParameter($key, $default = null)

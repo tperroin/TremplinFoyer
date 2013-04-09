@@ -1,7 +1,6 @@
-_blog:
+blog_show:
     resource:     validpattern.yml
     prefix:       /{foo}
-    defaults:     { 'foo': '123' }
+    defaults:     { 'foo': 'foo' }
     requirements: { 'foo': '\d+' }
     options:      { 'foo': 'bar' }
-    host:         ""

@@ -96,8 +96,6 @@ class ParameterBag implements \IteratorAggregate, \Countable
      *
      * @return mixed
      *
-     * @throws \InvalidArgumentException
-     *
      * @api
      */
     public function get($path, $default = null, $deep = false)

@@ -119,8 +119,6 @@ class YamlFileLoader extends FileLoader
      * @param string $id
      * @param array  $service
      * @param string $file
-     *
-     * @throws InvalidArgumentException When tags are invalid
      */
     private function parseDefinition($id, $service, $file)
     {
@@ -233,7 +231,7 @@ class YamlFileLoader extends FileLoader
      *
      * @return array The file content
      */
-    protected function loadFile($file)
+    private function loadFile($file)
     {
         return $this->validate(Yaml::parse($file), $file);
     }
@@ -290,10 +288,7 @@ class YamlFileLoader extends FileLoader
         if (is_array($value)) {
             $value = array_map(array($this, 'resolveServices'), $value);
         } elseif (is_string($value) &&  0 === strpos($value, '@')) {
-            if (0 === strpos($value, '@@')) {
-                $value = substr($value, 1);
-                $invalidBehavior = null;
-            } elseif (0 === strpos($value, '@?')) {
+            if (0 === strpos($value, '@?')) {
                 $value = substr($value, 2);
                 $invalidBehavior = ContainerInterface::IGNORE_ON_INVALID_REFERENCE;
             } else {
@@ -308,9 +303,7 @@ class YamlFileLoader extends FileLoader
                 $strict = true;
             }
 
-            if (null !== $invalidBehavior) {
-                $value = new Reference($value, $invalidBehavior, $strict);
-            }
+            $value = new Reference($value, $invalidBehavior, $strict);
         }
 
         return $value;

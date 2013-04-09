@@ -23,7 +23,7 @@ class ServerBag extends ParameterBag
     /**
      * Gets the HTTP headers.
      *
-     * @return array
+     * @return string
      */
     public function getHeaders()
     {

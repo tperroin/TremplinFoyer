@@ -11,14 +11,11 @@
 
 namespace Symfony\Component\Validator\Mapping;
 
-use Symfony\Component\Validator\ValidationVisitorInterface;
-use Symfony\Component\Validator\ClassBasedInterface;
-use Symfony\Component\Validator\PropertyMetadataInterface;
 use Symfony\Component\Validator\Constraint;
 use Symfony\Component\Validator\Constraints\Valid;
 use Symfony\Component\Validator\Exception\ConstraintDefinitionException;
 
-abstract class MemberMetadata extends ElementMetadata implements PropertyMetadataInterface, ClassBasedInterface
+abstract class MemberMetadata extends ElementMetadata
 {
     public $class;
     public $name;
@@ -40,15 +37,6 @@ abstract class MemberMetadata extends ElementMetadata implements PropertyMetadat
         $this->class = $class;
         $this->name = $name;
         $this->property = $property;
-    }
-
-    public function accept(ValidationVisitorInterface $visitor, $value, $group, $propertyPath, $propagatedGroup = null)
-    {
-        $visitor->visit($this, $value, $group, $propertyPath);
-
-        if ($this->isCascaded()) {
-            $visitor->validate($value, $propagatedGroup ?: $group, $propertyPath, $this->isCollectionCascaded(), $this->isCollectionCascadedDeeply());
-        }
     }
 
     /**
@@ -188,16 +176,8 @@ abstract class MemberMetadata extends ElementMetadata implements PropertyMetadat
      * @param object $object The object
      *
      * @return mixed The property value
-     *
-     * @deprecated Deprecated since version 2.2, to be removed in 2.3. Use the
-     *             method {@link getPropertyValue} instead.
      */
-    public function getValue($object)
-    {
-        trigger_error('getValue() is deprecated since version 2.2 and will be removed in 2.3. Use getPropertyValue() instead.', E_USER_DEPRECATED);
-
-        return $this->getPropertyValue($object);
-    }
+    abstract public function getValue($object);
 
     /**
      * Returns the Reflection instance of the member

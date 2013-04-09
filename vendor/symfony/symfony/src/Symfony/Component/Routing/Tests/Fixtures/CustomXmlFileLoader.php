@@ -12,15 +12,14 @@
 namespace Symfony\Component\Routing\Tests\Fixtures;
 
 use Symfony\Component\Routing\Loader\XmlFileLoader;
-use Symfony\Component\Config\Util\XmlUtils;
 
 /**
  * XmlFileLoader with schema validation turned off
  */
 class CustomXmlFileLoader extends XmlFileLoader
 {
-    protected function loadFile($file)
+    protected function validate(\DOMDocument $dom)
     {
-        return XmlUtils::loadFile($file, function() { return true; });
+        return true;
     }
 }

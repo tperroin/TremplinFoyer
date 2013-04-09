@@ -32,10 +32,12 @@ use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 class AnnotationConfigurationPass implements CompilerPassInterface
 {
     private $kernel;
+    private $finder;
 
     public function __construct(KernelInterface $kernel)
     {
         $this->kernel = $kernel;
+        $this->finder = new PatternFinder('JMS\DiExtraBundle\Annotation');
     }
 
     public function process(ContainerBuilder $container)
@@ -43,7 +45,6 @@ class AnnotationConfigurationPass implements CompilerPassInterface
         $reader = $container->get('annotation_reader');
         $factory = $container->get('jms_di_extra.metadata.metadata_factory');
         $converter = $container->get('jms_di_extra.metadata.converter');
-        $disableGrep = $container->getParameter('jms_di_extra.disable_grep');
 
         $directories = $this->getScanDirectories($container);
         if (!$directories) {
@@ -51,9 +52,8 @@ class AnnotationConfigurationPass implements CompilerPassInterface
             return;
         }
 
-        $finder = new PatternFinder('JMS\DiExtraBundle\Annotation', '*.php', $disableGrep);
-        $files = $finder->findFiles($directories);
-        $container->addResource(new ServiceFilesResource($files, $directories, $disableGrep));
+        $files = $this->finder->findFiles($directories);
+        $container->addResource(new ServiceFilesResource($files, $directories));
         foreach ($files as $file) {
             $container->addResource(new FileResource($file));
             require_once $file;

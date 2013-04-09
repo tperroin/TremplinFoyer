@@ -11,7 +11,7 @@
 
 namespace Symfony\Component\HttpKernel\Controller;
 
-use Psr\Log\LoggerInterface;
+use Symfony\Component\HttpKernel\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
@@ -58,7 +58,7 @@ class ControllerResolver implements ControllerResolverInterface
     {
         if (!$controller = $request->attributes->get('_controller')) {
             if (null !== $this->logger) {
-                $this->logger->warning('Unable to look for the controller as the "_controller" parameter is missing');
+                $this->logger->warn('Unable to look for the controller as the "_controller" parameter is missing');
             }
 
             return false;
@@ -90,8 +90,6 @@ class ControllerResolver implements ControllerResolverInterface
      *
      * @param Request $request    A Request instance
      * @param mixed   $controller A PHP callable
-     *
-     * @return array
      *
      * @throws \RuntimeException When value for argument given is not provided
      *
@@ -144,8 +142,6 @@ class ControllerResolver implements ControllerResolverInterface
      * @param string $controller A Controller string
      *
      * @return mixed A PHP callable
-     *
-     * @throws \InvalidArgumentException
      */
     protected function createController($controller)
     {

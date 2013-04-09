@@ -27,30 +27,24 @@ class XliffFileDumper extends FileDumper
     {
         $dom = new \DOMDocument('1.0', 'utf-8');
         $dom->formatOutput = true;
-
         $xliff = $dom->appendChild($dom->createElement('xliff'));
         $xliff->setAttribute('version', '1.2');
         $xliff->setAttribute('xmlns', 'urn:oasis:names:tc:xliff:document:1.2');
-
         $xliffFile = $xliff->appendChild($dom->createElement('file'));
         $xliffFile->setAttribute('source-language', $messages->getLocale());
         $xliffFile->setAttribute('datatype', 'plaintext');
         $xliffFile->setAttribute('original', 'file.ext');
-
         $xliffBody = $xliffFile->appendChild($dom->createElement('body'));
+        $id = 1;
         foreach ($messages->all($domain) as $source => $target) {
-            $translation = $dom->createElement('trans-unit');
-
-            $translation->setAttribute('id', md5($source));
-            $translation->setAttribute('resname', $source);
-
-            $s = $translation->appendChild($dom->createElement('source'));
+            $trans = $dom->createElement('trans-unit');
+            $trans->setAttribute('id', $id);
+            $s = $trans->appendChild($dom->createElement('source'));
             $s->appendChild($dom->createTextNode($source));
-
-            $t = $translation->appendChild($dom->createElement('target'));
+            $t = $trans->appendChild($dom->createElement('target'));
             $t->appendChild($dom->createTextNode($target));
-
-            $xliffBody->appendChild($translation);
+            $xliffBody->appendChild($trans);
+            $id++;
         }
 
         return $dom->saveXML();

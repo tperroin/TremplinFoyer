@@ -44,17 +44,9 @@ abstract class PdoProfilerStorage implements ProfilerStorageInterface
     /**
      * {@inheritdoc}
      */
-    public function find($ip, $url, $limit, $method, $start = null, $end = null)
+    public function find($ip, $url, $limit, $method)
     {
-        if (null === $start) {
-            $start = 0;
-        }
-
-        if (null === $end) {
-            $end = time();
-        }
-
-        list($criteria, $args) = $this->buildCriteria($ip, $url, $start, $end, $limit, $method);
+        list($criteria, $args) = $this->buildCriteria($ip, $url, $limit, $method);
 
         $criteria = $criteria ? 'WHERE '.implode(' AND ', $criteria) : '';
 
@@ -130,14 +122,12 @@ abstract class PdoProfilerStorage implements ProfilerStorageInterface
      *
      * @param string $ip     The IP
      * @param string $url    The URL
-     * @param string $start  The start period to search from
-     * @param string $end    The end period to search to
      * @param string $limit  The maximum number of tokens to return
      * @param string $method The request method
      *
      * @return array An array with (criteria, args)
      */
-    abstract protected function buildCriteria($ip, $url, $start, $end, $limit, $method);
+    abstract protected function buildCriteria($ip, $url, $limit, $method);
 
     /**
      * Initializes the database
@@ -226,7 +216,7 @@ abstract class PdoProfilerStorage implements ProfilerStorageInterface
      * @param string $token  The parent token
      * @param string $parent The parent instance
      *
-     * @return Profile[] An array of Profile instance
+     * @return array An array of Profile instance
      */
     protected function readChildren($token, $parent)
     {
@@ -251,7 +241,7 @@ abstract class PdoProfilerStorage implements ProfilerStorageInterface
      *
      * @param string $token The profile token
      *
-     * @return string
+     * @return Boolean
      */
     protected function has($token)
     {

@@ -12,13 +12,12 @@
 namespace Symfony\Component\Validator;
 
 /**
- * Prepares an object for validation.
+ * Interface for object initializers.
  *
- * Concrete implementations of this interface are used by {@link ValidationVisitorInterface}
- * to initialize objects just before validating them.
+ * Concrete implementations of this interface are used by the GraphWalker
+ * to initialize objects just before validating them/
  *
  * @author Fabien Potencier <fabien@symfony.com>
- * @author Bernhard Schussek <bschussek@gmail.com>
  *
  * @api
  */

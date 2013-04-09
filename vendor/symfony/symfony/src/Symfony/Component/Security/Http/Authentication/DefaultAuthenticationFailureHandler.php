@@ -13,7 +13,7 @@ namespace Symfony\Component\Security\Http\Authentication;
 
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
-use Psr\Log\LoggerInterface;
+use Symfony\Component\HttpKernel\Log\LoggerInterface;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
 use Symfony\Component\Security\Core\SecurityContextInterface;
 use Symfony\Component\Security\Http\HttpUtils;
@@ -50,10 +50,9 @@ class DefaultAuthenticationFailureHandler implements AuthenticationFailureHandle
         $this->logger     = $logger;
 
         $this->options = array_merge(array(
-            'failure_path'           => null,
-            'failure_forward'        => false,
-            'login_path'             => '/login',
-            'failure_path_parameter' => '_failure_path'
+            'failure_path'    => null,
+            'failure_forward' => false,
+            'login_path'      => '/login',
         ), $options);
     }
 
@@ -62,10 +61,6 @@ class DefaultAuthenticationFailureHandler implements AuthenticationFailureHandle
      */
     public function onAuthenticationFailure(Request $request, AuthenticationException $exception)
     {
-        if ($failureUrl = $request->get($this->options['failure_path_parameter'], null, true)) {
-             $this->options['failure_path'] = $failureUrl;
-         }
-
         if (null === $this->options['failure_path']) {
             $this->options['failure_path'] = $this->options['login_path'];
         }

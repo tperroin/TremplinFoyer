@@ -84,7 +84,7 @@ class ParameterBag implements ParameterBagInterface
      *
      * @return mixed  The parameter value
      *
-     * @throws ParameterNotFoundException if the parameter is not defined
+     * @throws  ParameterNotFoundException if the parameter is not defined
      *
      * @api
      */
@@ -129,13 +129,13 @@ class ParameterBag implements ParameterBagInterface
     /**
      * Removes a parameter.
      *
-     * @param string $name The parameter name
+     * @param string $key The key
      *
      * @api
      */
-    public function remove($name)
+    public function remove($key)
     {
-        unset($this->parameters[strtolower($name)]);
+        unset($this->parameters[$key]);
     }
 
     /**

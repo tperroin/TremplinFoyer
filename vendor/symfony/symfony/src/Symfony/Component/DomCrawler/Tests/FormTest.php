@@ -127,12 +127,6 @@ class FormTest extends \PHPUnit_Framework_TestCase
                 array(),
             ),
             array(
-                'does not take into account input fields with an empty name attribute value',
-                '<input type="text" name="" value="foo" />
-                 <input type="submit" />',
-                array(),
-            ),
-            array(
                 'takes into account disabled input fields',
                 '<input type="text" name="foo" value="foo" disabled="disabled" />
                  <input type="submit" />',
@@ -141,11 +135,6 @@ class FormTest extends \PHPUnit_Framework_TestCase
             array(
                 'appends the submitted button value',
                 '<input type="submit" name="bar" value="bar" />',
-                array('bar' => array('InputFormField', 'bar')),
-            ),
-            array(
-                'appends the submitted button value for Button element',
-                '<button type="submit" name="bar" value="bar">Bar</button>',
                 array('bar' => array('InputFormField', 'bar')),
             ),
             array(
@@ -282,13 +271,6 @@ class FormTest extends \PHPUnit_Framework_TestCase
         $form = $this->createForm('<form><input type="checkbox" name="foo" value="foo" checked="checked" /><input type="text" name="bar" value="bar" /><input type="submit" /></form>');
         $form->setValues(array('foo' => false, 'bar' => 'foo'));
         $this->assertEquals(array('bar' => 'foo'), $form->getValues(), '->setValues() sets the values of fields');
-    }
-
-    public function testMultiselectSetValues()
-    {
-        $form = $this->createForm('<form><select multiple="multiple" name="multi"><option value="foo">foo</option><option value="bar">bar</option></select><input type="submit" /></form>');
-        $form->setValues(array('multi' => array("foo", "bar")));
-        $this->assertEquals(array('multi' => array('foo', 'bar')), $form->getValues(), '->setValue() sets the values of select');
     }
 
     public function testGetPhpValues()
@@ -679,8 +661,6 @@ class FormTest extends \PHPUnit_Framework_TestCase
         $dom->loadHTML('<html>'.$form.'</html>');
 
         $nodes = $dom->getElementsByTagName('input');
-        $xPath = new \DOMXPath($dom);
-        $nodes = $xPath->query('//input | //button');
 
         if (null === $currentUri) {
             $currentUri = 'http://example.com/';

@@ -14,43 +14,14 @@ namespace Symfony\Component\Form\Tests;
 use Symfony\Component\Form\Form;
 use Symfony\Component\Form\FormEvent;
 use Symfony\Component\Form\FormEvents;
-use Symfony\Component\PropertyAccess\PropertyPath;
+use Symfony\Component\Form\Util\PropertyPath;
 use Symfony\Component\Form\FormConfigBuilder;
+use Symfony\Component\Form\FormView;
 use Symfony\Component\Form\FormError;
 use Symfony\Component\Form\Exception\TransformationFailedException;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Form\Tests\Fixtures\FixedDataTransformer;
 use Symfony\Component\Form\Tests\Fixtures\FixedFilterListener;
-
-class SimpleFormTest_Countable implements \Countable
-{
-    private $count;
-
-    public function __construct($count)
-    {
-        $this->count = $count;
-    }
-
-    public function count()
-    {
-        return $this->count;
-    }
-}
-
-class SimpleFormTest_Traversable implements \IteratorAggregate
-{
-    private $iterator;
-
-    public function __construct($count)
-    {
-        $this->iterator = new \ArrayIterator($count > 0 ? array_fill(0, $count, 'Foo') : array());
-    }
-
-    public function getIterator()
-    {
-        return $this->iterator;
-    }
-}
 
 class SimpleFormTest extends AbstractFormTest
 {
@@ -97,7 +68,7 @@ class SimpleFormTest extends AbstractFormTest
     }
 
     /**
-     * @expectedException \Symfony\Component\Form\Exception\AlreadyBoundException
+     * @expectedException Symfony\Component\Form\Exception\AlreadyBoundException
      */
     public function testBindThrowsExceptionIfAlreadyBound()
     {
@@ -202,42 +173,6 @@ class SimpleFormTest extends AbstractFormTest
         $this->assertTrue($this->form->isEmpty());
     }
 
-    public function testEmptyIfEmptyCountable()
-    {
-        $this->form = new Form(new FormConfigBuilder('name', __NAMESPACE__ . '\SimpleFormTest_Countable', $this->dispatcher));
-
-        $this->form->setData(new SimpleFormTest_Countable(0));
-
-        $this->assertTrue($this->form->isEmpty());
-    }
-
-    public function testNotEmptyIfFilledCountable()
-    {
-        $this->form = new Form(new FormConfigBuilder('name', __NAMESPACE__ . '\SimpleFormTest_Countable', $this->dispatcher));
-
-        $this->form->setData(new SimpleFormTest_Countable(1));
-
-        $this->assertFalse($this->form->isEmpty());
-    }
-
-    public function testEmptyIfEmptyTraversable()
-    {
-        $this->form = new Form(new FormConfigBuilder('name', __NAMESPACE__ . '\SimpleFormTest_Traversable', $this->dispatcher));
-
-        $this->form->setData(new SimpleFormTest_Traversable(0));
-
-        $this->assertTrue($this->form->isEmpty());
-    }
-
-    public function testNotEmptyIfFilledTraversable()
-    {
-        $this->form = new Form(new FormConfigBuilder('name', __NAMESPACE__ . '\SimpleFormTest_Traversable', $this->dispatcher));
-
-        $this->form->setData(new SimpleFormTest_Traversable(1));
-
-        $this->assertFalse($this->form->isEmpty());
-    }
-
     public function testEmptyIfNull()
     {
         $this->form->setData(null);
@@ -305,7 +240,7 @@ class SimpleFormTest extends AbstractFormTest
     }
 
     /**
-     * @expectedException \Symfony\Component\Form\Exception\AlreadyBoundException
+     * @expectedException Symfony\Component\Form\Exception\AlreadyBoundException
      */
     public function testSetParentThrowsExceptionIfAlreadyBound()
     {
@@ -327,7 +262,7 @@ class SimpleFormTest extends AbstractFormTest
     }
 
     /**
-     * @expectedException \Symfony\Component\Form\Exception\AlreadyBoundException
+     * @expectedException Symfony\Component\Form\Exception\AlreadyBoundException
      */
     public function testSetDataThrowsExceptionIfAlreadyBound()
     {
@@ -644,7 +579,6 @@ class SimpleFormTest extends AbstractFormTest
     {
         $test = $this;
         $validator = $this->getFormValidator();
-        set_error_handler(array('Symfony\Component\Form\Test\DeprecationErrorHandler', 'handle'));
         $form = $this->getBuilder()
             ->addValidator($validator)
             ->getForm();
@@ -657,8 +591,6 @@ class SimpleFormTest extends AbstractFormTest
         }));
 
         $form->bind('foobar');
-
-        restore_error_handler();
     }
 
     public function testBindResetsErrors()
@@ -687,7 +619,7 @@ class SimpleFormTest extends AbstractFormTest
     {
         $type = $this->getMock('Symfony\Component\Form\ResolvedFormTypeInterface');
         $view = $this->getMock('Symfony\Component\Form\FormView');
-        $parentForm = $this->getMock('Symfony\Component\Form\Test\FormInterface');
+        $parentForm = $this->getMock('Symfony\Component\Form\Tests\FormInterface');
         $parentView = $this->getMock('Symfony\Component\Form\FormView');
         $form = $this->getBuilder()->setType($type)->getForm();
         $form->setParent($parentForm);
@@ -742,7 +674,7 @@ class SimpleFormTest extends AbstractFormTest
     }
 
     /**
-     * @expectedException \Symfony\Component\Form\Exception\Exception
+     * @expectedException Symfony\Component\Form\Exception\FormException
      * @expectedExceptionMessage A form with an empty name cannot have a parent form.
      */
     public function testFormCannotHaveEmptyNameNotInRootLevel()
@@ -788,7 +720,7 @@ class SimpleFormTest extends AbstractFormTest
     }
 
     /**
-     * @expectedException \Symfony\Component\Form\Exception\Exception
+     * @expectedException Symfony\Component\Form\Exception\FormException
      */
     public function testViewDataMustNotBeObjectIfDataClassIsNull()
     {
@@ -818,7 +750,7 @@ class SimpleFormTest extends AbstractFormTest
     }
 
     /**
-     * @expectedException \Symfony\Component\Form\Exception\Exception
+     * @expectedException Symfony\Component\Form\Exception\FormException
      */
     public function testViewDataMustBeObjectIfDataClassIsSet()
     {
@@ -833,7 +765,7 @@ class SimpleFormTest extends AbstractFormTest
     }
 
     /**
-     * @expectedException \Symfony\Component\Form\Exception\Exception
+     * @expectedException Symfony\Component\Form\Exception\FormException
      */
     public function testSetDataCannotInvokeItself()
     {

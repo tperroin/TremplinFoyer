@@ -18,7 +18,7 @@ namespace Sensio\Bundle\GeneratorBundle\Command;
  */
 class Validators
 {
-    public static function validateBundleNamespace($namespace)
+    static public function validateBundleNamespace($namespace)
     {
         if (!preg_match('/Bundle$/', $namespace)) {
             throw new \InvalidArgumentException('The namespace must end with Bundle.');
@@ -49,7 +49,7 @@ class Validators
         return $namespace;
     }
 
-    public static function validateBundleName($bundle)
+    static public function validateBundleName($bundle)
     {
         if (!preg_match('/Bundle$/', $bundle)) {
             throw new \InvalidArgumentException('The bundle name must end with Bundle.');
@@ -58,29 +58,13 @@ class Validators
         return $bundle;
     }
 
-    public static function validateControllerName($controller)
-    {
-        try {
-            self::validateEntityName($controller);
-        } catch (\InvalidArgumentException $e) {
-            throw new \InvalidArgumentException(
-                sprintf(
-                    'The controller name must contain a : ("%s" given, expecting something like AcmeBlogBundle:Post)',
-                    $controller
-                )
-            );
-        }
-
-        return $controller;
-    }
-
-    public static function validateTargetDir($dir, $bundle, $namespace)
+    static public function validateTargetDir($dir, $bundle, $namespace)
     {
         // add trailing / if necessary
         return '/' === substr($dir, -1, 1) ? $dir : $dir.'/';
     }
 
-    public static function validateFormat($format)
+    static public function validateFormat($format)
     {
         $format = strtolower($format);
 
@@ -91,7 +75,7 @@ class Validators
         return $format;
     }
 
-    public static function validateEntityName($entity)
+    static public function validateEntityName($entity)
     {
         if (false === $pos = strpos($entity, ':')) {
             throw new \InvalidArgumentException(sprintf('The entity name must contain a : ("%s" given, expecting something like AcmeBlogBundle:Blog/Post)', $entity));
@@ -100,7 +84,7 @@ class Validators
         return $entity;
     }
 
-    public static function getReservedWords()
+    static public function getReservedWords()
     {
         return array(
             'abstract',

@@ -18,15 +18,7 @@ use Symfony\Component\Security\Core\Exception\AuthenticationException;
  * the digest nonce has expired.
  *
  * @author Fabien Potencier <fabien@symfony.com>
- * @author Alexander <iam.asm89@gmail.com>
  */
 class NonceExpiredException extends AuthenticationException
 {
-    /**
-     * {@inheritDoc}
-     */
-    public function getMessageKey()
-    {
-        return 'Digest nonce has expired.';
-    }
 }

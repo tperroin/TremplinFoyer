@@ -39,8 +39,6 @@ class Translator extends BaseTranslator
      * @param MessageSelector    $selector  The message selector for pluralization
      * @param array              $loaderIds An array of loader Ids
      * @param array              $options   An array of options
-     *
-     * @throws \InvalidArgumentException
      */
     public function __construct(ContainerInterface $container, MessageSelector $selector, $loaderIds = array(), array $options = array())
     {

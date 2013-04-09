@@ -1,13 +1,13 @@
 <?php
 
-/* @WebProfiler/Profiler/layout.html.twig */
+/* WebProfilerBundle:Profiler:layout.html.twig */
 class __TwigTemplate_b023097df1028e15ab3b05381089abdf extends Twig_Template
 {
     public function __construct(Twig_Environment $env)
     {
         parent::__construct($env);
 
-        $this->parent = $this->env->loadTemplate("@WebProfiler/Profiler/base.html.twig");
+        $this->parent = $this->env->loadTemplate("WebProfilerBundle:Profiler:base.html.twig");
 
         $this->blocks = array(
             'body' => array($this, 'block_body'),
@@ -17,7 +17,7 @@ class __TwigTemplate_b023097df1028e15ab3b05381089abdf extends Twig_Template
 
     protected function doGetParent(array $context)
     {
-        return "@WebProfiler/Profiler/base.html.twig";
+        return "WebProfilerBundle:Profiler:base.html.twig";
     }
 
     protected function doDisplay(array $context, array $blocks = array())
@@ -32,19 +32,19 @@ class __TwigTemplate_b023097df1028e15ab3b05381089abdf extends Twig_Template
         echo "
     ";
         // line 5
-        echo $this->env->getExtension('http_kernel')->renderFragment($this->env->getExtension('routing')->getPath("_wdt", array("token" => $this->getContext($context, "token"), "position" => "normal")));
+        echo $this->env->getExtension('actions')->renderAction("WebProfilerBundle:Profiler:toolbar", array("token" => $this->getContext($context, "token"), "position" => "normal"), array());
+        // line 6
         echo "
-
     <div id=\"content\">
         ";
         // line 8
-        $this->env->loadTemplate("@WebProfiler/Profiler/header.html.twig")->display(array());
+        $this->env->loadTemplate("WebProfilerBundle:Profiler:header.html.twig")->display(array());
         // line 9
         echo "
         <div id=\"main\">
 
-            <div class=\"clear-fix\">
-                <div id=\"collector-wrapper\">
+            <div class=\"clear_fix\">
+                <div id=\"collector_wrapper\">
                     ";
         // line 14
         if ($this->getContext($context, "profile")) {
@@ -53,7 +53,7 @@ class __TwigTemplate_b023097df1028e15ab3b05381089abdf extends Twig_Template
                             <a id=\"resume-view-all\" href=\"";
             // line 16
             echo twig_escape_filter($this->env, $this->env->getExtension('routing')->getPath("_profiler_search", array("limit" => 10)), "html", null, true);
-            echo "\">View last 10</a>
+            echo "\">View all</a>
                             <strong>Profile for:</strong>
                             ";
             // line 18
@@ -90,10 +90,10 @@ class __TwigTemplate_b023097df1028e15ab3b05381089abdf extends Twig_Template
         }
         // line 29
         echo "
-                    <div id=\"collector-content\">
+                    <div id=\"collector_content\">
                         ";
         // line 31
-        $this->env->loadTemplate("@WebProfiler/Profiler/base_js.html.twig")->display($context);
+        $this->env->loadTemplate("WebProfilerBundle:Profiler:base_js.html.twig")->display($context);
         // line 32
         echo "                        ";
         $this->displayBlock('panel', $context, $blocks);
@@ -105,7 +105,7 @@ class __TwigTemplate_b023097df1028e15ab3b05381089abdf extends Twig_Template
         // line 36
         if (array_key_exists("templates", $context)) {
             // line 37
-            echo "                        <ul id=\"menu-profiler\">
+            echo "                        <ul id=\"menu_profiler\">
                             ";
             // line 38
             $context['_parent'] = (array) $context;
@@ -142,103 +142,20 @@ class __TwigTemplate_b023097df1028e15ab3b05381089abdf extends Twig_Template
             unset($context['_seq'], $context['_iterated'], $context['name'], $context['template'], $context['_parent'], $context['loop']);
             $context = array_merge($_parent, array_intersect_key($context, $_parent));
             // line 46
-            echo "                            <li class=\"minimize\">
-                                <a href=\"javascript:void(0);\" title=\"Minimize toolbar\" onclick=\"return toggleMenuPanels();\">
-                                    <span class=\"label\">
-                                        <span class=\"icon\"><img id=\"minimizePanelIcon\" src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAAhCAYAAADOHBvaAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA4tJREFUeNrkl19IU1Ecx7fZJN2arhq2JUWJlEZL1MAm1B582GBErMJqtabzRRAqFAYa9OfFFx+KQEG3MkYRZkkEJUUwctVSKCJWJojL1ZiydJvLtNXW98AW1znv7t0CHzrw5Xe3nXM/O/f8zvf8LjcajXJWo/E4q9T+P/CaNMZw29rahBMTE3LyoaKi4m1zc/M865swSS6bzZbT09NzfG5urjYUCikikYiQ+ntWVlZQKBQ+F4lE/Var9Ta+CmcK5hsMhpNer/fiwsLCFiYzycnJGZfJZOctFss9uj+wInhwcDDfbDb3+Hy+I+msoVQqNZtMpnNlZWUhxuChoaENHR0djwOBwN5MEkgsFtsGBgY0uPzOJKtzu7q6rmcKJW12dlaJpbqGy7WpwPyWlpZGj8dzkMX9B+l+dLlcda2trbrEHbQEPDY2Jh0dHTWxgF5AxqsRz9J1cjqdlxDWrwTO7u3tNWK7SFhAL8e221WE7pU6Ytk2t7e311JnTQWLJycntWyhpCmVShXCKboBMJyjCKJlzgVzKJiamtrBAKoH1JoAvU+2MN2g6enp3QgboRnqjHl2u70kHA7zU0APpQMlze/357vd7gKyhang7GAwKEsx1gLoAwp0E8JdJtB4w1LK4sw4OAtWl51inBGwAxT/9iLUQb+ZgsHgJ4I5hYWFAQZjbYBrKPB+hGNM4DweL1pUVBRMzOpweXm5WyAQ/GIAfwj4GbZwiUTyIy8vby7eLw4mQH9paamX4VO7kgTeTTeguLjYg0AOjAgVTD58UygUb1i41l84ogGhka4z+rwi9p3MQHwajeYRjrNFlvBbiDfoOmFtQzU1NU/J5JKBA3w+/71er3/J8hA6kSKpOPX19c9w+YH4VDIwqRbG1Wr1HZVK5eX8o6bVaj9XV1cTk3HFcinpsUjs7AWKNwvWO5gpFI93pqmpyYxLB0neVBUIcaI90OHOzs7TfX19ErZA8niNRuNXnU53M2apTmiBSc0lgEoh9cjIiBYV5i6c1YxKYblc/rOhoeEdIin2nkCfoHk2VSYpV7ZCVdB+h8OxDyocHh4WoEJZskRwvUhVVVUIcldWVtrx1XPoNfQFWkynvCWzzIe2QSXQTmg7Od5QT+WinuagliaFnI8kJvQxJpJIATo34zJ8WyR/YF2sfBFDpKCPHyqLMUeajSVniJq9mYKXjUtwPdY34a7W+/EfAQYAZM5kh2zoNWsAAAAASUVORK5CYII=\" alt=\"\" /></span>
-                                        <strong>Minimize</strong>
-                                    </span>
-                                </a>
-                            </li>
-                        </ul>
+            echo "                        </ul>
                     ";
         }
-        // line 56
+        // line 48
         echo "                    ";
-        echo $this->env->getExtension('http_kernel')->renderFragment($this->env->getExtension('routing')->getPath("_profiler_search_bar"));
-        echo "
-                    ";
-        // line 57
-        $this->env->loadTemplate("@WebProfiler/Profiler/admin.html.twig")->display(array("token" => $this->getContext($context, "token")));
-        // line 58
+        echo $this->env->getExtension('actions')->renderAction("WebProfilerBundle:Profiler:searchBar", array(), array());
+        // line 49
+        echo "                    ";
+        $this->env->loadTemplate("WebProfilerBundle:Profiler:admin.html.twig")->display(array("token" => $this->getContext($context, "token")));
+        // line 50
         echo "                </div>
             </div>
         </div>
     </div>
-
-    <script type=\"text/javascript\">//<![CDATA[
-
-        function toggleMenuPanels(state, doSave) {
-            var leftIconPath = \"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAAhCAYAAADOHBvaAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA4tJREFUeNrkl19IU1Ecx7fZJN2arhq2JUWJlEZL1MAm1B582GBErMJqtabzRRAqFAYa9OfFFx+KQEG3MkYRZkkEJUUwctVSKCJWJojL1ZiydJvLtNXW98AW1znv7t0CHzrw5Xe3nXM/O/f8zvf8LjcajXJWo/E4q9T+P/CaNMZw29rahBMTE3LyoaKi4m1zc/M865swSS6bzZbT09NzfG5urjYUCikikYiQ+ntWVlZQKBQ+F4lE/Var9Ta+CmcK5hsMhpNer/fiwsLCFiYzycnJGZfJZOctFss9uj+wInhwcDDfbDb3+Hy+I+msoVQqNZtMpnNlZWUhxuChoaENHR0djwOBwN5MEkgsFtsGBgY0uPzOJKtzu7q6rmcKJW12dlaJpbqGy7WpwPyWlpZGj8dzkMX9B+l+dLlcda2trbrEHbQEPDY2Jh0dHTWxgF5AxqsRz9J1cjqdlxDWrwTO7u3tNWK7SFhAL8e221WE7pU6Ytk2t7e311JnTQWLJycntWyhpCmVShXCKboBMJyjCKJlzgVzKJiamtrBAKoH1JoAvU+2MN2g6enp3QgboRnqjHl2u70kHA7zU0APpQMlze/357vd7gKyhang7GAwKEsx1gLoAwp0E8JdJtB4w1LK4sw4OAtWl51inBGwAxT/9iLUQb+ZgsHgJ4I5hYWFAQZjbYBrKPB+hGNM4DweL1pUVBRMzOpweXm5WyAQ/GIAfwj4GbZwiUTyIy8vby7eLw4mQH9paamX4VO7kgTeTTeguLjYg0AOjAgVTD58UygUb1i41l84ogGhka4z+rwi9p3MQHwajeYRjrNFlvBbiDfoOmFtQzU1NU/J5JKBA3w+/71er3/J8hA6kSKpOPX19c9w+YH4VDIwqRbG1Wr1HZVK5eX8o6bVaj9XV1cTk3HFcinpsUjs7AWKNwvWO5gpFI93pqmpyYxLB0neVBUIcaI90OHOzs7TfX19ErZA8niNRuNXnU53M2apTmiBSc0lgEoh9cjIiBYV5i6c1YxKYblc/rOhoeEdIin2nkCfoHk2VSYpV7ZCVdB+h8OxDyocHh4WoEJZskRwvUhVVVUIcldWVtrx1XPoNfQFWkynvCWzzIe2QSXQTmg7Od5QT+WinuagliaFnI8kJvQxJpJIATo34zJ8WyR/YF2sfBFDpKCPHyqLMUeajSVniJq9mYKXjUtwPdY34a7W+/EfAQYAZM5kh2zoNWsAAAAASUVORK5CYII=\",
-                rightIconPath = \"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAAhCAYAAADOHBvaAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA4tJREFUeNrsl11IU2EYx91ytrnpmmy4TYNkqGhEJGiiabuQ2EAiZ1kZW9NtF4pgoBB40weJeCHVjReygVmuIhP6gLoJJNQGadhiJcLa2sb8KN2nrprbel7YYh7WzjnOsIsO/Hnes533/Z33PB/nOZRIJJK2GwflP/ifBg8MDGTOzs4eQeOCggJjb2+vH4aRvwGmyeXyZq/Xe9rv99eGQqHs+D+pVKqfxWJNZ2VlPdRoNPfFYnEgVTBNpVI1Op3OG4FAQETkDul0uo3P518dHh6+B6dB0uC5uTlWf3//zcXFRfV2fMjlcsfUarVGIpG4yYCZDQ0Nz10ulziVAGKz2W+7u7ulNTU1q0TAdKVSOWi1Wlt2InqFQuFTvV5/HoYbW+ICc116T0/PBQLQl0TBEB8nYddtKF6SgXNMJtM1nLUuTUxMSMFeIQqfn5+/vLCwIPgTOL2vr++sx+PJS7LGEEBvowHY60ThkII8iHIVDDMSgbMtFssZnDXkkKOS2AkZuM1mk4HhJAJzV1ZWDuHMZ4DGE8AVeODl5eVin8+XiwVT7HZ7rtvt3kfg5hPB74I5lWxSMBikTU5OlsSYMTAVHoWQRJYg+COA8+PgT8Dokk2CkiuM+fk3mMFg0EiAQ6AWgC3FfoCbOA5GlfRuGQwE3bPFxyKRyAvFPkIQeg6gY3HQerRpvIn5+fkerI9DUN58PB4vsA1oJ5hneFAmk7lZVlZmj704YuAwSrfCwkInzvyhBNBbRHxTWlqK3IJeGJvYdHLBQm9w5rfBNUqyUHRUVVW9A7Ma3eSWlwRK7np4/w6azWYWzjp6UDNRqEAg+DEyMtJJo9Eew+k37I59oI+tra2vIMjw1momkQFpCoViGqAfYOhJVLnQs7dWV1ePy2SyLzvV1EEjsCSVSh/A0BzfkWC3hpxv6Ojo0NbV1a2lCgW/eru6ulBRmQKt4TYCoIMg2ejo6EWdTpcXDodJQ5uamr62t7ffgSHy63tQgEjrkwkqBp0wGo2NWq32MNgMIsCioqJN6DRN5eXl43D6AsUNaJ1Ml7kXFRvQUVDtzMzMMYPBsB/EcjgcVEx7E66oqFivrKx0gFBKvkYuA6FY+b6d9hbVVTboAKgkKtTmcqHgM6G/TuNwOBvRFPmMmg3QJ5Alvlik0tCng1Bu50TznRV9Iuj4iaoeKkDRAPIlA6b67UTBlFvSi+zaR9svAQYA6+V18DvfH/8AAAAASUVORK5CYII=\",
-                menu = document.getElementById('navigation'), savedState = Sfjs.getPreference('menu/displayState'),
-                displayState, elem, className;
-
-            if (savedState == null) {
-                savedState = 'block';
-            }
-
-            displayState = state || (savedState == 'block' ? 'none' : 'block');
-
-            if (typeof doSave === 'undefined') {
-                doSave = true;
-            }
-
-            document.getElementById('searchBar').style.display = displayState;
-            document.getElementById('adminBar').style.display = displayState;
-
-            if (displayState == 'block') {
-                Sfjs.removeClass(menu, 'collapsed-menu');
-                Sfjs.removeClass(menu.parentNode.parentNode, 'collapsed-menu-parents');
-
-                document.getElementById('minimizePanelIcon').src = leftIconPath;
-            } else {
-                Sfjs.addClass(menu, 'collapsed-menu');
-                Sfjs.addClass(menu.parentNode.parentNode, 'collapsed-menu-parents');
-
-                document.getElementById('minimizePanelIcon').src = rightIconPath;
-            }
-
-            if (doSave) {
-                Sfjs.setPreference('menu/displayState', displayState);
-            }
-
-            try {
-                canvasAutoUpdateOnThresholdChange(null);
-            } catch (err) {
-
-            }
-
-            return false;
-        }
-
-        window.setTimeout(function() {
-            if (document.getElementById('menu-profiler') == null) {
-                return;
-            }
-
-            var menuItems = document.getElementById('menu-profiler').getElementsByTagName('LI'),
-                elem, value, child, displayState = Sfjs.getPreference('menu/displayState');
-
-            if (displayState == 'none') {
-                toggleMenuPanels('none', false);
-            }
-
-            for (elem in menuItems) {
-                if (typeof(menuItems[elem].children) != 'undefined' &&
-                    menuItems[elem].children.length > 0) {
-                    child = menuItems[elem].children[0]
-
-                    if (child.getAttribute('title') == '' ||
-                        child.getAttribute('title') == null) {
-                        value = child.text.replace(/^\\s+/g, '').split('\\n')[0].replace(/\\s+\$/g, '');
-                        child.setAttribute('title', value);
-                    }
-                }
-            }
-        }, 25);
-
-    //]]></script>
 ";
     }
 
@@ -250,7 +167,7 @@ class __TwigTemplate_b023097df1028e15ab3b05381089abdf extends Twig_Template
 
     public function getTemplateName()
     {
-        return "@WebProfiler/Profiler/layout.html.twig";
+        return "WebProfilerBundle:Profiler:layout.html.twig";
     }
 
     public function isTraitable()
@@ -260,6 +177,6 @@ class __TwigTemplate_b023097df1028e15ab3b05381089abdf extends Twig_Template
 
     public function getDebugInfo()
     {
-        return array (  246 => 32,  164 => 58,  157 => 56,  145 => 46,  139 => 45,  131 => 42,  120 => 40,  115 => 39,  111 => 38,  108 => 37,  106 => 36,  101 => 33,  98 => 32,  92 => 29,  83 => 25,  80 => 24,  74 => 22,  66 => 20,  60 => 18,  55 => 16,  52 => 15,  50 => 14,  41 => 8,  32 => 4,  29 => 3,  409 => 183,  400 => 180,  396 => 179,  393 => 178,  388 => 177,  386 => 176,  378 => 170,  376 => 169,  369 => 165,  362 => 161,  355 => 157,  348 => 153,  341 => 149,  334 => 145,  327 => 141,  312 => 129,  305 => 125,  298 => 121,  293 => 118,  288 => 116,  285 => 115,  276 => 113,  273 => 112,  271 => 111,  262 => 104,  259 => 103,  251 => 97,  248 => 96,  243 => 93,  240 => 92,  235 => 89,  229 => 87,  221 => 85,  219 => 84,  209 => 79,  202 => 75,  195 => 71,  191 => 69,  188 => 68,  185 => 67,  177 => 64,  172 => 62,  168 => 61,  165 => 60,  162 => 57,  156 => 58,  153 => 56,  150 => 55,  147 => 54,  141 => 51,  134 => 47,  130 => 46,  123 => 41,  119 => 40,  116 => 39,  113 => 38,  105 => 34,  102 => 33,  99 => 31,  96 => 31,  90 => 27,  84 => 24,  81 => 23,  73 => 20,  70 => 19,  67 => 18,  64 => 19,  59 => 14,  53 => 12,  45 => 10,  43 => 9,  38 => 6,  35 => 5,  33 => 4,  30 => 3,);
+        return array (  163 => 32,  155 => 50,  152 => 49,  149 => 48,  145 => 46,  139 => 45,  123 => 41,  120 => 40,  115 => 39,  111 => 38,  108 => 37,  106 => 36,  101 => 33,  98 => 32,  96 => 31,  92 => 29,  80 => 24,  74 => 22,  64 => 19,  55 => 16,  52 => 15,  50 => 14,  43 => 9,  41 => 8,  37 => 6,  32 => 4,  29 => 3,  356 => 163,  347 => 160,  343 => 159,  340 => 158,  335 => 157,  333 => 156,  325 => 150,  323 => 149,  316 => 145,  309 => 141,  302 => 137,  295 => 133,  288 => 129,  281 => 125,  274 => 121,  259 => 109,  252 => 105,  245 => 101,  238 => 97,  228 => 89,  225 => 88,  217 => 83,  214 => 82,  211 => 81,  206 => 78,  203 => 77,  198 => 74,  192 => 72,  184 => 70,  182 => 69,  172 => 64,  165 => 60,  158 => 56,  154 => 54,  151 => 53,  148 => 52,  140 => 49,  135 => 47,  131 => 42,  128 => 45,  125 => 44,  119 => 43,  116 => 41,  113 => 40,  110 => 39,  104 => 36,  100 => 35,  93 => 31,  89 => 29,  86 => 28,  83 => 25,  75 => 23,  72 => 22,  69 => 20,  66 => 20,  60 => 18,  54 => 13,  51 => 12,  48 => 11,  42 => 8,  38 => 6,  35 => 5,  33 => 4,  30 => 3,);
     }
 }

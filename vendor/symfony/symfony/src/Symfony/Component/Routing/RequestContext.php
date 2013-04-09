@@ -23,17 +23,12 @@ use Symfony\Component\HttpFoundation\Request;
 class RequestContext
 {
     private $baseUrl;
-    private $pathInfo;
     private $method;
     private $host;
     private $scheme;
     private $httpPort;
     private $httpsPort;
-
-    /**
-     * @var array
-     */
-    private $parameters = array();
+    private $parameters;
 
     /**
      * Constructor.
@@ -44,11 +39,10 @@ class RequestContext
      * @param string  $scheme    The HTTP scheme
      * @param integer $httpPort  The HTTP port
      * @param integer $httpsPort The HTTPS port
-     * @param string  $path      The path
      *
      * @api
      */
-    public function __construct($baseUrl = '', $method = 'GET', $host = 'localhost', $scheme = 'http', $httpPort = 80, $httpsPort = 443, $path = '/')
+    public function __construct($baseUrl = '', $method = 'GET', $host = 'localhost', $scheme = 'http', $httpPort = 80, $httpsPort = 443)
     {
         $this->baseUrl = $baseUrl;
         $this->method = strtoupper($method);
@@ -56,13 +50,12 @@ class RequestContext
         $this->scheme = strtolower($scheme);
         $this->httpPort = $httpPort;
         $this->httpsPort = $httpsPort;
-        $this->pathInfo = $path;
+        $this->parameters = array();
     }
 
     public function fromRequest(Request $request)
     {
         $this->setBaseUrl($request->getBaseUrl());
-        $this->setPathInfo($request->getPathInfo());
         $this->setMethod($request->getMethod());
         $this->setHost($request->getHost());
         $this->setScheme($request->getScheme());
@@ -90,26 +83,6 @@ class RequestContext
     public function setBaseUrl($baseUrl)
     {
         $this->baseUrl = $baseUrl;
-    }
-
-    /**
-     * Gets the path info.
-     *
-     * @return string The path info
-     */
-    public function getPathInfo()
-    {
-        return $this->pathInfo;
-    }
-
-    /**
-     * Sets the path info.
-     *
-     * @param string $pathInfo The path info
-     */
-    public function setPathInfo($pathInfo)
-    {
-        $this->pathInfo = $pathInfo;
     }
 
     /**

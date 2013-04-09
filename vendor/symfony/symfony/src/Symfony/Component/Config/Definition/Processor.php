@@ -28,6 +28,8 @@ class Processor
      */
     public function process(NodeInterface $configTree, array $configs)
     {
+        $configs = self::normalizeKeys($configs);
+
         $currentConfig = array();
         foreach ($configs as $config) {
             $config = $configTree->normalize($config);
@@ -51,6 +53,35 @@ class Processor
     }
 
     /**
+     * This method normalizes keys between the different configuration formats
+     *
+     * Namely, you mostly have foo_bar in YAML while you have foo-bar in XML.
+     * After running this method, all keys are normalized to foo_bar.
+     *
+     * If you have a mixed key like foo-bar_moo, it will not be altered.
+     * The key will also not be altered if the target key already exists.
+     *
+     * @param array $config
+     *
+     * @return array the config with normalized keys
+     */
+    public static function normalizeKeys(array $config)
+    {
+        foreach ($config as $key => $value) {
+            if (is_array($value)) {
+                $config[$key] = self::normalizeKeys($value);
+            }
+
+            if (false !== strpos($key, '-') && false === strpos($key, '_') && !array_key_exists($normalizedKey = str_replace('-', '_', $key), $config)) {
+                $config[$normalizedKey] = $config[$key];
+                unset($config[$key]);
+            }
+        }
+
+        return $config;
+    }
+
+    /**
      * Normalizes a configuration entry.
      *
      * This method returns a normalize configuration array for a given key
@@ -58,14 +89,14 @@ class Processor
      *
      * Here is an example.
      *
-     * The configuration in XML:
+     * The configuration is XML:
      *
-     * <twig:extension>twig.extension.foo</twig:extension>
-     * <twig:extension>twig.extension.bar</twig:extension>
+     * <twig:extension id="twig.extension.foo" />
+     * <twig:extension id="twig.extension.bar" />
      *
      * And the same configuration in YAML:
      *
-     * extensions: ['twig.extension.foo', 'twig.extension.bar']
+     * twig.extensions: ['twig.extension.foo', 'twig.extension.bar']
      *
      * @param array  $config A config array
      * @param string $key    The key to normalize
@@ -79,19 +110,18 @@ class Processor
             $plural = $key.'s';
         }
 
+        $values = array();
         if (isset($config[$plural])) {
-            return $config[$plural];
-        }
-
-        if (isset($config[$key])) {
+            $values = $config[$plural];
+        } elseif (isset($config[$key])) {
             if (is_string($config[$key]) || !is_int(key($config[$key]))) {
                 // only one
-                return  array($config[$key]);
+                $values = array($config[$key]);
+            } else {
+                $values = $config[$key];
             }
-
-            return  $config[$key];
         }
 
-        return array();
+        return $values;
     }
 }

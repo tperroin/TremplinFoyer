@@ -16,73 +16,59 @@ use Symfony\Bundle\TwigBundle\Loader\FilesystemLoader;
 use Symfony\Component\Config\FileLocatorInterface;
 use Symfony\Bundle\FrameworkBundle\Templating\TemplateReference;
 use Symfony\Component\Templating\TemplateNameParserInterface;
+use InvalidArgumentException;
 
 class FilesystemLoaderTest extends TestCase
 {
-    public function testGetSource()
+    /** @var FileLocatorInterface */
+    private $locator;
+    /** @var TemplateNameParserInterface */
+    private $parser;
+    /** @var FilesystemLoader */
+    private $loader;
+
+    protected function setUp()
     {
-        $parser = $this->getMock('Symfony\Component\Templating\TemplateNameParserInterface');
-        $locator = $this->getMock('Symfony\Component\Config\FileLocatorInterface');
-        $locator
-            ->expects($this->once())
-            ->method('locate')
-            ->will($this->returnValue(__DIR__.'/../DependencyInjection/Fixtures/Resources/views/layout.html.twig'))
+        parent::setUp();
+
+        $this->locator = $this->getMock('Symfony\Component\Config\FileLocatorInterface');
+        $this->parser = $this->getMock('Symfony\Component\Templating\TemplateNameParserInterface');
+        $this->loader = new FilesystemLoader($this->locator, $this->parser);
+
+        $this->parser->expects($this->once())
+                ->method('parse')
+                ->with('name.format.engine')
+                ->will($this->returnValue(new TemplateReference('', '', 'name', 'format', 'engine')))
         ;
-        $loader = new FilesystemLoader($locator, $parser);
-        $loader->addPath(__DIR__.'/../DependencyInjection/Fixtures/Resources/views', 'namespace');
-
-        // Twig-style
-        $this->assertEquals("This is a layout\n", $loader->getSource('@namespace/layout.html.twig'));
-
-        // Symfony-style
-        $this->assertEquals("This is a layout\n", $loader->getSource('TwigBundle::layout.html.twig'));
     }
 
-    /**
-     * @expectedException Twig_Error_Loader
-     */
+    protected function tearDown()
+    {
+        parent::tearDown();
+
+        $this->locator = null;
+        $this->parser = null;
+        $this->loader = null;
+    }
+
     public function testTwigErrorIfLocatorThrowsInvalid()
     {
-        $parser = $this->getMock('Symfony\Component\Templating\TemplateNameParserInterface');
-        $parser
-            ->expects($this->once())
-            ->method('parse')
-            ->with('name.format.engine')
-            ->will($this->returnValue(new TemplateReference('', '', 'name', 'format', 'engine')))
-        ;
+        $this->setExpectedException('Twig_Error_Loader');
+        $invalidException = new InvalidArgumentException('Unable to find template "NonExistent".');
+        $this->locator->expects($this->once())
+                      ->method('locate')
+                      ->will($this->throwException($invalidException));
 
-        $locator = $this->getMock('Symfony\Component\Config\FileLocatorInterface');
-        $locator
-            ->expects($this->once())
-            ->method('locate')
-            ->will($this->throwException(new \InvalidArgumentException('Unable to find template "NonExistent".')))
-        ;
-
-        $loader = new FilesystemLoader($locator, $parser);
-        $loader->getCacheKey('name.format.engine');
+        $this->loader->getCacheKey('name.format.engine');
     }
 
-    /**
-     * @expectedException Twig_Error_Loader
-     */
     public function testTwigErrorIfLocatorReturnsFalse()
     {
-        $parser = $this->getMock('Symfony\Component\Templating\TemplateNameParserInterface');
-        $parser
-            ->expects($this->once())
-            ->method('parse')
-            ->with('name.format.engine')
-            ->will($this->returnValue(new TemplateReference('', '', 'name', 'format', 'engine')))
-        ;
+        $this->setExpectedException('Twig_Error_Loader');
+        $this->locator->expects($this->once())
+                      ->method('locate')
+                      ->will($this->returnValue(false));
 
-        $locator = $this->getMock('Symfony\Component\Config\FileLocatorInterface');
-        $locator
-            ->expects($this->once())
-            ->method('locate')
-            ->will($this->returnValue(false))
-        ;
-
-        $loader = new FilesystemLoader($locator, $parser);
-        $loader->getCacheKey('name.format.engine');
+        $this->loader->getCacheKey('name.format.engine');
     }
 }

@@ -54,8 +54,6 @@ class ParameterBagTest extends \PHPUnit_Framework_TestCase
         ));
         $bag->remove('foo');
         $this->assertEquals(array('bar' => 'bar'), $bag->all(), '->remove() removes a parameter');
-        $bag->remove('BAR');
-        $this->assertEquals(array(), $bag->all(), '->remove() converts key to lowercase before removing');
     }
 
     /**

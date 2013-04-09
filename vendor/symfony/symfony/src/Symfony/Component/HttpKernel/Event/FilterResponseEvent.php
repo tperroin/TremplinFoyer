@@ -30,7 +30,7 @@ class FilterResponseEvent extends KernelEvent
 {
     /**
      * The current response object
-     * @var Response
+     * @var Symfony\Component\HttpFoundation\Response
      */
     private $response;
 
@@ -44,7 +44,7 @@ class FilterResponseEvent extends KernelEvent
     /**
      * Returns the current response object
      *
-     * @return Response
+     * @return Symfony\Component\HttpFoundation\Response
      *
      * @api
      */
@@ -56,7 +56,7 @@ class FilterResponseEvent extends KernelEvent
     /**
      * Sets a new response object
      *
-     * @param Response $response
+     * @param Symfony\Component\HttpFoundation\Response $response
      *
      * @api
      */

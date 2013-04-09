@@ -59,19 +59,13 @@ class SplFileInfo extends \SplFileInfo
      * Returns the contents of the file
      *
      * @return string the contents of the file
-     *
-     * @throws \RuntimeException
      */
     public function getContents()
     {
-        $level = error_reporting(0);
-        $content = file_get_contents($this->getRealpath());
-        error_reporting($level);
-        if (false === $content) {
-            $error = error_get_last();
-            throw new \RuntimeException($error['message']);
-        }
+        $file = new \SplFileObject($this->getRealpath(), 'rb');
+        ob_start();
+        $file->fpassthru();
 
-        return $content;
+        return ob_get_clean();
     }
 }

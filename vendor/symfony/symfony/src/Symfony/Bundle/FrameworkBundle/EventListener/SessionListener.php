@@ -19,7 +19,10 @@ use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 /**
- * Sets the session in the request.
+ * Sets the session on the request.
+ *
+ * This will also start the session if it was already started during a previous
+ * request.
  *
  * @author Johannes M. Schmitt <schmittjoh@gmail.com>
  */

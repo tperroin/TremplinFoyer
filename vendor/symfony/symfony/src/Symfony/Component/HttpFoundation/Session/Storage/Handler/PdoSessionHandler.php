@@ -168,9 +168,7 @@ class PdoSessionHandler implements \SessionHandlerInterface
         $encoded = base64_encode($data);
 
         try {
-            $driver = $this->pdo->getAttribute(\PDO::ATTR_DRIVER_NAME);
-
-            if ('mysql' === $driver) {
+            if ('mysql' === $this->pdo->getAttribute(\PDO::ATTR_DRIVER_NAME)) {
                 // MySQL would report $stmt->rowCount() = 0 on UPDATE when the data is left unchanged
                 // it could result in calling createNewSession() whereas the session already exists in
                 // the DB which would fail as the id is unique
@@ -181,14 +179,6 @@ class PdoSessionHandler implements \SessionHandlerInterface
                 $stmt->bindParam(':id', $id, \PDO::PARAM_STR);
                 $stmt->bindParam(':data', $encoded, \PDO::PARAM_STR);
                 $stmt->bindValue(':time', time(), \PDO::PARAM_INT);
-                $stmt->execute();
-            } elseif ('oci' === $driver) {
-                $stmt = $this->pdo->prepare("MERGE INTO $dbTable USING DUAL ON($dbIdCol = :id) ".
-                       "WHEN NOT MATCHED THEN INSERT ($dbIdCol, $dbDataCol, $dbTimeCol) VALUES (:id, :data, sysdate) " .
-                       "WHEN MATCHED THEN UPDATE SET $dbDataCol = :data WHERE $dbIdCol = :id");
-
-                $stmt->bindParam(':id', $id, \PDO::PARAM_STR);
-                $stmt->bindParam(':data', $encoded, \PDO::PARAM_STR);
                 $stmt->execute();
             } else {
                 $stmt = $this->pdo->prepare("UPDATE $dbTable SET $dbDataCol = :data, $dbTimeCol = :time WHERE $dbIdCol = :id");

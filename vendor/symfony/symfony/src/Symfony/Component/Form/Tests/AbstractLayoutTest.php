@@ -13,6 +13,8 @@ namespace Symfony\Component\Form\Tests;
 
 use Symfony\Component\Form\FormError;
 use Symfony\Component\Form\FormView;
+use Symfony\Component\Form\FormFactory;
+use Symfony\Component\Form\Extension\Core\CoreExtension;
 use Symfony\Component\Form\Extension\Csrf\CsrfExtension;
 
 abstract class AbstractLayoutTest extends FormIntegrationTestCase
@@ -45,8 +47,6 @@ abstract class AbstractLayoutTest extends FormIntegrationTestCase
     {
         $this->csrfProvider = null;
         $this->factory = null;
-
-        parent::tearDown();
     }
 
     protected function assertXpathNodeValue(\DomElement $element, $expression, $nodeValue)
@@ -283,8 +283,8 @@ abstract class AbstractLayoutTest extends FormIntegrationTestCase
     public function testErrors()
     {
         $form = $this->factory->createNamed('name', 'text');
-        $form->addError(new FormError('[trans]Error 1[/trans]'));
-        $form->addError(new FormError('[trans]Error 2[/trans]'));
+        $form->addError(new FormError('Error 1'));
+        $form->addError(new FormError('Error 2'));
         $view = $form->createView();
         $html = $this->renderErrors($view);
 
@@ -524,7 +524,7 @@ abstract class AbstractLayoutTest extends FormIntegrationTestCase
     [@name="name"]
     [not(@required)]
     [
-        ./option[@value=""][not(@selected)][not(@disabled)][.="[trans]Select&Anything&Not&Me[/trans]"]
+        ./option[@value=""][not(@selected)][.="[trans]Select&Anything&Not&Me[/trans]"]
         /following-sibling::option[@value="&a"][@selected="selected"][.="[trans]Choice&A[/trans]"]
         /following-sibling::option[@value="&b"][not(@selected)][.="[trans]Choice&B[/trans]"]
     ]
@@ -548,7 +548,7 @@ abstract class AbstractLayoutTest extends FormIntegrationTestCase
     [@name="name"]
     [@required="required"]
     [
-        ./option[@value=""][not(@selected)][@disabled][.="[trans]Test&Me[/trans]"]
+        ./option[@value=""][.="[trans]Test&Me[/trans]"]
         /following-sibling::option[@value="&a"][@selected="selected"][.="[trans]Choice&A[/trans]"]
         /following-sibling::option[@value="&b"][not(@selected)][.="[trans]Choice&B[/trans]"]
     ]
@@ -571,7 +571,7 @@ abstract class AbstractLayoutTest extends FormIntegrationTestCase
     [@name="name"]
     [@required="required"]
     [
-        ./option[@value=""][not(@selected)][@disabled][.="[trans][/trans]"]
+        ./option[@value=""][.="[trans][/trans]"]
         /following-sibling::option[@value="&a"][@selected="selected"][.="[trans]Choice&A[/trans]"]
         /following-sibling::option[@value="&b"][not(@selected)][.="[trans]Choice&B[/trans]"]
     ]
@@ -790,7 +790,7 @@ abstract class AbstractLayoutTest extends FormIntegrationTestCase
         $this->assertWidgetMatchesXpath($form->createView(), array(),
 '/select
     [@name="name"]
-    [./option[@value=""][not(@selected)][not(@disabled)][.="[trans]Select&Country[/trans]"]]
+    [./option[@value=""][not(@selected)][.="[trans]Select&Country[/trans]"]]
     [./option[@value="AT"][@selected="selected"][.="[trans]Austria[/trans]"]]
     [count(./option)>201]
 '
@@ -811,14 +811,14 @@ abstract class AbstractLayoutTest extends FormIntegrationTestCase
             [@id="name_date"]
             [
                 ./select
+                    [@id="name_date_year"]
+                    [./option[@value="2011"][@selected="selected"]]
+                /following-sibling::select
                     [@id="name_date_month"]
                     [./option[@value="2"][@selected="selected"]]
                 /following-sibling::select
                     [@id="name_date_day"]
                     [./option[@value="3"][@selected="selected"]]
-                /following-sibling::select
-                    [@id="name_date_year"]
-                    [./option[@value="2011"][@selected="selected"]]
             ]
         /following-sibling::div
             [@id="name_time"]
@@ -851,14 +851,14 @@ abstract class AbstractLayoutTest extends FormIntegrationTestCase
             [@id="name_date"]
             [
                 ./select
+                    [@id="name_date_year"]
+                    [./option[@value=""][.="[trans]Change&Me[/trans]"]]
+                /following-sibling::select
                     [@id="name_date_month"]
-                    [./option[@value=""][not(@selected)][not(@disabled)][.="[trans]Change&Me[/trans]"]]
+                    [./option[@value=""][.="[trans]Change&Me[/trans]"]]
                 /following-sibling::select
                     [@id="name_date_day"]
-                    [./option[@value=""][not(@selected)][not(@disabled)][.="[trans]Change&Me[/trans]"]]
-                /following-sibling::select
-                    [@id="name_date_year"]
-                    [./option[@value=""][not(@selected)][not(@disabled)][.="[trans]Change&Me[/trans]"]]
+                    [./option[@value=""][.="[trans]Change&Me[/trans]"]]
             ]
         /following-sibling::div
             [@id="name_time"]
@@ -878,10 +878,8 @@ abstract class AbstractLayoutTest extends FormIntegrationTestCase
 
     public function testDateTimeWithEmptyValueOnTime()
     {
-        $data = array('year' => '2011', 'month' => '2', 'day' => '3', 'hour' => '', 'minute' => '');
-
-        $form = $this->factory->createNamed('name', 'datetime', $data, array(
-            'input' => 'array',
+        $form = $this->factory->createNamed('name', 'datetime', '2011-02-03', array(
+            'input' => 'string',
             'empty_value' => array('hour' => 'Change&Me', 'minute' => 'Change&Me'),
             'required' => false,
         ));
@@ -893,24 +891,24 @@ abstract class AbstractLayoutTest extends FormIntegrationTestCase
             [@id="name_date"]
             [
                 ./select
+                    [@id="name_date_year"]
+                    [./option[@value="2011"][@selected="selected"]]
+                /following-sibling::select
                     [@id="name_date_month"]
                     [./option[@value="2"][@selected="selected"]]
                 /following-sibling::select
                     [@id="name_date_day"]
                     [./option[@value="3"][@selected="selected"]]
-                /following-sibling::select
-                    [@id="name_date_year"]
-                    [./option[@value="2011"][@selected="selected"]]
             ]
         /following-sibling::div
             [@id="name_time"]
             [
                 ./select
                     [@id="name_time_hour"]
-                    [./option[@value=""][not(@selected)][not(@disabled)][.="[trans]Change&Me[/trans]"]]
+                    [./option[@value=""][.="[trans]Change&Me[/trans]"]]
                 /following-sibling::select
                     [@id="name_time_minute"]
-                    [./option[@value=""][not(@selected)][not(@disabled)][.="[trans]Change&Me[/trans]"]]
+                    [./option[@value=""][.="[trans]Change&Me[/trans]"]]
             ]
     ]
     [count(.//select)=5]
@@ -932,14 +930,14 @@ abstract class AbstractLayoutTest extends FormIntegrationTestCase
             [@id="name_date"]
             [
                 ./select
+                    [@id="name_date_year"]
+                    [./option[@value="2011"][@selected="selected"]]
+                /following-sibling::select
                     [@id="name_date_month"]
                     [./option[@value="2"][@selected="selected"]]
                 /following-sibling::select
                     [@id="name_date_day"]
                     [./option[@value="3"][@selected="selected"]]
-                /following-sibling::select
-                    [@id="name_date_year"]
-                    [./option[@value="2011"][@selected="selected"]]
             ]
         /following-sibling::div
             [@id="name_time"]
@@ -1035,14 +1033,14 @@ abstract class AbstractLayoutTest extends FormIntegrationTestCase
 '/div
     [
         ./select
+            [@id="name_year"]
+            [./option[@value="2011"][@selected="selected"]]
+        /following-sibling::select
             [@id="name_month"]
             [./option[@value="2"][@selected="selected"]]
         /following-sibling::select
             [@id="name_day"]
             [./option[@value="3"][@selected="selected"]]
-        /following-sibling::select
-            [@id="name_year"]
-            [./option[@value="2011"][@selected="selected"]]
     ]
     [count(./select)=3]
 '
@@ -1062,14 +1060,14 @@ abstract class AbstractLayoutTest extends FormIntegrationTestCase
 '/div
     [
         ./select
+            [@id="name_year"]
+            [./option[@value=""][.="[trans]Change&Me[/trans]"]]
+        /following-sibling::select
             [@id="name_month"]
-            [./option[@value=""][not(@selected)][not(@disabled)][.="[trans]Change&Me[/trans]"]]
+            [./option[@value=""][.="[trans]Change&Me[/trans]"]]
         /following-sibling::select
             [@id="name_day"]
-            [./option[@value=""][not(@selected)][not(@disabled)][.="[trans]Change&Me[/trans]"]]
-        /following-sibling::select
-            [@id="name_year"]
-            [./option[@value=""][not(@selected)][not(@disabled)][.="[trans]Change&Me[/trans]"]]
+            [./option[@value=""][.="[trans]Change&Me[/trans]"]]
     ]
     [count(./select)=3]
 '
@@ -1089,14 +1087,14 @@ abstract class AbstractLayoutTest extends FormIntegrationTestCase
 '/div
     [
         ./select
+            [@id="name_year"]
+            [./option[@value=""][.="[trans]Change&Me[/trans]"]]
+        /following-sibling::select
             [@id="name_month"]
             [./option[@value="1"]]
         /following-sibling::select
             [@id="name_day"]
             [./option[@value="1"]]
-        /following-sibling::select
-            [@id="name_year"]
-            [./option[@value=""][not(@selected)][not(@disabled)][.="[trans]Change&Me[/trans]"]]
     ]
     [count(./select)=3]
 '
@@ -1114,6 +1112,10 @@ abstract class AbstractLayoutTest extends FormIntegrationTestCase
 '/div
     [
         ./input
+            [@id="name_year"]
+            [@type="text"]
+            [@value="2011"]
+        /following-sibling::input
             [@id="name_month"]
             [@type="text"]
             [@value="2"]
@@ -1121,10 +1123,6 @@ abstract class AbstractLayoutTest extends FormIntegrationTestCase
             [@id="name_day"]
             [@type="text"]
             [@value="3"]
-        /following-sibling::input
-            [@id="name_year"]
-            [@type="text"]
-            [@value="2011"]
     ]
     [count(./input)=3]
 '
@@ -1151,7 +1149,7 @@ abstract class AbstractLayoutTest extends FormIntegrationTestCase
     {
         $child = $this->factory->createNamed('date', 'date');
         $form = $this->factory->createNamed('form', 'form')->add($child);
-        $child->addError(new FormError('[trans]Error![/trans]'));
+        $child->addError(new FormError('Error!'));
         $view = $form->createView();
 
         $this->assertEmpty($this->renderErrors($view));
@@ -1168,14 +1166,14 @@ abstract class AbstractLayoutTest extends FormIntegrationTestCase
 '/div
     [
         ./select
+            [@id="name_year"]
+            [./option[@value="2000"][@selected="selected"]]
+        /following-sibling::select
             [@id="name_month"]
             [./option[@value="2"][@selected="selected"]]
         /following-sibling::select
             [@id="name_day"]
             [./option[@value="3"][@selected="selected"]]
-        /following-sibling::select
-            [@id="name_year"]
-            [./option[@value="2000"][@selected="selected"]]
     ]
     [count(./select)=3]
 '
@@ -1194,17 +1192,17 @@ abstract class AbstractLayoutTest extends FormIntegrationTestCase
 '/div
     [
         ./select
+            [@id="name_year"]
+            [./option[@value=""][.="[trans][/trans]"]]
+            [./option[@value="1950"][@selected="selected"]]
+        /following-sibling::select
             [@id="name_month"]
-            [./option[@value=""][not(@selected)][not(@disabled)][.="[trans][/trans]"]]
+            [./option[@value=""][.="[trans][/trans]"]]
             [./option[@value="1"][@selected="selected"]]
         /following-sibling::select
             [@id="name_day"]
-            [./option[@value=""][not(@selected)][not(@disabled)][.="[trans][/trans]"]]
+            [./option[@value=""][.="[trans][/trans]"]]
             [./option[@value="1"][@selected="selected"]]
-        /following-sibling::select
-            [@id="name_year"]
-            [./option[@value=""][not(@selected)][not(@disabled)][.="[trans][/trans]"]]
-            [./option[@value="1950"][@selected="selected"]]
     ]
     [count(./select)=3]
 '
@@ -1533,11 +1531,11 @@ abstract class AbstractLayoutTest extends FormIntegrationTestCase
     [
         ./select
             [@id="name_hour"]
-            [not(@size)]
+            [@size="1"]
             [./option[@value="4"][@selected="selected"]]
         /following-sibling::select
             [@id="name_minute"]
-            [not(@size)]
+            [@size="1"]
             [./option[@value="5"][@selected="selected"]]
     ]
     [count(./select)=2]
@@ -1557,17 +1555,17 @@ abstract class AbstractLayoutTest extends FormIntegrationTestCase
     [
         ./select
             [@id="name_hour"]
-            [not(@size)]
+            [@size="1"]
             [./option[@value="4"][@selected="selected"]]
             [count(./option)>23]
         /following-sibling::select
             [@id="name_minute"]
-            [not(@size)]
+            [@size="1"]
             [./option[@value="5"][@selected="selected"]]
             [count(./option)>59]
         /following-sibling::select
             [@id="name_second"]
-            [not(@size)]
+            [@size="1"]
             [./option[@value="6"][@selected="selected"]]
             [count(./option)>59]
     ]
@@ -1618,7 +1616,6 @@ abstract class AbstractLayoutTest extends FormIntegrationTestCase
     [@type="time"]
     [@name="name"]
     [@value="04:05"]
-    [not(@size)]
 '
         );
     }
@@ -1636,11 +1633,11 @@ abstract class AbstractLayoutTest extends FormIntegrationTestCase
     [
         ./select
             [@id="name_hour"]
-            [./option[@value=""][not(@selected)][not(@disabled)][.="[trans]Change&Me[/trans]"]]
+            [./option[@value=""][.="[trans]Change&Me[/trans]"]]
             [count(./option)>24]
         /following-sibling::select
             [@id="name_minute"]
-            [./option[@value=""][not(@selected)][not(@disabled)][.="[trans]Change&Me[/trans]"]]
+            [./option[@value=""][.="[trans]Change&Me[/trans]"]]
             [count(./option)>60]
     ]
     [count(./select)=2]
@@ -1661,7 +1658,7 @@ abstract class AbstractLayoutTest extends FormIntegrationTestCase
     [
         ./select
             [@id="name_hour"]
-            [./option[@value=""][not(@selected)][not(@disabled)][.="[trans]Change&Me[/trans]"]]
+            [./option[@value=""][.="[trans]Change&Me[/trans]"]]
             [count(./option)>24]
         /following-sibling::select
             [@id="name_minute"]
@@ -1677,7 +1674,7 @@ abstract class AbstractLayoutTest extends FormIntegrationTestCase
     {
         $child = $this->factory->createNamed('time', 'time');
         $form = $this->factory->createNamed('form', 'form')->add($child);
-        $child->addError(new FormError('[trans]Error![/trans]'));
+        $child->addError(new FormError('Error!'));
         $view = $form->createView();
 
         $this->assertEmpty($this->renderErrors($view));
@@ -1711,7 +1708,7 @@ abstract class AbstractLayoutTest extends FormIntegrationTestCase
 
         $this->assertWidgetMatchesXpath($form->createView(), array(),
 '/select
-    [./option[@value=""][not(@selected)][not(@disabled)][.="[trans]Select&Timezone[/trans]"]]
+    [./option[@value=""][.="[trans]Select&Timezone[/trans]"]]
     [count(./optgroup)>10]
     [count(.//option)>201]
 '

@@ -98,7 +98,7 @@ class __TwigTemplate_b9fd1488a687ec27a4f3ac23d191e932 extends Twig_Template
                     $context['loop']['length'] = $length;
                     $context['loop']['last'] = 1 === $length;
                 }
-                foreach ($context['_seq'] as $context["_key"] => $context["menu"]) {
+                foreach ($context['_seq'] as $context["label"] => $context["uri"]) {
                     // line 60
                     echo "                        ";
                     if ((!$this->getAttribute($this->getContext($context, "loop"), "first"))) {
@@ -108,7 +108,7 @@ class __TwigTemplate_b9fd1488a687ec27a4f3ac23d191e932 extends Twig_Template
                     }
                     // line 63
                     echo "                        ";
-                    echo twig_escape_filter($this->env, $this->getAttribute($this->getContext($context, "menu"), "label"), "html", null, true);
+                    echo twig_escape_filter($this->env, $this->getContext($context, "label"), "html", null, true);
                     echo "
                     ";
                     ++$context['loop']['index0'];
@@ -121,7 +121,7 @@ class __TwigTemplate_b9fd1488a687ec27a4f3ac23d191e932 extends Twig_Template
                     }
                 }
                 $_parent = $context['_parent'];
-                unset($context['_seq'], $context['_iterated'], $context['_key'], $context['menu'], $context['_parent'], $context['loop']);
+                unset($context['_seq'], $context['_iterated'], $context['label'], $context['uri'], $context['_parent'], $context['loop']);
                 $context = array_merge($_parent, array_intersect_key($context, $_parent));
                 // line 65
                 echo "                ";
@@ -188,24 +188,17 @@ class __TwigTemplate_b9fd1488a687ec27a4f3ac23d191e932 extends Twig_Template
         <div class=\"container-fluid\">
             ";
         // line 119
-        $this->displayBlock('notice', $context, $blocks);
-        // line 129
-        echo "
-            <div class=\"row-fluid\">
-                <div class=\"span6\">
-                    ";
-        // line 132
         if (((!twig_test_empty($this->getContext($context, "_breadcrumb"))) || array_key_exists("action", $context))) {
-            // line 133
-            echo "                        <ul class=\"breadcrumb\">
-                            ";
-            // line 134
+            // line 120
+            echo "                <ul class=\"breadcrumb\">
+                    ";
+            // line 121
             if (twig_test_empty($this->getContext($context, "_breadcrumb"))) {
-                // line 135
-                echo "                                ";
+                // line 122
+                echo "                        ";
                 if (array_key_exists("action", $context)) {
-                    // line 136
-                    echo "                                    ";
+                    // line 123
+                    echo "                            ";
                     $context['_parent'] = (array) $context;
                     $context['_seq'] = twig_ensure_traversable($this->getAttribute($this->getContext($context, "admin"), "breadcrumbs", array(0 => $this->getContext($context, "action")), "method"));
                     $context['loop'] = array(
@@ -221,42 +214,42 @@ class __TwigTemplate_b9fd1488a687ec27a4f3ac23d191e932 extends Twig_Template
                         $context['loop']['length'] = $length;
                         $context['loop']['last'] = 1 === $length;
                     }
-                    foreach ($context['_seq'] as $context["_key"] => $context["menu"]) {
-                        // line 137
-                        echo "                                        ";
+                    foreach ($context['_seq'] as $context["label"] => $context["uri"]) {
+                        // line 124
+                        echo "                                ";
                         if ((!$this->getAttribute($this->getContext($context, "loop"), "last"))) {
-                            // line 138
-                            echo "                                            <li>
-                                                ";
-                            // line 139
-                            if ((!twig_test_empty($this->getAttribute($this->getContext($context, "menu"), "uri")))) {
-                                // line 140
-                                echo "                                                    <a href=\"";
-                                echo twig_escape_filter($this->env, $this->getAttribute($this->getContext($context, "menu"), "uri"), "html", null, true);
+                            // line 125
+                            echo "                                    <li>
+                                        ";
+                            // line 126
+                            if ((!twig_test_empty($this->getContext($context, "uri")))) {
+                                // line 127
+                                echo "                                            <a href=\"";
+                                echo twig_escape_filter($this->env, $this->getContext($context, "uri"), "html", null, true);
                                 echo "\">";
-                                echo twig_escape_filter($this->env, $this->getAttribute($this->getContext($context, "menu"), "label"), "html", null, true);
+                                echo twig_escape_filter($this->env, $this->getContext($context, "label"), "html", null, true);
                                 echo "</a>
-                                                ";
+                                        ";
                             } else {
-                                // line 142
-                                echo "                                                    ";
-                                echo twig_escape_filter($this->env, $this->getAttribute($this->getContext($context, "menu"), "label"), "html", null, true);
+                                // line 129
+                                echo "                                            ";
+                                echo twig_escape_filter($this->env, $this->getContext($context, "label"), "html", null, true);
                                 echo "
-                                                ";
+                                        ";
                             }
-                            // line 144
-                            echo "                                                <span class=\"divider\">/</span>
-                                            </li>
-                                        ";
+                            // line 131
+                            echo "                                        <span class=\"divider\">/</span>
+                                    </li>
+                                ";
                         } else {
-                            // line 147
-                            echo "                                            <li class=\"active\">";
-                            echo twig_escape_filter($this->env, $this->getAttribute($this->getContext($context, "menu"), "label"), "html", null, true);
+                            // line 134
+                            echo "                                    <li class=\"active\">";
+                            echo twig_escape_filter($this->env, $this->getContext($context, "label"), "html", null, true);
                             echo "</li>
-                                        ";
+                                ";
                         }
-                        // line 149
-                        echo "                                    ";
+                        // line 136
+                        echo "                            ";
                         ++$context['loop']['index0'];
                         ++$context['loop']['index'];
                         $context['loop']['first'] = false;
@@ -267,65 +260,136 @@ class __TwigTemplate_b9fd1488a687ec27a4f3ac23d191e932 extends Twig_Template
                         }
                     }
                     $_parent = $context['_parent'];
-                    unset($context['_seq'], $context['_iterated'], $context['_key'], $context['menu'], $context['_parent'], $context['loop']);
+                    unset($context['_seq'], $context['_iterated'], $context['label'], $context['uri'], $context['_parent'], $context['loop']);
                     $context = array_merge($_parent, array_intersect_key($context, $_parent));
-                    // line 150
-                    echo "                                ";
+                    // line 137
+                    echo "                        ";
                 }
-                // line 151
-                echo "                            ";
+                // line 138
+                echo "                    ";
             } else {
-                // line 152
-                echo "                                ";
+                // line 139
+                echo "                        ";
                 echo $this->getContext($context, "_breadcrumb");
                 echo "
-                            ";
+                    ";
             }
-            // line 154
-            echo "                        </ul>
-                    ";
+            // line 141
+            echo "                </ul>
+            ";
         }
+        // line 143
+        echo "
+            ";
+        // line 144
+        $this->displayBlock('notice', $context, $blocks);
+        // line 154
+        echo "
+            <div style=\"float: right\">
+                ";
         // line 156
-        echo "                </div>
-
-                <div class=\"span4 offset2\">
-                    ";
-        // line 159
         $this->displayBlock('actions', $context, $blocks);
-        // line 160
-        echo "                </div>
-            </div>
+        // line 157
+        echo "            </div>
 
+            ";
+        // line 159
+        if (((!twig_test_empty($this->getContext($context, "_title"))) || array_key_exists("action", $context))) {
+            // line 160
+            echo "                <div class=\"page-header\">
+                    <h1>
+                        ";
+            // line 162
+            if ((!twig_test_empty($this->getContext($context, "_title")))) {
+                // line 163
+                echo "                            ";
+                echo $this->getContext($context, "_title");
+                echo "
+                        ";
+            } elseif (array_key_exists("action", $context)) {
+                // line 165
+                echo "                            ";
+                $context['_parent'] = (array) $context;
+                $context['_seq'] = twig_ensure_traversable($this->getAttribute($this->getContext($context, "admin"), "breadcrumbs", array(0 => $this->getContext($context, "action")), "method"));
+                $context['loop'] = array(
+                  'parent' => $context['_parent'],
+                  'index0' => 0,
+                  'index'  => 1,
+                  'first'  => true,
+                );
+                if (is_array($context['_seq']) || (is_object($context['_seq']) && $context['_seq'] instanceof Countable)) {
+                    $length = count($context['_seq']);
+                    $context['loop']['revindex0'] = $length - 1;
+                    $context['loop']['revindex'] = $length;
+                    $context['loop']['length'] = $length;
+                    $context['loop']['last'] = 1 === $length;
+                }
+                foreach ($context['_seq'] as $context["label"] => $context["uri"]) {
+                    // line 166
+                    echo "                                ";
+                    if ($this->getAttribute($this->getContext($context, "loop"), "last")) {
+                        // line 167
+                        echo "                                    ";
+                        echo twig_escape_filter($this->env, $this->getContext($context, "label"), "html", null, true);
+                        echo "
+                                ";
+                    }
+                    // line 169
+                    echo "                            ";
+                    ++$context['loop']['index0'];
+                    ++$context['loop']['index'];
+                    $context['loop']['first'] = false;
+                    if (isset($context['loop']['length'])) {
+                        --$context['loop']['revindex0'];
+                        --$context['loop']['revindex'];
+                        $context['loop']['last'] = 0 === $context['loop']['revindex0'];
+                    }
+                }
+                $_parent = $context['_parent'];
+                unset($context['_seq'], $context['_iterated'], $context['label'], $context['uri'], $context['_parent'], $context['loop']);
+                $context = array_merge($_parent, array_intersect_key($context, $_parent));
+                // line 170
+                echo "                        ";
+            }
+            // line 171
+            echo "                    </h1>
+                </div>
+            ";
+        }
+        // line 174
+        echo "
             <div class=\"row-fluid\">
                 ";
-        // line 164
+        // line 176
         if ((!twig_test_empty($this->getContext($context, "_side_menu")))) {
-            // line 165
+            // line 177
             echo "                    <div class=\"sidebar span2\">
                         <div class=\"well sonata-ba-side-menu\" style=\"padding: 8px 0;\">";
-            // line 166
+            // line 178
             echo $this->getContext($context, "_side_menu");
             echo "</div>
                     </div>
                 ";
         }
-        // line 169
+        // line 181
         echo "
                 <div class=\"content ";
-        // line 170
+        // line 182
         echo (((!twig_test_empty($this->getContext($context, "_side_menu")))) ? (" span10") : ("span12"));
         echo "\">
-                    ";
-        // line 171
+                ";
+        // line 183
         $this->displayBlock('sonata_admin_content', $context, $blocks);
-        // line 201
+        // line 211
         echo "                </div>
+
+
             </div>
 
             ";
-        // line 204
+        // line 216
         $this->displayBlock('footer', $context, $blocks);
-        // line 211
+        // line 221
         echo "        </div>
     </body>
 </html>
@@ -487,28 +551,28 @@ class __TwigTemplate_b9fd1488a687ec27a4f3ac23d191e932 extends Twig_Template
         echo " ";
     }
 
-    // line 119
+    // line 144
     public function block_notice($context, array $blocks = array())
     {
-        // line 120
+        // line 145
         echo "                ";
         $context['_parent'] = (array) $context;
         $context['_seq'] = twig_ensure_traversable(array(0 => "success", 1 => "error", 2 => "info", 3 => "warning"));
         foreach ($context['_seq'] as $context["_key"] => $context["notice_level"]) {
-            // line 121
+            // line 146
             echo "                    ";
             $context["session_var"] = ("sonata_flash_" . $this->getContext($context, "notice_level"));
-            // line 122
+            // line 147
             echo "                    ";
             $context['_parent'] = (array) $context;
             $context['_seq'] = twig_ensure_traversable($this->getAttribute($this->getAttribute($this->getAttribute($this->getContext($context, "app"), "session"), "flashbag"), "get", array(0 => $this->getContext($context, "session_var")), "method"));
             foreach ($context['_seq'] as $context["_key"] => $context["flash"]) {
-                // line 123
+                // line 148
                 echo "                        <div class=\"alert ";
                 echo twig_escape_filter($this->env, ("alert-" . $this->getContext($context, "notice_level")), "html", null, true);
                 echo "\">
                             ";
-                // line 124
+                // line 149
                 echo twig_escape_filter($this->env, $this->env->getExtension('translator')->trans($this->getContext($context, "flash"), array(), "SonataAdminBundle"), "html", null, true);
                 echo "
                         </div>
@@ -517,103 +581,99 @@ class __TwigTemplate_b9fd1488a687ec27a4f3ac23d191e932 extends Twig_Template
             $_parent = $context['_parent'];
             unset($context['_seq'], $context['_iterated'], $context['_key'], $context['flash'], $context['_parent'], $context['loop']);
             $context = array_merge($_parent, array_intersect_key($context, $_parent));
-            // line 127
+            // line 152
             echo "                ";
         }
         $_parent = $context['_parent'];
         unset($context['_seq'], $context['_iterated'], $context['_key'], $context['notice_level'], $context['_parent'], $context['loop']);
         $context = array_merge($_parent, array_intersect_key($context, $_parent));
-        // line 128
+        // line 153
         echo "            ";
     }
 
-    // line 159
+    // line 156
     public function block_actions($context, array $blocks = array())
     {
     }
 
-    // line 171
+    // line 183
     public function block_sonata_admin_content($context, array $blocks = array())
     {
-        // line 172
-        echo "
-                        ";
-        // line 173
-        if ((!twig_test_empty($this->getContext($context, "_preview")))) {
-            // line 174
-            echo "                            <div class=\"sonata-ba-preview\">";
-            echo $this->getContext($context, "_preview");
-            echo "</div>
-                        ";
-        }
-        // line 176
-        echo "
-                        ";
-        // line 177
-        if ((!twig_test_empty($this->getContext($context, "_content")))) {
-            // line 178
-            echo "                            <div class=\"sonata-ba-content\">";
-            echo $this->getContext($context, "_content");
-            echo "</div>
-                        ";
-        }
-        // line 180
-        echo "
-                        ";
-        // line 181
-        if ((!twig_test_empty($this->getContext($context, "_show")))) {
-            // line 182
-            echo "                            <div class=\"sonata-ba-show\">";
-            echo $this->getContext($context, "_show");
-            echo "</div>
-                        ";
-        }
         // line 184
         echo "
-                        ";
+                    ";
         // line 185
-        if ((!twig_test_empty($this->getContext($context, "_form")))) {
+        if ((!twig_test_empty($this->getContext($context, "_preview")))) {
             // line 186
-            echo "                            <div class=\"sonata-ba-form\">";
-            echo $this->getContext($context, "_form");
+            echo "                        <div class=\"sonata-ba-preview\">";
+            echo $this->getContext($context, "_preview");
             echo "</div>
-                        ";
+                    ";
         }
         // line 188
         echo "
-                        ";
+                    ";
         // line 189
-        if (((!twig_test_empty($this->getContext($context, "_list_table"))) || (!twig_test_empty($this->getContext($context, "_list_filters"))))) {
+        if ((!twig_test_empty($this->getContext($context, "_content")))) {
             // line 190
-            echo "                            <div class=\"row-fluid\">
-                                <div class=\"sonata-ba-list span10\">
-                                    ";
-            // line 192
-            echo $this->getContext($context, "_list_table");
-            echo "
-                                </div>
-                                <div class=\"sonata-ba-filter span2\">
-                                    ";
-            // line 195
-            echo $this->getContext($context, "_list_filters");
-            echo "
-                                </div>
-                            </div>
-                        ";
+            echo "                        <div class=\"sonata-ba-content\">";
+            echo $this->getContext($context, "_content");
+            echo "</div>
+                    ";
         }
-        // line 199
+        // line 192
         echo "
                     ";
+        // line 193
+        if ((!twig_test_empty($this->getContext($context, "_show")))) {
+            // line 194
+            echo "                        <div class=\"sonata-ba-show\">";
+            echo $this->getContext($context, "_show");
+            echo "</div>
+                    ";
+        }
+        // line 196
+        echo "
+                    ";
+        // line 197
+        if ((!twig_test_empty($this->getContext($context, "_form")))) {
+            // line 198
+            echo "                        <div class=\"sonata-ba-form\">";
+            echo $this->getContext($context, "_form");
+            echo "</div>
+                    ";
+        }
+        // line 200
+        echo "
+                    ";
+        // line 201
+        if (((!twig_test_empty($this->getContext($context, "_list_table"))) || (!twig_test_empty($this->getContext($context, "_list_filters"))))) {
+            // line 202
+            echo "                        <div class=\"sonata-ba-filter\">
+                            ";
+            // line 203
+            echo $this->getContext($context, "_list_filters");
+            echo "
+                        </div>
+                        <div class=\"sonata-ba-list\">
+                            ";
+            // line 206
+            echo $this->getContext($context, "_list_table");
+            echo "
+                        </div>
+                    ";
+        }
+        // line 209
+        echo "
+                ";
     }
 
-    // line 204
+    // line 216
     public function block_footer($context, array $blocks = array())
     {
-        // line 205
-        echo "                <div class=\"row-fluid\">
-                    <div class=\"span2 offset10 pull-right\">
-                        <span class=\"label\"><a href=\"http://sonata-project.org\" rel=\"noreferrer\" style=\"text-decoration: none; color: black\">Sonata Project</a></span>
-                    </div>
+        // line 217
+        echo "                <div class=\"pull-right clearfix\">
+                    <span class=\"label\"><a href=\"http://sonata-project.org\" rel=\"noreferrer\" style=\"text-decoration: none; color: black\">Sonata Project</a></span>
                 </div>
             ";
     }
@@ -630,6 +690,6 @@ class __TwigTemplate_b9fd1488a687ec27a4f3ac23d191e932 extends Twig_Template
 
     public function getDebugInfo()
     {
-        return array (  613 => 205,  610 => 204,  605 => 199,  598 => 195,  592 => 192,  588 => 190,  586 => 189,  583 => 188,  577 => 186,  575 => 185,  572 => 184,  566 => 182,  564 => 181,  561 => 180,  555 => 178,  553 => 177,  550 => 176,  544 => 174,  542 => 173,  539 => 172,  536 => 171,  531 => 159,  527 => 128,  521 => 127,  512 => 124,  507 => 123,  502 => 122,  499 => 121,  494 => 120,  491 => 119,  485 => 110,  481 => 109,  478 => 108,  470 => 105,  464 => 104,  456 => 102,  453 => 101,  449 => 100,  444 => 98,  441 => 97,  436 => 96,  433 => 95,  430 => 94,  424 => 93,  417 => 87,  411 => 86,  406 => 85,  403 => 84,  397 => 48,  393 => 47,  389 => 46,  384 => 44,  379 => 42,  375 => 41,  370 => 40,  367 => 39,  361 => 36,  357 => 35,  351 => 32,  347 => 31,  342 => 29,  339 => 28,  336 => 27,  329 => 211,  327 => 204,  322 => 201,  320 => 171,  316 => 170,  313 => 169,  307 => 166,  304 => 165,  302 => 164,  296 => 160,  294 => 159,  289 => 156,  285 => 154,  279 => 152,  276 => 151,  273 => 150,  259 => 149,  253 => 147,  248 => 144,  242 => 142,  234 => 140,  232 => 139,  229 => 138,  226 => 137,  208 => 136,  205 => 135,  203 => 134,  200 => 133,  198 => 132,  193 => 129,  191 => 119,  184 => 114,  179 => 111,  176 => 110,  173 => 94,  171 => 93,  166 => 90,  164 => 84,  157 => 82,  155 => 81,  143 => 71,  137 => 69,  133 => 67,  130 => 66,  127 => 65,  110 => 63,  106 => 61,  103 => 60,  86 => 59,  83 => 58,  80 => 57,  74 => 55,  72 => 54,  67 => 52,  61 => 39,  58 => 38,  56 => 27,  47 => 20,  43 => 18,  41 => 17,  35 => 14,  33 => 13,  31 => 12,  84 => 35,  76 => 30,  63 => 50,  55 => 15,  49 => 12,  45 => 19,  39 => 16,  37 => 15,  32 => 5,  29 => 11,  26 => 3,);
+        return array (  675 => 217,  672 => 216,  667 => 209,  661 => 206,  655 => 203,  652 => 202,  650 => 201,  647 => 200,  641 => 198,  639 => 197,  636 => 196,  630 => 194,  628 => 193,  625 => 192,  619 => 190,  617 => 189,  614 => 188,  608 => 186,  606 => 185,  603 => 184,  600 => 183,  595 => 156,  591 => 153,  585 => 152,  576 => 149,  571 => 148,  566 => 147,  563 => 146,  558 => 145,  555 => 144,  549 => 110,  545 => 109,  542 => 108,  534 => 105,  528 => 104,  520 => 102,  517 => 101,  513 => 100,  508 => 98,  505 => 97,  500 => 96,  497 => 95,  494 => 94,  488 => 93,  481 => 87,  475 => 86,  470 => 85,  467 => 84,  461 => 48,  457 => 47,  453 => 46,  448 => 44,  443 => 42,  439 => 41,  434 => 40,  431 => 39,  425 => 36,  421 => 35,  415 => 32,  411 => 31,  406 => 29,  403 => 28,  400 => 27,  393 => 221,  391 => 216,  384 => 211,  382 => 183,  378 => 182,  375 => 181,  369 => 178,  366 => 177,  364 => 176,  360 => 174,  355 => 171,  352 => 170,  338 => 169,  332 => 167,  329 => 166,  311 => 165,  305 => 163,  303 => 162,  299 => 160,  297 => 159,  293 => 157,  291 => 156,  287 => 154,  285 => 144,  282 => 143,  278 => 141,  272 => 139,  269 => 138,  266 => 137,  252 => 136,  246 => 134,  241 => 131,  235 => 129,  227 => 127,  225 => 126,  222 => 125,  219 => 124,  201 => 123,  198 => 122,  196 => 121,  193 => 120,  191 => 119,  184 => 114,  179 => 111,  176 => 110,  173 => 94,  171 => 93,  166 => 90,  164 => 84,  157 => 82,  155 => 81,  143 => 71,  137 => 69,  133 => 67,  130 => 66,  127 => 65,  110 => 63,  106 => 61,  103 => 60,  86 => 59,  83 => 58,  80 => 57,  74 => 55,  72 => 54,  67 => 52,  61 => 39,  58 => 38,  56 => 27,  47 => 20,  43 => 18,  41 => 17,  35 => 14,  33 => 13,  31 => 12,  84 => 35,  76 => 30,  63 => 50,  55 => 15,  49 => 12,  45 => 19,  39 => 16,  37 => 15,  32 => 5,  29 => 11,  26 => 3,);
     }
 }

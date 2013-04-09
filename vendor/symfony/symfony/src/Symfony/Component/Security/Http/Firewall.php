@@ -12,10 +12,8 @@
 namespace Symfony\Component\Security\Http;
 
 use Symfony\Component\HttpKernel\HttpKernelInterface;
-use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\HttpKernel\Event\GetResponseEvent;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
-use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 /**
  * Firewall uses a FirewallMap to register security listeners for the given
@@ -27,7 +25,7 @@ use Symfony\Component\EventDispatcher\EventSubscriberInterface;
  *
  * @author Fabien Potencier <fabien@symfony.com>
  */
-class Firewall implements EventSubscriberInterface
+class Firewall
 {
     private $map;
     private $dispatcher;
@@ -35,7 +33,7 @@ class Firewall implements EventSubscriberInterface
     /**
      * Constructor.
      *
-     * @param FirewallMapInterface     $map        A FirewallMapInterface instance
+     * @param FirewallMap              $map        A FirewallMap instance
      * @param EventDispatcherInterface $dispatcher An EventDispatcherInterface instance
      */
     public function __construct(FirewallMapInterface $map, EventDispatcherInterface $dispatcher)
@@ -69,10 +67,5 @@ class Firewall implements EventSubscriberInterface
                 break;
             }
         }
-    }
-
-    public static function getSubscribedEvents()
-    {
-        return array(KernelEvents::REQUEST => array('onKernelRequest', 8));
     }
 }

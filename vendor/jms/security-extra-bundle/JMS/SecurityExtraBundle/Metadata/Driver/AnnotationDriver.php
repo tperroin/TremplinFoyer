@@ -52,7 +52,6 @@ class AnnotationDriver implements DriverInterface
         $metadata = new ClassMetadata($reflection->name);
 
         $classPreAuthorize = $this->reader->getClassAnnotation($reflection, 'JMS\SecurityExtraBundle\Annotation\PreAuthorize');
-        $classAnnotations = $this->reader->getClassAnnotations($reflection);
         foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC | ReflectionMethod::IS_PROTECTED) as $method) {
             // check if the method was defined on this class
             if ($method->getDeclaringClass()->name !== $reflection->name) {
@@ -60,13 +59,6 @@ class AnnotationDriver implements DriverInterface
             }
 
             $annotations = $this->reader->getMethodAnnotations($method);
-            if ($classAnnotations) {
-                foreach ($classAnnotations as $classAnnotation) {
-                    if ($classAnnotation instanceof SecureParam) {
-                        $annotations[] = $classAnnotation;
-                    }
-                }
-            }
 
             if (! $annotations && ! $classPreAuthorize) {
                 continue;

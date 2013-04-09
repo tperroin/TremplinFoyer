@@ -18,7 +18,7 @@ class FilterIteratorTest extends RealIteratorTestCase
 {
     public function testFilterFilesystemIterators()
     {
-        $i = new \FilesystemIterator($this->toAbsolute());
+        $i = new \FilesystemIterator(sys_get_temp_dir().'/symfony2_finder');
 
         // it is expected that there are test.py test.php in the tmpDir
         $i = $this->getMockForAbstractClass('Symfony\Component\Finder\Iterator\FilterIterator', array($i));

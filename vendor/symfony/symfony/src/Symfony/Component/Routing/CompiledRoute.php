@@ -22,32 +22,20 @@ class CompiledRoute
     private $tokens;
     private $staticPrefix;
     private $regex;
-    private $pathVariables;
-    private $hostVariables;
-    private $hostRegex;
-    private $hostTokens;
 
     /**
      * Constructor.
      *
-     * @param string      $staticPrefix       The static prefix of the compiled route
-     * @param string      $regex              The regular expression to use to match this route
-     * @param array       $tokens             An array of tokens to use to generate URL for this route
-     * @param array       $pathVariables      An array of path variables
-     * @param string|null $hostRegex          Host regex
-     * @param array       $hostTokens         Host tokens
-     * @param array       $hostVariables      An array of host variables
-     * @param array       $variables          An array of variables (variables defined in the path and in the host patterns)
+     * @param string $staticPrefix The static prefix of the compiled route
+     * @param string $regex        The regular expression to use to match this route
+     * @param array  $tokens       An array of tokens to use to generate URL for this route
+     * @param array  $variables    An array of variables
      */
-    public function __construct($staticPrefix, $regex, array $tokens, array $pathVariables, $hostRegex = null, array $hostTokens = array(), array $hostVariables = array(), array $variables = array())
+    public function __construct($staticPrefix, $regex, array $tokens, array $variables)
     {
-        $this->staticPrefix = (string) $staticPrefix;
+        $this->staticPrefix = $staticPrefix;
         $this->regex = $regex;
         $this->tokens = $tokens;
-        $this->pathVariables = $pathVariables;
-        $this->hostRegex = $hostRegex;
-        $this->hostTokens = $hostTokens;
-        $this->hostVariables = $hostVariables;
         $this->variables = $variables;
     }
 
@@ -72,16 +60,6 @@ class CompiledRoute
     }
 
     /**
-     * Returns the host regex
-     *
-     * @return string|null The host regex or null
-     */
-    public function getHostRegex()
-    {
-        return $this->hostRegex;
-    }
-
-    /**
      * Returns the tokens.
      *
      * @return array The tokens
@@ -89,16 +67,6 @@ class CompiledRoute
     public function getTokens()
     {
         return $this->tokens;
-    }
-
-    /**
-     * Returns the host tokens.
-     *
-     * @return array The tokens
-     */
-    public function getHostTokens()
-    {
-        return $this->hostTokens;
     }
 
     /**
@@ -110,25 +78,4 @@ class CompiledRoute
     {
         return $this->variables;
     }
-
-    /**
-     * Returns the path variables.
-     *
-     * @return array The variables
-     */
-    public function getPathVariables()
-    {
-        return $this->pathVariables;
-    }
-
-    /**
-     * Returns the host variables.
-     *
-     * @return array The variables
-     */
-    public function getHostVariables()
-    {
-        return $this->hostVariables;
-    }
-
 }

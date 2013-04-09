@@ -24,9 +24,9 @@ interface RoleHierarchyInterface
      * Reachable roles are the roles directly assigned but also all roles that
      * are transitively reachable from them in the role hierarchy.
      *
-     * @param RoleInterface[] $roles An array of directly assigned roles
+     * @param array $roles An array of directly assigned roles
      *
-     * @return RoleInterface[] An array of all reachable roles
+     * @return array An array of all reachable roles
      */
     public function getReachableRoles(array $roles);
 }

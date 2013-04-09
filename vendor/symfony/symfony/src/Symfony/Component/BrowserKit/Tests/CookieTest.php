@@ -9,7 +9,7 @@
  * file that was distributed with this source code.
  */
 
-namespace Symfony\Component\BrowserKit\Tests;
+namespace Symfony\Component\Tests\BrowserKit;
 
 use Symfony\Component\BrowserKit\Cookie;
 
@@ -56,12 +56,9 @@ class CookieTest extends \PHPUnit_Framework_TestCase
         return array(
             array('foo=bar; expires=Fri, 31-Jul-2020 08:49:37 GMT'),
             array('foo=bar; expires=Fri, 31 Jul 2020 08:49:37 GMT'),
-            array('foo=bar; expires=Fri, 31-07-2020 08:49:37 GMT'),
-            array('foo=bar; expires=Fri, 31-07-20 08:49:37 GMT'),
             array('foo=bar; expires=Friday, 31-Jul-20 08:49:37 GMT'),
             array('foo=bar; expires=Fri Jul 31 08:49:37 2020'),
             array('foo=bar; expires=\'Fri Jul 31 08:49:37 2020\''),
-            array('foo=bar; expires=Friday July 31st 2020, 08:49:37 GMT'),
         );
     }
 
@@ -89,7 +86,7 @@ class CookieTest extends \PHPUnit_Framework_TestCase
     public function testFromStringThrowsAnExceptionIfCookieDateIsNotValid()
     {
         $this->setExpectedException('InvalidArgumentException');
-        Cookie::FromString('foo=bar; expires=Flursday July 31st 2020, 08:49:37 GMT');
+        Cookie::FromString('foo=bar; expires=foo');
     }
 
     public function testFromStringThrowsAnExceptionIfUrlIsNotValid()

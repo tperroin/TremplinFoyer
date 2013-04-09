@@ -31,10 +31,7 @@ class ItemQuery
 
     public function getPrimaryKeys()
     {
-        $cm = new \ColumnMap('id', new \TableMap());
-        $cm->setType('INTEGER');
-
-        return array('id' => $cm);
+        return array('id');
     }
 
     /**

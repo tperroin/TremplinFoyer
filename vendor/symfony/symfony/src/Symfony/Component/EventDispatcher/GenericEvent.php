@@ -35,7 +35,7 @@ class GenericEvent extends Event implements \ArrayAccess, \IteratorAggregate
     protected $arguments;
 
     /**
-     * Encapsulate an event with $subject and $args.
+     * Encapsulate an event with $subject, $args, and $data.
      *
      * @param mixed $subject   The subject of the event, usually an object.
      * @param array $arguments Arguments to store in the event.
@@ -144,6 +144,8 @@ class GenericEvent extends Event implements \ArrayAccess, \IteratorAggregate
      *
      * @param string $key   Array key to set.
      * @param mixed  $value Value.
+     *
+     * @return void
      */
     public function offsetSet($key, $value)
     {
@@ -154,6 +156,8 @@ class GenericEvent extends Event implements \ArrayAccess, \IteratorAggregate
      * ArrayAccess for unset argument.
      *
      * @param string $key Array key.
+     *
+     * @return void
      */
     public function offsetUnset($key)
     {

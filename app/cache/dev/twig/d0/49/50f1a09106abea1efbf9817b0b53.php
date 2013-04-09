@@ -1,6 +1,6 @@
 <?php
 
-/* @WebProfiler/Profiler/base_js.html.twig */
+/* WebProfilerBundle:Profiler:base_js.html.twig */
 class __TwigTemplate_d04950f1a09106abea1efbf9817b0b53 extends Twig_Template
 {
     public function __construct(Twig_Environment $env)
@@ -21,9 +21,6 @@ class __TwigTemplate_d04950f1a09106abea1efbf9817b0b53 extends Twig_Template
         \"use strict\";
 
         var noop = function() {},
-
-            profilerStorageKey = 'sf2/profiler/',
-
             request = function(url, onSuccess, onError, payload, options) {
                 var xhr = window.XMLHttpRequest ? new XMLHttpRequest() : new ActiveXObject('Microsoft.XMLHTTP');
                 options = options || {};
@@ -38,48 +35,21 @@ class __TwigTemplate_d04950f1a09106abea1efbf9817b0b53 extends Twig_Template
                 };
                 xhr.send(payload || '');
             },
-
             hasClass = function(el, klass) {
                 return el.className.match(new RegExp('\\\\b' + klass + '\\\\b'));
             },
-
             removeClass = function(el, klass) {
                 el.className = el.className.replace(new RegExp('\\\\b' + klass + '\\\\b'), ' ');
             },
-
             addClass = function(el, klass) {
                 if (!hasClass(el, klass)) { el.className += \" \" + klass; }
-            },
-
-            getPreference = function(name) {
-                if (!window.localStorage) {
-                    return null;
-                }
-
-                return localStorage.getItem(profilerStorageKey + name);
-            },
-
-            setPreference = function(name, value) {
-                if (!window.localStorage) {
-                    return null;
-                }
-
-                localStorage.setItem(profilerStorageKey + name, value);
             };
 
         return {
             hasClass: hasClass,
-
             removeClass: removeClass,
-
             addClass: addClass,
-
-            getPreference: getPreference,
-
-            setPreference: setPreference,
-
             request: request,
-
             load: function(selector, url, onSuccess, onError, options) {
                 var el = document.getElementById(selector);
 
@@ -99,7 +69,6 @@ class __TwigTemplate_d04950f1a09106abea1efbf9817b0b53 extends Twig_Template
 
                 return this;
             },
-
             toggle: function(selector, elOn, elOff) {
                 var i,
                     style,
@@ -115,6 +84,7 @@ class __TwigTemplate_d04950f1a09106abea1efbf9817b0b53 extends Twig_Template
 
                 return this;
             }
+
         }
     })();
 /*]]>*/</script>
@@ -123,11 +93,11 @@ class __TwigTemplate_d04950f1a09106abea1efbf9817b0b53 extends Twig_Template
 
     public function getTemplateName()
     {
-        return "@WebProfiler/Profiler/base_js.html.twig";
+        return "WebProfilerBundle:Profiler:base_js.html.twig";
     }
 
     public function getDebugInfo()
     {
-        return array (  91 => 35,  79 => 29,  75 => 28,  70 => 26,  66 => 25,  62 => 24,  50 => 15,  42 => 12,  30 => 5,  24 => 2,  19 => 1,  46 => 14,  20 => 1,  613 => 205,  610 => 204,  605 => 199,  598 => 195,  592 => 192,  588 => 190,  586 => 189,  583 => 188,  577 => 186,  575 => 185,  572 => 184,  566 => 182,  564 => 181,  561 => 180,  555 => 178,  553 => 177,  550 => 176,  544 => 174,  542 => 173,  539 => 172,  536 => 171,  531 => 159,  527 => 128,  521 => 127,  512 => 124,  507 => 123,  502 => 122,  499 => 121,  494 => 120,  491 => 119,  485 => 110,  481 => 109,  478 => 108,  470 => 105,  464 => 104,  456 => 102,  453 => 101,  449 => 100,  444 => 98,  441 => 97,  436 => 96,  433 => 95,  430 => 94,  424 => 93,  417 => 87,  411 => 86,  406 => 85,  403 => 84,  397 => 48,  393 => 47,  389 => 46,  384 => 44,  379 => 42,  375 => 41,  370 => 40,  367 => 39,  361 => 36,  357 => 35,  351 => 32,  347 => 31,  342 => 29,  339 => 28,  336 => 27,  329 => 211,  327 => 204,  322 => 201,  320 => 171,  316 => 170,  313 => 169,  307 => 166,  304 => 165,  302 => 164,  296 => 160,  294 => 159,  289 => 156,  285 => 154,  279 => 152,  276 => 151,  273 => 150,  259 => 149,  253 => 147,  248 => 144,  242 => 142,  234 => 140,  232 => 139,  229 => 138,  226 => 137,  208 => 136,  205 => 135,  203 => 134,  200 => 133,  198 => 132,  193 => 129,  191 => 119,  184 => 114,  179 => 111,  176 => 110,  173 => 94,  171 => 93,  166 => 90,  164 => 84,  157 => 82,  155 => 81,  143 => 71,  137 => 69,  133 => 67,  130 => 66,  127 => 65,  110 => 63,  106 => 61,  103 => 60,  86 => 59,  83 => 30,  80 => 57,  74 => 55,  72 => 54,  67 => 52,  61 => 39,  58 => 38,  56 => 27,  47 => 20,  43 => 8,  41 => 17,  35 => 5,  33 => 13,  31 => 12,  84 => 35,  76 => 30,  63 => 50,  55 => 15,  49 => 12,  45 => 19,  39 => 16,  37 => 6,  32 => 6,  29 => 3,  26 => 3,);
+        return array (  91 => 20,  84 => 19,  74 => 16,  66 => 15,  57 => 14,  55 => 13,  51 => 12,  44 => 13,  36 => 7,  25 => 4,  105 => 24,  98 => 22,  96 => 21,  93 => 20,  89 => 19,  83 => 18,  76 => 16,  72 => 14,  68 => 12,  50 => 8,  33 => 5,  27 => 4,  24 => 2,  22 => 2,  225 => 96,  216 => 90,  212 => 88,  205 => 84,  201 => 83,  196 => 80,  194 => 79,  191 => 78,  189 => 77,  186 => 76,  180 => 72,  178 => 71,  172 => 67,  163 => 63,  159 => 61,  157 => 60,  154 => 59,  147 => 55,  143 => 54,  138 => 51,  136 => 50,  132 => 48,  130 => 47,  127 => 46,  121 => 45,  118 => 44,  114 => 43,  104 => 36,  100 => 34,  95 => 31,  78 => 28,  75 => 27,  71 => 26,  63 => 24,  60 => 23,  58 => 9,  41 => 9,  34 => 11,  19 => 1,  94 => 39,  88 => 6,  81 => 40,  79 => 17,  59 => 22,  48 => 19,  39 => 6,  35 => 7,  31 => 6,  26 => 3,  21 => 2,  46 => 7,  43 => 7,  32 => 4,  29 => 3,);
     }
 }

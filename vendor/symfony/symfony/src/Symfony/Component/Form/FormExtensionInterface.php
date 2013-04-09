@@ -41,7 +41,7 @@ interface FormExtensionInterface
      *
      * @param string $name The name of the type
      *
-     * @return FormTypeExtensionInterface[] An array of extensions as FormTypeExtensionInterface instances
+     * @return array An array of extensions as FormTypeExtensionInterface instances
      */
     public function getTypeExtensions($name);
 

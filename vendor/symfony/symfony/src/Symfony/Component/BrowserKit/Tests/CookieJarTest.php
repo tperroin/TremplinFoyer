@@ -9,7 +9,7 @@
  * file that was distributed with this source code.
  */
 
-namespace Symfony\Component\BrowserKit\Tests;
+namespace Symfony\Component\Tests\BrowserKit;
 
 use Symfony\Component\BrowserKit\CookieJar;
 use Symfony\Component\BrowserKit\Cookie;
@@ -80,13 +80,6 @@ class CookieJarTest extends \PHPUnit_Framework_TestCase
         $this->assertInstanceOf('Symfony\Component\BrowserKit\Cookie', $cookieJar->get('bar'));
         $this->assertEquals('foo', $cookieJar->get('foo')->getValue(), '->updateFromSetCookie() updates cookies from a Set-Cookie header');
         $this->assertEquals('bar', $cookieJar->get('bar')->getValue(), '->updateFromSetCookie() keeps existing cookies');
-    }
-
-    public function testUpdateFromEmptySetCookie()
-    {
-        $cookieJar = new CookieJar();
-        $cookieJar->updateFromSetCookie(array(''));
-        $this->assertEquals(array(), $cookieJar->all());
     }
 
     public function testUpdateFromSetCookieWithMultipleCookies()

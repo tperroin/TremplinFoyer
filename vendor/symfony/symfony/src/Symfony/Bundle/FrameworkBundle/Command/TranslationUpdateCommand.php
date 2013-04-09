@@ -27,7 +27,13 @@ use Symfony\Component\Yaml\Yaml;
 class TranslationUpdateCommand extends ContainerAwareCommand
 {
     /**
-     * {@inheritdoc}
+     * Compiled catalogue of messages.
+     * @var MessageCatalogue
+     */
+    protected $catalogue;
+
+    /**
+     * {@inheritDoc}
      */
     protected function configure()
     {
@@ -68,7 +74,7 @@ EOF
     }
 
     /**
-     * {@inheritdoc}
+     * {@inheritDoc}
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
@@ -76,7 +82,7 @@ EOF
         if ($input->getOption('force') !== true && $input->getOption('dump-messages') !== true) {
             $output->writeln('<info>You must choose one of --force or --dump-messages</info>');
 
-            return 1;
+            return;
         }
 
         // check format
@@ -86,7 +92,7 @@ EOF
             $output->writeln('<error>Wrong output format</error>');
             $output->writeln('Supported formats are '.implode(', ', $supportedFormats).'.');
 
-            return 1;
+            return;
         }
 
         // get bundle directory

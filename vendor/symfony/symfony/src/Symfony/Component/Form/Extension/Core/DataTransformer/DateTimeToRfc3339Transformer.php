@@ -53,6 +53,7 @@ class DateTimeToRfc3339Transformer extends BaseDateTimeTransformer
             return null;
         }
 
+
         $dateTime = new \DateTime($rfc3339);
 
         if ($this->outputTimezone !== $this->inputTimezone) {

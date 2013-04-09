@@ -1,12 +1,6 @@
 CHANGELOG
 =========
 
-2.2.0
------
-
- * added an optional PropertyAccessorInterface parameter to DoctrineType,
-   EntityType and EntityChoiceList
-
 2.1.0
 -----
 

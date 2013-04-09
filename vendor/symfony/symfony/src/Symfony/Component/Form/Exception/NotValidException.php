@@ -11,6 +11,6 @@
 
 namespace Symfony\Component\Form\Exception;
 
-class NotValidException extends Exception
+class NotValidException extends FormException
 {
 }

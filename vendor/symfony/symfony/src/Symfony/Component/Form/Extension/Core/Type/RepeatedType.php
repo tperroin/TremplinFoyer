@@ -14,6 +14,7 @@ namespace Symfony\Component\Form\Extension\Core\Type;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\Form\Extension\Core\DataTransformer\ValueToDuplicatesTransformer;
+use Symfony\Component\OptionsResolver\Options;
 use Symfony\Component\OptionsResolver\OptionsResolverInterface;
 
 class RepeatedType extends AbstractType
@@ -26,10 +27,6 @@ class RepeatedType extends AbstractType
         // Overwrite required option for child fields
         $options['first_options']['required']  = $options['required'];
         $options['second_options']['required'] = $options['required'];
-
-        if (!isset($options['options']['error_bubbling'])) {
-            $options['options']['error_bubbling'] = $options['error_bubbling'];
-        }
 
         $builder
             ->addViewTransformer(new ValueToDuplicatesTransformer(array(

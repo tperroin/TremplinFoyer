@@ -19,17 +19,16 @@
         "php": ">=5.3.3"
     },
     "suggest": {
-        "ext-intl": "to use other locales than built-in `en`"
+        "ext-intl": ">=5.3.3"
     },
     "autoload": {
-        "psr-0": { "Symfony\\Component\\Locale\\": "" },
-        "classmap": [ "Symfony/Component/Locale/Resources/stubs" ]
+        "psr-0": { "Symfony\\Component\\Locale": "" }
     },
     "target-dir": "Symfony/Component/Locale",
     "minimum-stability": "dev",
     "extra": {
         "branch-alias": {
-            "dev-master": "2.2-dev"
+            "dev-master": "2.1-dev"
         }
     }
 }

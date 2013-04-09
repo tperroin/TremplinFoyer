@@ -12,9 +12,7 @@
 namespace Symfony\Component\DependencyInjection\Dumper;
 
 use Symfony\Component\Yaml\Dumper as YmlDumper;
-use Symfony\Component\DependencyInjection\Alias;
 use Symfony\Component\DependencyInjection\ContainerInterface;
-use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Parameter;
 use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\DependencyInjection\Exception\RuntimeException;
@@ -120,7 +118,7 @@ class YamlDumper extends Dumper
 
         if ($callable = $definition->getConfigurator()) {
             if (is_array($callable)) {
-                if ($callable[0] instanceof Reference) {
+                if (is_object($callable[0]) && $callable[0] instanceof Reference) {
                     $callable = array($this->getServiceCall((string) $callable[0], $callable[0]), $callable[1]);
                 } else {
                     $callable = array($callable[0], $callable[1]);
@@ -137,7 +135,7 @@ class YamlDumper extends Dumper
      * Adds a service alias
      *
      * @param string $alias
-     * @param Alias  $id
+     * @param string $id
      *
      * @return string
      */
@@ -184,7 +182,11 @@ class YamlDumper extends Dumper
             return '';
         }
 
-        $parameters = $this->prepareParameters($this->container->getParameterBag()->all(), $this->container->isFrozen());
+        if ($this->container->isFrozen()) {
+            $parameters = $this->prepareParameters($this->container->getParameterBag()->all());
+        } else {
+            $parameters = $this->container->getParameterBag()->all();
+        }
 
         return $this->dumper->dump(array('parameters' => $parameters), 2);
     }
@@ -193,8 +195,6 @@ class YamlDumper extends Dumper
      * Dumps the value to YAML format
      *
      * @param mixed $value
-     *
-     * @return mixed
      *
      * @throws RuntimeException When trying to dump object or resource
      */
@@ -207,9 +207,9 @@ class YamlDumper extends Dumper
             }
 
             return $code;
-        } elseif ($value instanceof Reference) {
+        } elseif (is_object($value) && $value instanceof Reference) {
             return $this->getServiceCall((string) $value, $value);
-        } elseif ($value instanceof Parameter) {
+        } elseif (is_object($value) && $value instanceof Parameter) {
             return $this->getParameterCall((string) $value);
         } elseif (is_object($value) || is_resource($value)) {
             throw new RuntimeException('Unable to dump a service container if a parameter is an object or a resource.');
@@ -254,20 +254,20 @@ class YamlDumper extends Dumper
      *
      * @return array
      */
-    private function prepareParameters($parameters, $escape = true)
+    private function prepareParameters($parameters)
     {
         $filtered = array();
         foreach ($parameters as $key => $value) {
             if (is_array($value)) {
-                $value = $this->prepareParameters($value, $escape);
-            } elseif ($value instanceof Reference || is_string($value) && 0 === strpos($value, '@')) {
+                $value = $this->prepareParameters($value);
+            } elseif ($value instanceof Reference) {
                 $value = '@'.$value;
             }
 
             $filtered[$key] = $value;
         }
 
-        return $escape ? $this->escape($filtered) : $filtered;
+        return $this->escape($filtered);
     }
 
     /**

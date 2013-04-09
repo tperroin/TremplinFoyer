@@ -1,13 +1,13 @@
-{% extends '@WebProfiler/Profiler/base.html.twig' %}
+{% extends 'WebProfilerBundle:Profiler:base.html.twig' %}
 
 {% block body %}
     <div id="content">
-        {% include '@WebProfiler/Profiler/header.html.twig' only %}
+        {% include 'WebProfilerBundle:Profiler:header.html.twig' only %}
 
         <div id="main">
-            <div class="clear-fix">
-                <div id="collector-wrapper">
-                    <div id="collector-content">
+            <div class="clear_fix">
+                <div id="collector_wrapper">
+                    <div id="collector_content">
                         {% block panel %}
                             {% if about == 'purge' %}
                                 <h2>The profiler database was purged successfully</h2>
@@ -34,8 +34,8 @@
                     </div>
                 </div>
                 <div id="navigation">
-                    {{ render(path('_profiler_search_bar')) }}
-                    {% include '@WebProfiler/Profiler/admin.html.twig' with { 'token': '' } only %}
+                    {% render 'WebProfilerBundle:Profiler:searchBar' with { 'token': '' } %}
+                    {% include 'WebProfilerBundle:Profiler:admin.html.twig' with { 'token': '' } only %}
                 </div>
             </div>
         </div>

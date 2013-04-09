@@ -12,11 +12,12 @@
 namespace Symfony\Component\Form\Tests;
 
 use Symfony\Component\Form\Forms;
+use Symfony\Component\Form\Extension\Core\CoreExtension;
 
 /**
  * @author Bernhard Schussek <bschussek@gmail.com>
  */
-abstract class FormIntegrationTestCase extends \PHPUnit_Framework_TestCase
+class FormIntegrationTestCase extends \PHPUnit_Framework_TestCase
 {
     /**
      * @var \Symfony\Component\Form\FormFactoryInterface

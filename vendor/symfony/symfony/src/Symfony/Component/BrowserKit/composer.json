@@ -17,23 +17,23 @@
     ],
     "require": {
         "php": ">=5.3.3",
-        "symfony/dom-crawler": "~2.0"
+        "symfony/dom-crawler": "2.1.*"
     },
     "require-dev": {
-        "symfony/process": "~2.0",
-        "symfony/css-selector": "~2.0"
+        "symfony/process": "2.1.*",
+        "symfony/css-selector": "2.1.*"
     },
     "suggest": {
-        "symfony/process": "2.2.*"
+        "symfony/process": "self.version"
     },
     "autoload": {
-        "psr-0": { "Symfony\\Component\\BrowserKit\\": "" }
+        "psr-0": { "Symfony\\Component\\BrowserKit": "" }
     },
     "target-dir": "Symfony/Component/BrowserKit",
     "minimum-stability": "dev",
     "extra": {
         "branch-alias": {
-            "dev-master": "2.2-dev"
+            "dev-master": "2.1-dev"
         }
     }
 }

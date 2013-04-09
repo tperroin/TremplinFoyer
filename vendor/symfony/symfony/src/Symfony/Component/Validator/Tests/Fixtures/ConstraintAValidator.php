@@ -13,13 +13,13 @@ namespace Symfony\Component\Validator\Tests\Fixtures;
 
 use Symfony\Component\Validator\Constraint;
 use Symfony\Component\Validator\ConstraintValidator;
-use Symfony\Component\Validator\ExecutionContextInterface;
+use Symfony\Component\Validator\ExecutionContext;
 
 class ConstraintAValidator extends ConstraintValidator
 {
     public static $passedContext;
 
-    public function initialize(ExecutionContextInterface $context)
+    public function initialize(ExecutionContext $context)
     {
         parent::initialize($context);
 

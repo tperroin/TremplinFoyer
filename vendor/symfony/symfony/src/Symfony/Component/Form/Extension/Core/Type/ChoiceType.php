@@ -15,8 +15,10 @@ use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\Form\FormView;
-use Symfony\Component\Form\Exception\Exception;
+use Symfony\Component\Form\Exception\FormException;
+use Symfony\Component\Form\Extension\Core\ChoiceList\ChoiceList;
 use Symfony\Component\Form\Extension\Core\ChoiceList\SimpleChoiceList;
+use Symfony\Component\Form\Extension\Core\ChoiceList\ChoiceListInterface;
 use Symfony\Component\Form\Extension\Core\EventListener\FixRadioInputListener;
 use Symfony\Component\Form\Extension\Core\EventListener\FixCheckboxInputListener;
 use Symfony\Component\Form\Extension\Core\EventListener\MergeCollectionListener;
@@ -41,7 +43,7 @@ class ChoiceType extends AbstractType
     public function buildForm(FormBuilderInterface $builder, array $options)
     {
         if (!$options['choice_list'] && !is_array($options['choices']) && !$options['choices'] instanceof \Traversable) {
-            throw new Exception('Either the option "choices" or "choice_list" must be set.');
+            throw new FormException('Either the option "choices" or "choice_list" must be set.');
         }
 
         if ($options['expanded']) {
@@ -196,10 +198,6 @@ class ChoiceType extends AbstractType
             'empty_value'       => $emptyValue,
             'error_bubbling'    => false,
             'compound'          => $compound,
-            // The view data is always a string, even if the "data" option
-            // is manually set to an object.
-            // See https://github.com/symfony/symfony/pull/5582
-            'data_class'        => null,
         ));
 
         $resolver->setNormalizers(array(
@@ -256,7 +254,7 @@ class ChoiceType extends AbstractType
                     $choiceType = 'radio';
                 }
 
-                $builder->add($i, $choiceType, $choiceOpts);
+                $builder->add((string) $i, $choiceType, $choiceOpts);
             }
         }
     }

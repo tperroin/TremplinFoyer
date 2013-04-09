@@ -7,7 +7,8 @@
     "license": "LGPL",
     "authors": [
         {
-            "name": "Chris Corbyn"
+            "name": "Chris Corbyn",
+            "email": ""
         },
         {
             "name": "Fabien Potencier",
@@ -22,7 +23,7 @@
     },
     "extra": {
         "branch-alias": {
-            "dev-master": "4.3-dev"
+            "dev-master": "4.2-dev"
         }
     }
 }

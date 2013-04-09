@@ -14,7 +14,7 @@ namespace Symfony\Component\Validator;
 use Symfony\Component\Validator\Constraint;
 
 /**
- * Validates values and graphs of objects and arrays.
+ * Validates a given value.
  *
  * @author Bernhard Schussek <bschussek@gmail.com>
  *
@@ -23,77 +23,61 @@ use Symfony\Component\Validator\Constraint;
 interface ValidatorInterface
 {
     /**
-     * Validates a value.
+     * Validate the given object.
      *
-     * The accepted values depend on the {@link MetadataFactoryInterface}
-     * implementation.
+     * @param object     $object The object to validate
+     * @param array|null $groups The validator groups to use for validating
      *
-     * @param mixed      $value    The value to validate
-     * @param array|null $groups   The validation groups to validate.
-     * @param Boolean    $traverse Whether to traverse the value if it is traversable.
-     * @param Boolean    $deep     Whether to traverse nested traversable values recursively.
-     *
-     * @return ConstraintViolationListInterface A list of constraint violations. If the
-     *                                          list is empty, validation succeeded.
+     * @return ConstraintViolationList
      *
      * @api
      */
-    public function validate($value, $groups = null, $traverse = false, $deep = false);
+    public function validate($object, $groups = null);
 
     /**
-     * Validates a property of a value against its current value.
+     * Validate a single property of an object against its current value.
      *
-     * The accepted values depend on the {@link MetadataFactoryInterface}
-     * implementation.
+     * @param object     $object   The object to validate
+     * @param string     $property The name of the property to validate
+     * @param array|null $groups   The validator groups to use for validating
      *
-     * @param mixed      $containingValue The value containing the property.
-     * @param string     $property        The name of the property to validate.
-     * @param array|null $groups          The validation groups to validate.
-     *
-     * @return ConstraintViolationListInterface A list of constraint violations. If the
-     *                                          list is empty, validation succeeded.
+     * @return ConstraintViolationList
      *
      * @api
      */
-    public function validateProperty($containingValue, $property, $groups = null);
+    public function validateProperty($object, $property, $groups = null);
 
     /**
-     * Validate a property of a value against a potential value.
+     * Validate a single property of an object against the given value.
      *
-     * The accepted values depend on the {@link MetadataFactoryInterface}
-     * implementation.
+     * @param string     $class    The class on which the property belongs
+     * @param string     $property The name of the property to validate
+     * @param string     $value
+     * @param array|null $groups   The validator groups to use for validating
      *
-     * @param string     $containingValue The value containing the property.
-     * @param string     $property        The name of the property to validate
-     * @param string     $value           The value to validate against the
-     *                                    constraints of the property.
-     * @param array|null $groups          The validation groups to validate.
-     *
-     * @return ConstraintViolationListInterface A list of constraint violations. If the
-     *                                          list is empty, validation succeeded.
+     * @return ConstraintViolationList
      *
      * @api
      */
-    public function validatePropertyValue($containingValue, $property, $value, $groups = null);
+    public function validatePropertyValue($class, $property, $value, $groups = null);
 
     /**
-     * Validates a value against a constraint or a list of constraints.
+     * Validates a given value against a specific Constraint.
      *
-     * @param mixed                   $value       The value to validate.
-     * @param Constraint|Constraint[] $constraints The constraint(s) to validate against.
-     * @param array|null              $groups      The validation groups to validate.
+     * @param mixed      $value      The value to validate
+     * @param Constraint $constraint The constraint to validate against
+     * @param array|null $groups     The validator groups to use for validating
      *
-     * @return ConstraintViolationListInterface A list of constraint violations. If the
-     *                                          list is empty, validation succeeded.
+     * @return ConstraintViolationList
      *
      * @api
      */
-    public function validateValue($value, $constraints, $groups = null);
+    public function validateValue($value, Constraint $constraint, $groups = null);
 
     /**
-     * Returns the factory for metadata instances.
+     * Returns the factory for ClassMetadata instances
      *
-     * @return MetadataFactoryInterface The metadata factory.
+     * @return Mapping\ClassMetadataFactoryInterface
      *
      * @api
      */

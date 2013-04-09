@@ -38,19 +38,18 @@ class NativeMailerHandler extends MailHandler
         parent::__construct($level, $bubble);
         $this->to = is_array($to) ? $to : array($to);
         $this->subject = $subject;
-        $this->addHeader(sprintf('From: %s', $from));
+        $this->headers[] = sprintf('From: %s', $from);
     }
 
     /**
-     * @param string|array $headers Custom added headers
+     * @param string|array $header Custom added headers
      */
     public function addHeader($headers)
     {
-        foreach ((array) $headers as $header) {
-            if (strpos($header, "\n") !== false || strpos($header, "\r") !== false) {
-                throw new \InvalidArgumentException('Headers can not contain newline characters for security reasons');
-            }
-            $this->headers[] = $header;
+        if (is_array($headers)) {
+            $this->headers = array_merge($this->headers, $headers);
+        } else {
+            $this->headers[] = $headers;
         }
     }
 
@@ -59,10 +58,8 @@ class NativeMailerHandler extends MailHandler
      */
     protected function send($content, array $records)
     {
-        $content = wordwrap($content, 70);
-        $headers = implode("\r\n", $this->headers) . "\r\n";
         foreach ($this->to as $to) {
-            mail($to, $this->subject, $content, $headers);
+            mail($to, $this->subject, wordwrap($content, 70), implode("\r\n", $this->headers) . "\r\n");
         }
     }
 }

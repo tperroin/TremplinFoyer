@@ -31,8 +31,6 @@ final class ObjectIdentity implements ObjectIdentityInterface
      *
      * @param string $identifier
      * @param string $type
-     *
-     * @throws \InvalidArgumentException
      */
     public function __construct($identifier, $type)
     {
@@ -51,7 +49,7 @@ final class ObjectIdentity implements ObjectIdentityInterface
      * Constructs an ObjectIdentity for the given domain object
      *
      * @param object $domainObject
-     * @throws InvalidDomainObjectException
+     * @throws \InvalidArgumentException
      * @return ObjectIdentity
      */
     public static function fromDomainObject($domainObject)

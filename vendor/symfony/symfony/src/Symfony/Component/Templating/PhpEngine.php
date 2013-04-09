@@ -47,7 +47,7 @@ class PhpEngine implements EngineInterface, \ArrayAccess
      *
      * @param TemplateNameParserInterface $parser  A TemplateNameParserInterface instance
      * @param LoaderInterface             $loader  A loader instance
-     * @param HelperInterface[]           $helpers An array of helper instances
+     * @param array                       $helpers An array of helper instances
      */
     public function __construct(TemplateNameParserInterface $parser, LoaderInterface $loader, array $helpers = array())
     {
@@ -151,8 +151,6 @@ class PhpEngine implements EngineInterface, \ArrayAccess
      * @param array   $parameters An array of parameters to pass to the template
      *
      * @return string|false The evaluated template, or false if the engine is unable to render the template
-     *
-     * @throws \InvalidArgumentException
      */
     protected function evaluate(Storage $template, array $parameters = array())
     {
@@ -229,8 +227,6 @@ class PhpEngine implements EngineInterface, \ArrayAccess
      *
      * @param string $name The helper name
      *
-     * @throws \LogicException
-     *
      * @api
      */
     public function offsetUnset($name)
@@ -239,9 +235,7 @@ class PhpEngine implements EngineInterface, \ArrayAccess
     }
 
     /**
-     * Adds some helpers.
-     *
-     * @param HelperInterface[] $helpers An array of helper
+     * @param Helper[] $helpers An array of helper
      *
      * @api
      */
@@ -255,7 +249,7 @@ class PhpEngine implements EngineInterface, \ArrayAccess
     /**
      * Sets the helpers.
      *
-     * @param HelperInterface[] $helpers An array of helper
+     * @param Helper[] $helpers An array of helper
      *
      * @api
      */
@@ -402,8 +396,6 @@ class PhpEngine implements EngineInterface, \ArrayAccess
      * @param string $context The context name
      *
      * @return mixed  $escaper A PHP callable
-     *
-     * @throws \InvalidArgumentException
      *
      * @api
      */

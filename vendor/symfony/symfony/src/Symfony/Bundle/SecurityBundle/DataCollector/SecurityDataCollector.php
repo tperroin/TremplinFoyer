@@ -39,7 +39,6 @@ class SecurityDataCollector extends DataCollector
             $this->data = array(
                 'enabled'       => false,
                 'authenticated' => false,
-                'token_class'   => null,
                 'user'          => '',
                 'roles'         => array(),
             );
@@ -47,7 +46,6 @@ class SecurityDataCollector extends DataCollector
             $this->data = array(
                 'enabled'       => true,
                 'authenticated' => false,
-                'token_class'   => null,
                 'user'          => '',
                 'roles'         => array(),
             );
@@ -55,7 +53,6 @@ class SecurityDataCollector extends DataCollector
             $this->data = array(
                 'enabled'       => true,
                 'authenticated' => $token->isAuthenticated(),
-                'token_class'   => get_class($token),
                 'user'          => $token->getUsername(),
                 'roles'         => array_map(function ($role){ return $role->getRole();}, $token->getRoles()),
             );
@@ -100,16 +97,6 @@ class SecurityDataCollector extends DataCollector
     public function isAuthenticated()
     {
         return $this->data['authenticated'];
-    }
-
-    /**
-     * Get the class name of the security token.
-     *
-     * @return string The token
-     */
-    public function getTokenClass()
-    {
-        return $this->data['token_class'];
     }
 
     /**

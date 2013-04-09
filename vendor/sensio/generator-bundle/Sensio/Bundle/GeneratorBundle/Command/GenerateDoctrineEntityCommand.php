@@ -16,7 +16,6 @@ use Sensio\Bundle\GeneratorBundle\Command\Helper\DialogHelper;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\DependencyInjection\Container;
 use Doctrine\DBAL\Types\Type;
 
 /**
@@ -117,10 +116,8 @@ EOT
             ''
         ));
 
-        $bundleNames = array_keys($this->getContainer()->get('kernel')->getBundles());
-
         while (true) {
-            $entity = $dialog->askAndValidate($output, $dialog->getQuestion('The Entity shortcut name', $input->getOption('entity')), array('Sensio\Bundle\GeneratorBundle\Command\Validators', 'validateEntityName'), false, $input->getOption('entity'), $bundleNames);
+            $entity = $dialog->askAndValidate($output, $dialog->getQuestion('The Entity shortcut name', $input->getOption('entity')), array('Sensio\Bundle\GeneratorBundle\Command\Validators', 'validateEntityName'), false, $input->getOption('entity'));
 
             list($bundle, $entity) = $this->parseShortcutNotation($entity);
 
@@ -150,10 +147,7 @@ EOT
             'Determine the format to use for the mapping information.',
             '',
         ));
-
-        $formats = array('yml', 'xml', 'php', 'annotation');
-
-        $format = $dialog->askAndValidate($output, $dialog->getQuestion('Configuration format (yml, xml, php, or annotation)', $input->getOption('format')), array('Sensio\Bundle\GeneratorBundle\Command\Validators', 'validateFormat'), false, $input->getOption('format'), $formats);
+        $format = $dialog->askAndValidate($output, $dialog->getQuestion('Configuration format (yml, xml, php, or annotation)', $input->getOption('format')), array('Sensio\Bundle\GeneratorBundle\Command\Validators', 'validateFormat'), false, $input->getOption('format'));
         $input->setOption('format', $format);
 
         // fields
@@ -254,7 +248,7 @@ EOT
         while (true) {
             $output->writeln('');
             $self = $this;
-            $columnName = $dialog->askAndValidate($output, $dialog->getQuestion('New field name (press <return> to stop adding fields)', null), function ($name) use ($fields, $self) {
+            $name = $dialog->askAndValidate($output, $dialog->getQuestion('New field name (press <return> to stop adding fields)', null), function ($name) use ($fields, $self) {
                 if (isset($fields[$name]) || 'id' == $name) {
                     throw new \InvalidArgumentException(sprintf('Field "%s" is already defined.', $name));
                 }
@@ -266,32 +260,27 @@ EOT
 
                 return $name;
             });
-            if (!$columnName) {
+            if (!$name) {
                 break;
             }
 
             $defaultType = 'string';
 
-            // try to guess the type by the column name prefix/suffix
-            if (substr($columnName, -3) == '_at') {
+            if (substr($name, -3) == '_at') {
                 $defaultType = 'datetime';
-            } elseif (substr($columnName, -3) == '_id') {
+            } elseif (substr($name, -3) == '_id') {
                 $defaultType = 'integer';
-            } elseif (substr($columnName, 0, 3) == 'is_') {
-                $defaultType = 'boolean';
-            } elseif (substr($columnName, 0, 4) == 'has_') {
-                $defaultType = 'boolean';
             }
 
-            $type = $dialog->askAndValidate($output, $dialog->getQuestion('Field type', $defaultType), $fieldValidator, false, $defaultType, $types);
+            $type = $dialog->askAndValidate($output, $dialog->getQuestion('Field type', $defaultType), $fieldValidator, false, $defaultType);
 
-            $data = array('columnName' => $columnName, 'fieldName' => lcfirst(Container::camelize($columnName)), 'type' => $type);
+            $data = array('fieldName' => $name, 'type' => $type);
 
             if ($type == 'string') {
                 $data['length'] = $dialog->askAndValidate($output, $dialog->getQuestion('Field length', 255), $lengthValidator, false, 255);
             }
 
-            $fields[$columnName] = $data;
+            $fields[$name] = $data;
         }
 
         return $fields;

@@ -9,7 +9,7 @@
  * file that was distributed with this source code.
  */
 
-namespace Symfony\Component\Locale\Tests\Stub;
+namespace Symfony\Tests\Component\Locale\Stub;
 
 require_once __DIR__.'/../TestCase.php';
 

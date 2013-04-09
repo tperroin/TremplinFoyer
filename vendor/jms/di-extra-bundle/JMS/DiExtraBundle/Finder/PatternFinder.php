@@ -36,10 +36,10 @@ class PatternFinder
     private $recursive = true;
     private $regexPattern = false;
 
-    public function __construct($pattern, $filePattern = '*.php', $disableGrep = false, $forceMethodReload = false)
+    public function __construct($pattern, $filePattern = '*.php')
     {
-        if (null === self::$method || $forceMethodReload) {
-            self::determineMethod($disableGrep);
+        if (null === self::$method) {
+            self::determineMethod();
         }
 
         $this->pattern = $pattern;
@@ -118,7 +118,7 @@ class PatternFinder
                 continue;
             }
 
-            $files[] = realpath($currentDir.$line);
+            $files[] = $currentDir.$line;
         }
 
         return $files;
@@ -156,7 +156,7 @@ class PatternFinder
             throw new RuntimeException(sprintf('Command "%s" exited with non-successful status code "%d".', $cmd, $exitCode));
         }
 
-        return array_map('realpath', $files);
+        return $files;
     }
 
     private function findUsingFinder(array $dirs)
@@ -182,16 +182,16 @@ class PatternFinder
             $finder->depth('<= 0');
         }
 
-        return array_map('realpath', array_keys(iterator_to_array($finder)));
+        return array_keys(iterator_to_array($finder));
     }
 
-    private static function determineMethod($disableGrep)
+    private static function determineMethod()
     {
         $finder = new ExecutableFinder();
         $isWindows = 0 === stripos(PHP_OS, 'win');
         $execAvailable = function_exists('exec');
 
-        if (!$isWindows && $execAvailable && !$disableGrep && self::$grepPath = $finder->find('grep')) {
+        if (!$isWindows && $execAvailable && self::$grepPath = $finder->find('grep')) {
             self::$method = self::METHOD_GREP;
         } else if ($isWindows && $execAvailable) {
             self::$method = self::METHOD_FINDSTR;

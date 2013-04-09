@@ -41,19 +41,11 @@ output abstractions (so that you can easily unit-test your commands),
 validation, automatic help messages, ...
 
 Tests
------
+---------
 
 You can run the unit tests with the following command:
 
-    $ cd path/to/Symfony/Component/Console/
-    $ composer.phar install --dev
-    $ phpunit
-
-Third Party
------------
-
-`Resources/bin/hiddeninput.exe` is a third party binary provided within this
-component. Find sources and license at https://github.com/Seldaek/hidden-input.
+    phpunit
 
 Resources
 ---------

@@ -78,52 +78,45 @@ class Router extends BaseRouter implements WarmableInterface
      * - the route defaults,
      * - the route requirements,
      * - the route pattern.
-     * - the route host.
      *
      * @param RouteCollection $collection
      */
     private function resolveParameters(RouteCollection $collection)
     {
         foreach ($collection as $route) {
-            foreach ($route->getDefaults() as $name => $value) {
-                $route->setDefault($name, $this->resolve($value));
-            }
+            if ($route instanceof RouteCollection) {
+                $this->resolveParameters($route);
+            } else {
+                foreach ($route->getDefaults() as $name => $value) {
+                    $route->setDefault($name, $this->resolveString($value));
+                }
 
-            foreach ($route->getRequirements() as $name => $value) {
-                 $route->setRequirement($name, $this->resolve($value));
-            }
+                foreach ($route->getRequirements() as $name => $value) {
+                     $route->setRequirement($name, $this->resolveString($value));
+                }
 
-            $route->setPath($this->resolve($route->getPath()));
-            $route->setHost($this->resolve($route->getHost()));
+                $route->setPattern($this->resolveString($route->getPattern()));
+            }
         }
     }
 
     /**
-     * Recursively replaces placeholders with the service container parameters.
+     * Replaces placeholders with the service container parameters in the given string.
      *
-     * @param mixed $value The source which might contain "%placeholders%"
+     * @param mixed $value The source string which might contain %placeholders%
      *
-     * @return mixed The source with the placeholders replaced by the container
-     *               parameters. Array are resolved recursively.
+     * @return mixed A string where the placeholders have been replaced, or the original value if not a string.
      *
      * @throws ParameterNotFoundException When a placeholder does not exist as a container parameter
      * @throws RuntimeException           When a container value is not a string or a numeric value
      */
-    private function resolve($value)
+    private function resolveString($value)
     {
-        if (is_array($value)) {
-            foreach ($value as $key => $val) {
-                $value[$key] = $this->resolve($val);
-            }
-
-            return $value;
-        }
-
-        if (!is_string($value)) {
-            return $value;
-        }
-
         $container = $this->container;
+
+        if (null === $value || false === $value || true === $value || is_object($value)) {
+            return $value;
+        }
 
         $escapedValue = preg_replace_callback('/%%|%([^%\s]+)%/', function ($match) use ($container, $value) {
             // skip %%

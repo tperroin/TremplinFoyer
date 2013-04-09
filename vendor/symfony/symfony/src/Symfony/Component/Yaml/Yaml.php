@@ -22,51 +22,11 @@ use Symfony\Component\Yaml\Exception\ParseException;
  */
 class Yaml
 {
-    /**
-     * Be warned that PHP support will be removed in Symfony 2.3.
-     *
-     * @deprecated Deprecated since version 2.0, to be removed in 2.3.
-     */
     public static $enablePhpParsing = false;
 
-    /**
-     * Enables PHP support when parsing YAML files.
-     *
-     * Be warned that PHP support will be removed in Symfony 2.3.
-     *
-     * @deprecated Deprecated since version 2.0, to be removed in 2.3.
-     */
     public static function enablePhpParsing()
     {
         self::$enablePhpParsing = true;
-    }
-
-    /**
-     * Sets the PHP support flag when parsing YAML files.
-     *
-     * Be warned that PHP support will be removed in Symfony 2.3.
-     *
-     * @param Boolean $boolean true if PHP parsing support is enabled, false otherwise
-     *
-     * @deprecated Deprecated since version 2.0, to be removed in 2.3.
-     */
-    public static function setPhpParsing($boolean)
-    {
-        self::$enablePhpParsing = (Boolean) $boolean;
-    }
-
-    /**
-     * Checks if PHP support is enabled when parsing YAML files.
-     *
-     * Be warned that PHP support will be removed in Symfony 2.3.
-     *
-     * @return Boolean true if PHP parsing support is enabled, false otherwise
-     *
-     * @deprecated Deprecated since version 2.0, to be removed in 2.3.
-     */
-    public static function supportsPhpParsing()
-    {
-        return self::$enablePhpParsing;
     }
 
     /**
@@ -81,10 +41,6 @@ class Yaml
      *   print_r($array);
      *  </code>
      *
-     * As this method accepts both plain strings and file names as an input,
-     * you must validate the input before calling this method. Passing a file
-     * as an input is a deprecated feature and will be removed in 3.0.
-     *
      * @param string $input Path to a YAML file or a string containing YAML
      *
      * @return array The YAML converted to a PHP array
@@ -93,7 +49,7 @@ class Yaml
      *
      * @api
      */
-    public static function parse($input, $exceptionOnInvalidType = false, $objectSupport = false)
+    public static function parse($input)
     {
         // if input is a file, process it
         $file = '';
@@ -123,7 +79,7 @@ class Yaml
         $yaml = new Parser();
 
         try {
-            return $yaml->parse($input, $exceptionOnInvalidType, $objectSupport);
+            return $yaml->parse($input);
         } catch (ParseException $e) {
             if ($file) {
                 $e->setParsedFile($file);
@@ -139,21 +95,19 @@ class Yaml
      * The dump method, when supplied with an array, will do its best
      * to convert the array into friendly YAML.
      *
-     * @param array   $array                  PHP array
-     * @param integer $inline                 The level where you switch to inline YAML
-     * @param integer $indent                 The amount of spaces to use for indentation of nested nodes.
-     * @param Boolean $exceptionOnInvalidType true if an exception must be thrown on invalid types (a PHP resource or object), false otherwise
-     * @param Boolean $objectSupport          true if object support is enabled, false otherwise
+     * @param array   $array  PHP array
+     * @param integer $inline The level where you switch to inline YAML
+     * @param integer $indent The amount of spaces to use for indentation of nested nodes.
      *
      * @return string A YAML string representing the original PHP array
      *
      * @api
      */
-    public static function dump($array, $inline = 2, $indent = 4, $exceptionOnInvalidType = false, $objectSupport = false)
+    public static function dump($array, $inline = 2, $indent = 4)
     {
         $yaml = new Dumper();
         $yaml->setIndentation($indent);
 
-        return $yaml->dump($array, $inline, 0, $exceptionOnInvalidType, $objectSupport);
+        return $yaml->dump($array, $inline);
     }
 }
