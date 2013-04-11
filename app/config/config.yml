@@ -61,6 +61,7 @@ doctrine:
                     SonataNewsBundle: ~
                     SonataMediaBundle: ~
                     ApplicationSonataMediaBundle: ~
+                    TperroinTremplinFoyerBundle: ~
 
 # Swiftmailer Configuration
 swiftmailer:
@@ -151,12 +152,13 @@ sonata_media:
 
     cdn:
         server:
-            path: /uploads/media # http://media.sonata-project.org/
+            path: /web/uploads/media
 
     filesystem:
         local:
             directory:  %kernel.root_dir%/../web/uploads/media
             create:     false
+            
 sonata_formatter:
     formatters:
         markdown:

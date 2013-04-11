@@ -49,3 +49,7 @@ media:
 news:
     resource: '@SonataNewsBundle/Resources/config/routing/news.xml'
     prefix: /news
+    
+TperroinTremplinFoyerBundle_association:
+        resource: "@TperroinTremplinFoyerBundle/Resources/config/routing/association.yml"
+        prefix:   /association

@@ -5,3 +5,8 @@ services:
 #    tperroin_tremplin_foyer.example:
 #        class: %tperroin_tremplin_foyer.example.class%
 #        arguments: [@service_id, "plain_value", %parameter%]
+    tperroin_tremplin_foyer.association:
+        class: Tperroin\TremplinFoyerBundle\Admin\AssociationAdmin
+        tags:
+            - { name: sonata.admin, manager_type: orm, group: Foyer, label: Posts menu "Association" }
+        arguments: [null, Tperroin\TremplinFoyerBundle\Entity\Association, TperroinTremplinFoyerBundle:AssociationAdmin]

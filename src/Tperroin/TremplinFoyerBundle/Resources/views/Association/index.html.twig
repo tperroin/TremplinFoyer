@@ -1,0 +1,24 @@
+{% extends '::base.html.twig' %}
+{%block corps%}
+    <div class="row">
+        <div class="large-12">
+            <h1 class="bleu">/// L'association</h1>
+        </div>
+    </div>
+
+    {% for entity in entities %}
+
+        <div class="row">
+            <div class="large-12">
+                <div class="row blocBlanc">
+                    <h5><a class="bleu" href="{{ path('association_show', { 'id': entity.id }) }}">{{ entity.titre }}</a></h5>
+                        {% media entity.image, 'small' %}
+                    {% path entity.image, 'small' %}
+                        <p>{{ entity.teaser | raw }}</p>
+                </div>
+            </div>
+        </div>
+            
+    {% endfor %}
+
+{%endblock%}

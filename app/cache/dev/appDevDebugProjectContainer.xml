@@ -18,7 +18,6 @@
       <parameter key="SensioFrameworkExtraBundle">Sensio\Bundle\FrameworkExtraBundle\SensioFrameworkExtraBundle</parameter>
       <parameter key="JMSAopBundle">JMS\AopBundle\JMSAopBundle</parameter>
       <parameter key="JMSDiExtraBundle">JMS\DiExtraBundle\JMSDiExtraBundle</parameter>
-      <parameter key="JMSSecurityExtraBundle">JMS\SecurityExtraBundle\JMSSecurityExtraBundle</parameter>
       <parameter key="FOSUserBundle">FOS\UserBundle\FOSUserBundle</parameter>
       <parameter key="SonatajQueryBundle">Sonata\jQueryBundle\SonatajQueryBundle</parameter>
       <parameter key="SonataAdminBundle">Sonata\AdminBundle\SonataAdminBundle</parameter>
@@ -493,38 +492,8 @@
     <parameter key="jms_di_extra.directories" type="collection"/>
     <parameter key="jms_di_extra.cache_dir">/var/www/sites/TremplinFoyerV1/app/cache/dev/jms_diextra</parameter>
     <parameter key="jms_di_extra.doctrine_integration">true</parameter>
-    <parameter key="jms_di_extra.doctrine_integration.entity_manager.file">/var/www/sites/TremplinFoyerV1/app/cache/dev/jms_diextra/doctrine/EntityManager_516424e6b2bd4.php</parameter>
-    <parameter key="jms_di_extra.doctrine_integration.entity_manager.class">EntityManager516424e6b2bd4_546a8d27f194334ee012bfe64f629947b07e4919\__CG__\Doctrine\ORM\EntityManager</parameter>
-    <parameter key="security.secured_services" type="collection"/>
-    <parameter key="security.access.method_interceptor.class">JMS\SecurityExtraBundle\Security\Authorization\Interception\MethodSecurityInterceptor</parameter>
-    <parameter key="security.access.method_access_control" type="collection"/>
-    <parameter key="security.access.run_as_manager.class">JMS\SecurityExtraBundle\Security\Authorization\RunAsManager</parameter>
-    <parameter key="security.authentication.provider.run_as.class">JMS\SecurityExtraBundle\Security\Authentication\Provider\RunAsAuthenticationProvider</parameter>
-    <parameter key="security.run_as.key">RunAsToken</parameter>
-    <parameter key="security.run_as.role_prefix">ROLE_</parameter>
-    <parameter key="security.access.after_invocation_manager.class">JMS\SecurityExtraBundle\Security\Authorization\AfterInvocation\AfterInvocationManager</parameter>
-    <parameter key="security.access.after_invocation.acl_provider.class">JMS\SecurityExtraBundle\Security\Authorization\AfterInvocation\AclAfterInvocationProvider</parameter>
-    <parameter key="security.access.iddqd_voter.class">JMS\SecurityExtraBundle\Security\Authorization\Voter\IddqdVoter</parameter>
-    <parameter key="security.extra.metadata_factory.class">Metadata\MetadataFactory</parameter>
-    <parameter key="security.extra.lazy_loading_driver.class">Metadata\Driver\LazyLoadingDriver</parameter>
-    <parameter key="security.extra.driver_chain.class">Metadata\Driver\DriverChain</parameter>
-    <parameter key="security.extra.annotation_driver.class">JMS\SecurityExtraBundle\Metadata\Driver\AnnotationDriver</parameter>
-    <parameter key="security.extra.file_cache.class">Metadata\Cache\FileCache</parameter>
-    <parameter key="security.access.secure_all_services">false</parameter>
-    <parameter key="security.extra.cache_dir">/var/www/sites/TremplinFoyerV1/app/cache/dev/jms_security</parameter>
-    <parameter key="security.acl.permission_evaluator.class">JMS\SecurityExtraBundle\Security\Acl\Expression\PermissionEvaluator</parameter>
-    <parameter key="security.acl.has_permission_compiler.class">JMS\SecurityExtraBundle\Security\Acl\Expression\HasPermissionFunctionCompiler</parameter>
-    <parameter key="security.expressions.voter.class">JMS\SecurityExtraBundle\Security\Authorization\Expression\LazyLoadingExpressionVoter</parameter>
-    <parameter key="security.expressions.handler.class">JMS\SecurityExtraBundle\Security\Authorization\Expression\ContainerAwareExpressionHandler</parameter>
-    <parameter key="security.expressions.compiler.class">JMS\SecurityExtraBundle\Security\Authorization\Expression\ExpressionCompiler</parameter>
-    <parameter key="security.expressions.expression.class">JMS\SecurityExtraBundle\Security\Authorization\Expression\Expression</parameter>
-    <parameter key="security.expressions.variable_compiler.class">JMS\SecurityExtraBundle\Security\Authorization\Expression\Compiler\ContainerAwareVariableCompiler</parameter>
-    <parameter key="security.expressions.parameter_compiler.class">JMS\SecurityExtraBundle\Security\Authorization\Expression\Compiler\ParameterExpressionCompiler</parameter>
-    <parameter key="security.extra.config_driver.class">JMS\SecurityExtraBundle\Metadata\Driver\ConfigDriver</parameter>
-    <parameter key="security.extra.twig_extension.class">JMS\SecurityExtraBundle\Twig\SecurityExtension</parameter>
-    <parameter key="security.authenticated_voter.disabled">false</parameter>
-    <parameter key="security.role_voter.disabled">false</parameter>
-    <parameter key="security.acl_voter.disabled">false</parameter>
+    <parameter key="jms_di_extra.doctrine_integration.entity_manager.file">/var/www/sites/TremplinFoyerV1/app/cache/dev/jms_diextra/doctrine/EntityManager_5166d0feb551e.php</parameter>
+    <parameter key="jms_di_extra.doctrine_integration.entity_manager.class">EntityManager5166d0feb551e_546a8d27f194334ee012bfe64f629947b07e4919\__CG__\Doctrine\ORM\EntityManager</parameter>
     <parameter key="fos_user.validator.password.class">FOS\UserBundle\Validator\PasswordValidator</parameter>
     <parameter key="fos_user.validator.unique.class">FOS\UserBundle\Validator\UniqueValidator</parameter>
     <parameter key="fos_user.security.interactive_login_listener.class">FOS\UserBundle\Security\InteractiveLoginListener</parameter>
@@ -3005,7 +2974,7 @@
         </argument>
         <argument type="service">
           <service class="Symfony\Component\Security\Core\Authentication\Provider\AnonymousAuthenticationProvider" public="false">
-            <argument>516424e674c8d</argument>
+            <argument>5166d0fe740b2</argument>
           </service>
         </argument>
         <argument type="service">
@@ -3019,7 +2988,7 @@
         </argument>
         <argument type="service">
           <service class="Symfony\Component\Security\Core\Authentication\Provider\AnonymousAuthenticationProvider" public="false">
-            <argument>516424e674c8d</argument>
+            <argument>5166d0fe740b2</argument>
           </service>
         </argument>
       </argument>
@@ -3028,7 +2997,7 @@
         <argument type="service" id="event_dispatcher"/>
       </call>
     </service>
-    <service id="security.authentication.trust_resolver" class="Symfony\Component\Security\Core\Authentication\AuthenticationTrustResolver">
+    <service id="security.authentication.trust_resolver" class="Symfony\Component\Security\Core\Authentication\AuthenticationTrustResolver" public="false">
       <argument>Symfony\Component\Security\Core\Authentication\Token\AnonymousToken</argument>
       <argument>Symfony\Component\Security\Core\Authentication\Token\RememberMeToken</argument>
     </service>
@@ -3039,26 +3008,26 @@
     <service id="security.access.decision_manager" class="Symfony\Component\Security\Core\Authorization\AccessDecisionManager" public="false">
       <argument type="collection">
         <argument type="service">
-          <service class="JMS\SecurityExtraBundle\Security\Authorization\Expression\LazyLoadingExpressionVoter" public="false">
-            <tag name="security.voter" priority="230"/>
-            <argument type="service">
-              <service class="JMS\SecurityExtraBundle\Security\Authorization\Expression\ContainerAwareExpressionHandler" public="false">
-                <argument type="service" id="service_container"/>
-              </service>
-            </argument>
-            <call method="setLazyCompiler">
-              <argument type="service" id="service_container"/>
-              <argument>security.expressions.compiler</argument>
-            </call>
-            <call method="setCacheDir">
-              <argument>/var/www/sites/TremplinFoyerV1/app/cache/dev/jms_security/expressions</argument>
-            </call>
-          </service>
-        </argument>
-        <argument type="service">
           <service class="Symfony\Component\Security\Core\Authorization\Voter\RoleHierarchyVoter" public="false">
             <tag name="security.voter" priority="245"/>
-            <argument type="service" id="security.role_hierarchy"/>
+            <argument type="service">
+              <service class="Symfony\Component\Security\Core\Role\RoleHierarchy" public="false">
+                <argument type="collection">
+                  <argument key="ROLE_ADMIN" type="collection">
+                    <argument>ROLE_USER</argument>
+                  </argument>
+                  <argument key="ROLE_SUPER_ADMIN" type="collection">
+                    <argument>ROLE_USER</argument>
+                    <argument>ROLE_SONATA_ADMIN</argument>
+                    <argument>ROLE_ADMIN</argument>
+                    <argument>ROLE_ALLOWED_TO_SWITCH</argument>
+                  </argument>
+                  <argument key="SONATA" type="collection">
+                    <argument>ROLE_SONATA_PAGE_ADMIN_PAGE_EDIT</argument>
+                  </argument>
+                </argument>
+              </service>
+            </argument>
           </service>
         </argument>
         <argument type="service">
@@ -3071,22 +3040,6 @@
       <argument>affirmative</argument>
       <argument>false</argument>
       <argument>true</argument>
-    </service>
-    <service id="security.role_hierarchy" class="Symfony\Component\Security\Core\Role\RoleHierarchy">
-      <argument type="collection">
-        <argument key="ROLE_ADMIN" type="collection">
-          <argument>ROLE_USER</argument>
-        </argument>
-        <argument key="ROLE_SUPER_ADMIN" type="collection">
-          <argument>ROLE_USER</argument>
-          <argument>ROLE_SONATA_ADMIN</argument>
-          <argument>ROLE_ADMIN</argument>
-          <argument>ROLE_ALLOWED_TO_SWITCH</argument>
-        </argument>
-        <argument key="SONATA" type="collection">
-          <argument>ROLE_SONATA_PAGE_ADMIN_PAGE_EDIT</argument>
-        </argument>
-      </argument>
     </service>
     <service id="security.firewall" class="Symfony\Component\Security\Http\Firewall">
       <tag name="kernel.event_listener" event="kernel.request" method="onKernelRequest" priority="8"/>
@@ -3362,7 +3315,7 @@
         <argument type="service">
           <service class="Symfony\Component\Security\Http\Firewall\AnonymousAuthenticationListener" public="false">
             <argument type="service" id="security.context"/>
-            <argument>516424e674c8d</argument>
+            <argument>5166d0fe740b2</argument>
             <argument type="service" id="monolog.logger.security"/>
           </service>
         </argument>
@@ -3473,7 +3426,7 @@
         <argument type="service">
           <service class="Symfony\Component\Security\Http\Firewall\AnonymousAuthenticationListener" public="false">
             <argument type="service" id="security.context"/>
-            <argument>516424e674c8d</argument>
+            <argument>5166d0fe740b2</argument>
             <argument type="service" id="monolog.logger.security"/>
           </service>
         </argument>
@@ -3617,14 +3570,6 @@
         <argument type="service">
           <service class="Doctrine\Bundle\DoctrineBundle\Twig\DoctrineExtension" public="false">
             <tag name="twig.extension"/>
-          </service>
-        </argument>
-      </call>
-      <call method="addExtension">
-        <argument type="service">
-          <service class="JMS\SecurityExtraBundle\Twig\SecurityExtension" public="false">
-            <tag name="twig.extension" alias="jms_security_extra"/>
-            <argument type="service" id="security.context"/>
           </service>
         </argument>
       </call>
@@ -3980,8 +3925,8 @@
     <service id="doctrine.orm.default_manager_configurator" class="Doctrine\Bundle\DoctrineBundle\ManagerConfigurator">
       <argument type="collection"/>
     </service>
-    <service id="doctrine.orm.default_entity_manager" class="EntityManager516424e6b2bd4_546a8d27f194334ee012bfe64f629947b07e4919\__CG__\Doctrine\ORM\EntityManager">
-      <file>/var/www/sites/TremplinFoyerV1/app/cache/dev/jms_diextra/doctrine/EntityManager_516424e6b2bd4.php</file>
+    <service id="doctrine.orm.default_entity_manager" class="EntityManager5166d0feb551e_546a8d27f194334ee012bfe64f629947b07e4919\__CG__\Doctrine\ORM\EntityManager">
+      <file>/var/www/sites/TremplinFoyerV1/app/cache/dev/jms_diextra/doctrine/EntityManager_5166d0feb551e.php</file>
       <argument type="service">
         <service class="Doctrine\ORM\EntityManager" factory-method="create" public="false">
           <argument type="service" id="doctrine.dbal.default_connection"/>
@@ -3996,6 +3941,7 @@
                   <argument key="SonataNewsBundle">Sonata\NewsBundle\Entity</argument>
                   <argument key="SonataMediaBundle">Sonata\MediaBundle\Entity</argument>
                   <argument key="ApplicationSonataMediaBundle">Application\Sonata\MediaBundle\Entity</argument>
+                  <argument key="TperroinTremplinFoyerBundle">Tperroin\TremplinFoyerBundle\Entity</argument>
                 </argument>
               </call>
               <call method="setMetadataCacheImpl">
@@ -4161,6 +4107,17 @@
                       </argument>
                       <argument>Application\Sonata\MediaBundle\Entity</argument>
                     </call>
+                    <call method="addDriver">
+                      <argument type="service">
+                        <service class="Doctrine\ORM\Mapping\Driver\AnnotationDriver" public="false">
+                          <argument type="service" id="annotation_reader"/>
+                          <argument type="collection">
+                            <argument>/var/www/sites/TremplinFoyerV1/src/Tperroin/TremplinFoyerBundle/Entity</argument>
+                          </argument>
+                        </service>
+                      </argument>
+                      <argument>Tperroin\TremplinFoyerBundle\Entity</argument>
+                    </call>
                   </service>
                 </argument>
               </call>
@@ -4251,85 +4208,6 @@
       </call>
     </service>
     <service id="jms_di_extra.metadata.converter" class="JMS\DiExtraBundle\Metadata\MetadataConverter"/>
-    <service id="security.access.method_interceptor" class="JMS\SecurityExtraBundle\Security\Authorization\Interception\MethodSecurityInterceptor">
-      <tag name="monolog.logger" channel="security"/>
-      <argument type="service" id="security.context"/>
-      <argument type="service" id="security.authentication.manager"/>
-      <argument type="service" id="security.access.decision_manager"/>
-      <argument type="service">
-        <service class="JMS\SecurityExtraBundle\Security\Authorization\AfterInvocation\AfterInvocationManager" public="false">
-          <argument type="collection"/>
-        </service>
-      </argument>
-      <argument type="service">
-        <service class="JMS\SecurityExtraBundle\Security\Authorization\RunAsManager" public="false">
-          <argument>RunAsToken</argument>
-          <argument>ROLE_</argument>
-        </service>
-      </argument>
-      <argument type="service" id="security.extra.metadata_factory"/>
-      <argument type="service" id="monolog.logger.security"/>
-    </service>
-    <service id="security.access.pointcut" class="JMS\SecurityExtraBundle\Security\Authorization\Interception\SecurityPointcut">
-      <tag name="jms_aop.pointcut" interceptor="security.access.method_interceptor"/>
-      <argument type="service" id="security.extra.metadata_factory"/>
-      <argument>false</argument>
-      <argument type="collection"/>
-      <call method="setSecuredClasses">
-        <argument type="collection"/>
-      </call>
-    </service>
-    <service id="security.extra.metadata_factory" class="Metadata\MetadataFactory" public="false">
-      <argument type="service">
-        <service class="Metadata\Driver\LazyLoadingDriver" public="false">
-          <argument type="service" id="service_container"/>
-          <argument>security.extra.metadata_driver</argument>
-        </service>
-      </argument>
-      <argument type="service">
-        <service class="Metadata\Cache\FileCache" public="false">
-          <argument>/var/www/sites/TremplinFoyerV1/app/cache/dev/jms_security</argument>
-          <argument>true</argument>
-        </service>
-      </argument>
-      <call method="setIncludeInterfaces">
-        <argument>true</argument>
-      </call>
-    </service>
-    <service id="security.expressions.compiler" class="JMS\SecurityExtraBundle\Security\Authorization\Expression\ExpressionCompiler">
-      <call method="addFunctionCompiler">
-        <argument type="service">
-          <service class="JMS\SecurityExtraBundle\Security\Acl\Expression\HasPermissionFunctionCompiler" public="false">
-            <tag name="security.expressions.function_compiler"/>
-            <tag name="security.expressions.variable" variable="permission_evaluator" service="security.acl.permission_evaluator"/>
-          </service>
-        </argument>
-      </call>
-      <call method="addTypeCompiler">
-        <argument type="service">
-          <service class="JMS\SecurityExtraBundle\Security\Authorization\Expression\Compiler\ParameterExpressionCompiler" public="false">
-            <tag name="security.expressions.type_compiler"/>
-          </service>
-        </argument>
-      </call>
-      <call method="addTypeCompiler">
-        <argument type="service">
-          <service class="JMS\SecurityExtraBundle\Security\Authorization\Expression\Compiler\ContainerAwareVariableCompiler" public="false">
-            <tag name="security.expressions.type_compiler"/>
-            <tag name="security.expressions.variable" variable="trust_resolver" service="security.authentication.trust_resolver"/>
-            <tag name="security.expressions.variable" variable="role_hierarchy" service="security.role_hierarchy"/>
-            <call method="setMaps">
-              <argument type="collection">
-                <argument key="trust_resolver">security.authentication.trust_resolver</argument>
-                <argument key="role_hierarchy">security.role_hierarchy</argument>
-                <argument key="permission_evaluator">security.acl.permission_evaluator</argument>
-              </argument>
-              <argument type="collection"/>
-            </call>
-          </service>
-        </argument>
-      </call>
-    </service>
     <service id="fos_user.security.interactive_login_listener" class="FOS\UserBundle\Security\InteractiveLoginListener">
       <tag name="kernel.event_listener" event="security.interactive_login" method="onSecurityInteractiveLogin"/>
       <argument type="service" id="fos_user.user_manager"/>
@@ -4453,6 +4331,7 @@
           <argument>sonata.media.admin.media</argument>
           <argument>sonata.media.admin.gallery</argument>
           <argument>sonata.media.admin.gallery_has_media</argument>
+          <argument>tperroin_tremplin_foyer.association</argument>
         </argument>
       </call>
       <call method="setAdminGroups">
@@ -4483,6 +4362,13 @@
               <argument>sonata.media.admin.gallery</argument>
             </argument>
           </argument>
+          <argument key="Foyer" type="collection">
+            <argument key="label">Foyer</argument>
+            <argument key="label_catalogue">SonataAdminBundle</argument>
+            <argument key="items" type="collection">
+              <argument>tperroin_tremplin_foyer.association</argument>
+            </argument>
+          </argument>
         </argument>
       </call>
       <call method="setAdminClasses">
@@ -4496,6 +4382,7 @@
           <argument key="Application\Sonata\MediaBundle\Entity\Media">sonata.media.admin.media</argument>
           <argument key="Application\Sonata\MediaBundle\Entity\Gallery">sonata.media.admin.gallery</argument>
           <argument key="Application\Sonata\MediaBundle\Entity\GalleryHasMedia">sonata.media.admin.gallery_has_media</argument>
+          <argument key="Tperroin\TremplinFoyerBundle\Entity\Association">tperroin_tremplin_foyer.association</argument>
         </argument>
       </call>
     </service>
@@ -4512,6 +4399,7 @@
         <argument>sonata.media.admin.media</argument>
         <argument>sonata.media.admin.gallery</argument>
         <argument>sonata.media.admin.gallery_has_media</argument>
+        <argument>tperroin_tremplin_foyer.association</argument>
       </argument>
       <argument type="service" id="service_container"/>
     </service>
@@ -6225,7 +6113,7 @@
       <argument type="service" id="sonata.media.metadata.proxy"/>
     </service>
     <service id="sonata.media.cdn.server" class="Sonata\MediaBundle\CDN\Server">
-      <argument>/uploads/media</argument>
+      <argument>/web/uploads/media</argument>
     </service>
     <service id="sonata.media.twig.extension" class="Sonata\MediaBundle\Twig\Extension\MediaExtension">
       <tag name="twig.extension"/>
@@ -6985,6 +6873,94 @@
       <tag name="twig.extension"/>
       <argument type="service" id="knp_paginator.helper.processor"/>
     </service>
+    <service id="tperroin_tremplin_foyer.association" class="Tperroin\TremplinFoyerBundle\Admin\AssociationAdmin" scope="prototype">
+      <tag name="sonata.admin" manager_type="orm" group="Foyer" label="Posts menu &quot;Association&quot;"/>
+      <argument>tperroin_tremplin_foyer.association</argument>
+      <argument>Tperroin\TremplinFoyerBundle\Entity\Association</argument>
+      <argument>TperroinTremplinFoyerBundle:AssociationAdmin</argument>
+      <call method="setManagerType">
+        <argument>orm</argument>
+      </call>
+      <call method="setModelManager">
+        <argument type="service" id="sonata.admin.manager.orm"/>
+      </call>
+      <call method="setFormContractor">
+        <argument type="service" id="sonata.admin.builder.orm_form"/>
+      </call>
+      <call method="setShowBuilder">
+        <argument type="service" id="sonata.admin.builder.orm_show"/>
+      </call>
+      <call method="setListBuilder">
+        <argument type="service" id="sonata.admin.builder.orm_list"/>
+      </call>
+      <call method="setDatagridBuilder">
+        <argument type="service" id="sonata.admin.builder.orm_datagrid"/>
+      </call>
+      <call method="setTranslator">
+        <argument type="service" id="translator.default"/>
+      </call>
+      <call method="setConfigurationPool">
+        <argument type="service" id="sonata.admin.pool"/>
+      </call>
+      <call method="setRouteGenerator">
+        <argument type="service" id="sonata.admin.route.default_generator"/>
+      </call>
+      <call method="setValidator">
+        <argument type="service" id="validator"/>
+      </call>
+      <call method="setSecurityHandler">
+        <argument type="service" id="sonata.admin.security.handler"/>
+      </call>
+      <call method="setMenuFactory">
+        <argument type="service" id="knp_menu.factory"/>
+      </call>
+      <call method="setRouteBuilder">
+        <argument type="service" id="sonata.admin.route.path_info"/>
+      </call>
+      <call method="setLabelTranslatorStrategy">
+        <argument type="service" id="sonata.admin.label.strategy.native"/>
+      </call>
+      <call method="setLabel">
+        <argument>Posts menu "Association"</argument>
+      </call>
+      <call method="setPersistFilters">
+        <argument>false</argument>
+      </call>
+      <call method="setTemplates">
+        <argument type="collection">
+          <argument key="user_block">SonataUserBundle:Admin/Core:user_block.html.twig</argument>
+          <argument key="layout">SonataAdminBundle::standard_layout.html.twig</argument>
+          <argument key="ajax">SonataAdminBundle::ajax_layout.html.twig</argument>
+          <argument key="dashboard">SonataAdminBundle:Core:dashboard.html.twig</argument>
+          <argument key="list">SonataAdminBundle:CRUD:list.html.twig</argument>
+          <argument key="show">SonataAdminBundle:CRUD:show.html.twig</argument>
+          <argument key="edit">SonataAdminBundle:CRUD:edit.html.twig</argument>
+          <argument key="history">SonataAdminBundle:CRUD:history.html.twig</argument>
+          <argument key="history_revision">SonataAdminBundle:CRUD:history_revision.html.twig</argument>
+          <argument key="action">SonataAdminBundle:CRUD:action.html.twig</argument>
+          <argument key="short_object_description">SonataAdminBundle:Helper:short-object-description.html.twig</argument>
+          <argument key="preview">SonataAdminBundle:CRUD:preview.html.twig</argument>
+          <argument key="list_block">SonataAdminBundle:Block:block_admin_list.html.twig</argument>
+          <argument key="delete">SonataAdminBundle:CRUD:delete.html.twig</argument>
+          <argument key="batch">SonataAdminBundle:CRUD:list__batch.html.twig</argument>
+          <argument key="batch_confirmation">SonataAdminBundle:CRUD:batch_confirmation.html.twig</argument>
+        </argument>
+      </call>
+      <call method="setSecurityInformation">
+        <argument type="collection"/>
+      </call>
+      <call method="initialize"/>
+      <call method="setFormTheme">
+        <argument type="collection">
+          <argument>SonataDoctrineORMAdminBundle:Form:form_admin_fields.html.twig</argument>
+        </argument>
+      </call>
+      <call method="setFilterTheme">
+        <argument type="collection">
+          <argument>SonataDoctrineORMAdminBundle:Form:filter_admin_fields.html.twig</argument>
+        </argument>
+      </call>
+    </service>
     <service id="web_profiler.debug_toolbar" class="Symfony\Bundle\WebProfilerBundle\EventListener\WebDebugToolbarListener">
       <tag name="kernel.event_subscriber"/>
       <argument type="service" id="templating"/>
@@ -7250,15 +7226,6 @@
     <service id="swiftmailer.spool" class="Swift_MemorySpool"/>
     <service id="jms_di_extra.metadata_driver" class="JMS\DiExtraBundle\Metadata\Driver\AnnotationDriver">
       <argument type="service" id="annotation_reader"/>
-    </service>
-    <service id="security.extra.metadata_driver" class="Metadata\Driver\DriverChain">
-      <argument type="collection">
-        <argument type="service">
-          <service class="JMS\SecurityExtraBundle\Metadata\Driver\AnnotationDriver" public="false">
-            <argument type="service" id="annotation_reader"/>
-          </service>
-        </argument>
-      </argument>
     </service>
     <service id="fos_user.mailer" class="FOS\UserBundle\Mailer\Mailer">
       <argument type="service" id="mailer"/>

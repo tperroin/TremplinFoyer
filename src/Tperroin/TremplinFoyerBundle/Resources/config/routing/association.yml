@@ -1,0 +1,30 @@
+association:
+    pattern:  /
+    defaults: { _controller: "TperroinTremplinFoyerBundle:Association:index" }
+
+association_show:
+    pattern:  /{id}/show
+    defaults: { _controller: "TperroinTremplinFoyerBundle:Association:show" }
+
+association_new:
+    pattern:  /new
+    defaults: { _controller: "TperroinTremplinFoyerBundle:Association:new" }
+
+association_create:
+    pattern:  /create
+    defaults: { _controller: "TperroinTremplinFoyerBundle:Association:create" }
+    requirements: { _method: post }
+
+association_edit:
+    pattern:  /{id}/edit
+    defaults: { _controller: "TperroinTremplinFoyerBundle:Association:edit" }
+
+association_update:
+    pattern:  /{id}/update
+    defaults: { _controller: "TperroinTremplinFoyerBundle:Association:update" }
+    requirements: { _method: post }
+
+association_delete:
+    pattern:  /{id}/delete
+    defaults: { _controller: "TperroinTremplinFoyerBundle:Association:delete" }
+    requirements: { _method: post }

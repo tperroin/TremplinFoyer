@@ -493,6 +493,41 @@ class appdevUrlMatcher extends Symfony\Bundle\FrameworkBundle\Routing\Redirectab
                 return array (  '_controller' => 'Sonata\\AdminBundle\\Controller\\CRUDController::exportAction',  '_sonata_admin' => 'sonata.media.admin.gallery_has_media',  '_sonata_name' => 'admin_sonata_media_galleryhasmedia_export',  '_route' => 'admin_sonata_media_galleryhasmedia_export',);
             }
 
+            // admin_tperroin_tremplinfoyer_association_list
+            if ($pathinfo === '/admin/tperroin/tremplinfoyer/association/list') {
+                return array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\AssociationAdminController::listAction',  '_sonata_admin' => 'tperroin_tremplin_foyer.association',  '_sonata_name' => 'admin_tperroin_tremplinfoyer_association_list',  '_route' => 'admin_tperroin_tremplinfoyer_association_list',);
+            }
+
+            // admin_tperroin_tremplinfoyer_association_create
+            if ($pathinfo === '/admin/tperroin/tremplinfoyer/association/create') {
+                return array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\AssociationAdminController::createAction',  '_sonata_admin' => 'tperroin_tremplin_foyer.association',  '_sonata_name' => 'admin_tperroin_tremplinfoyer_association_create',  '_route' => 'admin_tperroin_tremplinfoyer_association_create',);
+            }
+
+            // admin_tperroin_tremplinfoyer_association_batch
+            if ($pathinfo === '/admin/tperroin/tremplinfoyer/association/batch') {
+                return array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\AssociationAdminController::batchAction',  '_sonata_admin' => 'tperroin_tremplin_foyer.association',  '_sonata_name' => 'admin_tperroin_tremplinfoyer_association_batch',  '_route' => 'admin_tperroin_tremplinfoyer_association_batch',);
+            }
+
+            // admin_tperroin_tremplinfoyer_association_edit
+            if (0 === strpos($pathinfo, '/admin/tperroin/tremplinfoyer/association') && preg_match('#^/admin/tperroin/tremplinfoyer/association/(?<id>[^/]+)/edit$#s', $pathinfo, $matches)) {
+                return array_merge($this->mergeDefaults($matches, array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\AssociationAdminController::editAction',  '_sonata_admin' => 'tperroin_tremplin_foyer.association',  '_sonata_name' => 'admin_tperroin_tremplinfoyer_association_edit',)), array('_route' => 'admin_tperroin_tremplinfoyer_association_edit'));
+            }
+
+            // admin_tperroin_tremplinfoyer_association_delete
+            if (0 === strpos($pathinfo, '/admin/tperroin/tremplinfoyer/association') && preg_match('#^/admin/tperroin/tremplinfoyer/association/(?<id>[^/]+)/delete$#s', $pathinfo, $matches)) {
+                return array_merge($this->mergeDefaults($matches, array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\AssociationAdminController::deleteAction',  '_sonata_admin' => 'tperroin_tremplin_foyer.association',  '_sonata_name' => 'admin_tperroin_tremplinfoyer_association_delete',)), array('_route' => 'admin_tperroin_tremplinfoyer_association_delete'));
+            }
+
+            // admin_tperroin_tremplinfoyer_association_show
+            if (0 === strpos($pathinfo, '/admin/tperroin/tremplinfoyer/association') && preg_match('#^/admin/tperroin/tremplinfoyer/association/(?<id>[^/]+)/show$#s', $pathinfo, $matches)) {
+                return array_merge($this->mergeDefaults($matches, array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\AssociationAdminController::showAction',  '_sonata_admin' => 'tperroin_tremplin_foyer.association',  '_sonata_name' => 'admin_tperroin_tremplinfoyer_association_show',)), array('_route' => 'admin_tperroin_tremplinfoyer_association_show'));
+            }
+
+            // admin_tperroin_tremplinfoyer_association_export
+            if ($pathinfo === '/admin/tperroin/tremplinfoyer/association/export') {
+                return array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\AssociationAdminController::exportAction',  '_sonata_admin' => 'tperroin_tremplin_foyer.association',  '_sonata_name' => 'admin_tperroin_tremplinfoyer_association_export',  '_route' => 'admin_tperroin_tremplinfoyer_association_export',);
+            }
+
         }
 
         // homepage
@@ -747,6 +782,66 @@ class appdevUrlMatcher extends Symfony\Bundle\FrameworkBundle\Routing\Redirectab
 
                 return array (  '_controller' => 'Sonata\\NewsBundle\\Controller\\PostController::homeAction',  '_route' => 'sonata_news_home',);
             }
+
+        }
+
+        if (0 === strpos($pathinfo, '/association')) {
+            // association
+            if (rtrim($pathinfo, '/') === '/association') {
+                if (substr($pathinfo, -1) !== '/') {
+                    return $this->redirect($pathinfo.'/', 'association');
+                }
+
+                return array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\AssociationController::indexAction',  '_route' => 'association',);
+            }
+
+            // association_show
+            if (preg_match('#^/association/(?<id>[^/]+)/show$#s', $pathinfo, $matches)) {
+                return array_merge($this->mergeDefaults($matches, array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\AssociationController::showAction',)), array('_route' => 'association_show'));
+            }
+
+            // association_new
+            if ($pathinfo === '/association/new') {
+                return array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\AssociationController::newAction',  '_route' => 'association_new',);
+            }
+
+            // association_create
+            if ($pathinfo === '/association/create') {
+                if ($this->context->getMethod() != 'POST') {
+                    $allow[] = 'POST';
+                    goto not_association_create;
+                }
+
+                return array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\AssociationController::createAction',  '_route' => 'association_create',);
+            }
+            not_association_create:
+
+            // association_edit
+            if (preg_match('#^/association/(?<id>[^/]+)/edit$#s', $pathinfo, $matches)) {
+                return array_merge($this->mergeDefaults($matches, array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\AssociationController::editAction',)), array('_route' => 'association_edit'));
+            }
+
+            // association_update
+            if (preg_match('#^/association/(?<id>[^/]+)/update$#s', $pathinfo, $matches)) {
+                if ($this->context->getMethod() != 'POST') {
+                    $allow[] = 'POST';
+                    goto not_association_update;
+                }
+
+                return array_merge($this->mergeDefaults($matches, array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\AssociationController::updateAction',)), array('_route' => 'association_update'));
+            }
+            not_association_update:
+
+            // association_delete
+            if (preg_match('#^/association/(?<id>[^/]+)/delete$#s', $pathinfo, $matches)) {
+                if ($this->context->getMethod() != 'POST') {
+                    $allow[] = 'POST';
+                    goto not_association_delete;
+                }
+
+                return array_merge($this->mergeDefaults($matches, array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\AssociationController::deleteAction',)), array('_route' => 'association_delete'));
+            }
+            not_association_delete:
 
         }
 

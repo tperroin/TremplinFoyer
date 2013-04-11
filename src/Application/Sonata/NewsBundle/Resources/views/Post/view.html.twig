@@ -1,0 +1,59 @@
+{% extends '::base.html.twig' %}
+
+
+{% block corps %}
+
+    {% block image_accueil %}{% endblock %}
+
+    {%block titre_date %}
+
+        <div class="row blocBlanc">
+            <div class="six columns">
+                <div class="row">
+
+                    <h2><a href="{{ url('sonata_news_view', { 'permalink': sonata_news_permalink(post) }) }}">{{ post.title }}</a></h2>
+                    {{ post.publicationDateStart | format_date }}
+                </div>
+            </div>
+        </div>
+
+    {% endblock %}
+
+    {%block contenu %}
+
+        &nbsp;
+
+        <div class="row blocBlanc">
+            <div class="six columns">
+                <div class="row">
+                    {{ post.content|raw }}
+                </div>
+            </div>
+        </div>
+
+        &nbsp;
+
+    {% endblock %}
+
+    {% block commentaires %}
+        <div class="row blocBlanc">
+            <div class="six columns">
+                <div class="row">
+        {% render 'SonataNewsBundle:Post:comments' with {'postId': post.id} %}
+
+        {% if post.iscommentable %}
+            {% render 'SonataNewsBundle:Post:addCommentForm' with {
+                'postId': post.id,
+                'form': form
+            } %}
+        {% else %}
+
+                {{ 'message_comments_are_closed'|trans({}, 'SonataNewsBundle') }}
+
+        {% endif %}
+                        </div>
+            </div>
+        </div>
+    {% endblock %}
+
+{% endblock %}

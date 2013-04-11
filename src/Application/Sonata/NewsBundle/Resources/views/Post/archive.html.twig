@@ -1,0 +1,49 @@
+{% extends '::base.html.twig' %}
+ 
+    {% block title %}Blog {% endblock %}
+ {% block annonce %}{% endblock %}
+    
+{% block corps %}
+    {% for post in pager.getResults() %}
+        
+        {% block titre_date %}
+    <div class="row blocBlanc">
+                <div class="large-6 columns">
+            <div class="row ">
+                <div class="large-12 columns">
+                    <div class="row">
+                        
+                        <h2><a href="{{ url('sonata_news_view', { 'permalink': sonata_news_permalink(post) }) }}">{{ post.title }}</a></h2>
+                        {{ post.publicationDateStart | format_date }}
+                    </div>
+                </div>
+            </div>
+        {% endblock %}
+        {% block resume %}
+    
+            &nbsp;
+            
+            <div class="row ">
+                <div class="large-12 columns">
+                    <div class="row">
+                        {{ post.abstract }}
+                    </div>
+                </div>
+            </div>
+                    </div>
+        </div>
+            
+            &nbsp;
+            
+        {% endblock %}
+  
+    {% else %}
+            <div class="row">
+                <div class="large-6 columns">
+                    <div class="row">
+        {{ 'no_post_found'|trans({}, 'SonataNewsBundle') }}
+                            </div>
+                </div>
+            </div>
+    {% endfor %}
+{% endblock %}
