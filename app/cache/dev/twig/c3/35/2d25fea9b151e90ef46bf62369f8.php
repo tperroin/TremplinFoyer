@@ -178,7 +178,7 @@ class __TwigTemplate_c3352d25fea9b151e90ef46bf62369f8 extends Twig_Template
         echo "\" class=\"button\">L'association</a></li>
                     <li><a href=\"";
         // line 49
-        echo twig_escape_filter($this->env, $this->env->getExtension('routing')->getPath("homepage"), "html", null, true);
+        echo twig_escape_filter($this->env, $this->env->getExtension('routing')->getPath("tremplin"), "html", null, true);
         echo "\" class=\"button\">Le tremplin</a></li>
                     <li><a href=\"";
         // line 50

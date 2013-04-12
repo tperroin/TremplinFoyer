@@ -156,8 +156,8 @@ sonata_media:
 
     filesystem:
         local:
-            directory:  %kernel.root_dir%/../web/uploads/media
-            create:     false
+            directory: %kernel.root_dir%/../web/uploads/media
+            create: true
             
 sonata_formatter:
     formatters:

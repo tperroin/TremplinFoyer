@@ -8,13 +8,21 @@
 
     {% for entity in entities %}
 
+    
+          
         <div class="row">
             <div class="large-12">
                 <div class="row blocBlanc">
                     <h5><a class="bleu" href="{{ path('association_show', { 'id': entity.id }) }}">{{ entity.titre }}</a></h5>
+                    <div class="large-2 columns columns">
                         {% media entity.image, 'small' %}
-                    {% path entity.image, 'small' %}
+                    </div>
+                    <div class="large-10 columns">
+                        
+                        
+                    <div class="row"></div>
                         <p>{{ entity.teaser | raw }}</p>
+                    </div>
                 </div>
             </div>
         </div>

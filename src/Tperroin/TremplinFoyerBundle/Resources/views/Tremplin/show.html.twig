@@ -1,0 +1,24 @@
+{% extends '::base.html.twig' %}
+{%block corps%}
+    <div class="row">
+        <div class="large-12">
+            <h1 class="bleu">/// Le Tremplin</h1>
+        </div>
+    </div>
+
+    <div class="row">
+            <div class="large-12">
+                <div class="row blocBlanc">
+                    <h5><a class="bleu" href="{{ path('tremplin_show', { 'id': entity.id }) }}">{{ entity.titre }}</a></h5>
+                    <div class="large-12">
+                        {% media entity.image, 'big' %}
+                    </div>
+                    
+                <div class="large-12">
+                    <div class="row"></div>
+                        <p>{{ entity.contenu | raw }}</p>
+                </div>
+                    </div>
+            </div>
+        </div>
+{%endblock%}

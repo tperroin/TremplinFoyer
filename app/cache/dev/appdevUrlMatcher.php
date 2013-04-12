@@ -528,6 +528,41 @@ class appdevUrlMatcher extends Symfony\Bundle\FrameworkBundle\Routing\Redirectab
                 return array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\AssociationAdminController::exportAction',  '_sonata_admin' => 'tperroin_tremplin_foyer.association',  '_sonata_name' => 'admin_tperroin_tremplinfoyer_association_export',  '_route' => 'admin_tperroin_tremplinfoyer_association_export',);
             }
 
+            // admin_tperroin_tremplinfoyer_tremplin_list
+            if ($pathinfo === '/admin/tperroin/tremplinfoyer/tremplin/list') {
+                return array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\TremplinAdminController::listAction',  '_sonata_admin' => 'tperroin_tremplin_foyer.tremplin',  '_sonata_name' => 'admin_tperroin_tremplinfoyer_tremplin_list',  '_route' => 'admin_tperroin_tremplinfoyer_tremplin_list',);
+            }
+
+            // admin_tperroin_tremplinfoyer_tremplin_create
+            if ($pathinfo === '/admin/tperroin/tremplinfoyer/tremplin/create') {
+                return array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\TremplinAdminController::createAction',  '_sonata_admin' => 'tperroin_tremplin_foyer.tremplin',  '_sonata_name' => 'admin_tperroin_tremplinfoyer_tremplin_create',  '_route' => 'admin_tperroin_tremplinfoyer_tremplin_create',);
+            }
+
+            // admin_tperroin_tremplinfoyer_tremplin_batch
+            if ($pathinfo === '/admin/tperroin/tremplinfoyer/tremplin/batch') {
+                return array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\TremplinAdminController::batchAction',  '_sonata_admin' => 'tperroin_tremplin_foyer.tremplin',  '_sonata_name' => 'admin_tperroin_tremplinfoyer_tremplin_batch',  '_route' => 'admin_tperroin_tremplinfoyer_tremplin_batch',);
+            }
+
+            // admin_tperroin_tremplinfoyer_tremplin_edit
+            if (0 === strpos($pathinfo, '/admin/tperroin/tremplinfoyer/tremplin') && preg_match('#^/admin/tperroin/tremplinfoyer/tremplin/(?<id>[^/]+)/edit$#s', $pathinfo, $matches)) {
+                return array_merge($this->mergeDefaults($matches, array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\TremplinAdminController::editAction',  '_sonata_admin' => 'tperroin_tremplin_foyer.tremplin',  '_sonata_name' => 'admin_tperroin_tremplinfoyer_tremplin_edit',)), array('_route' => 'admin_tperroin_tremplinfoyer_tremplin_edit'));
+            }
+
+            // admin_tperroin_tremplinfoyer_tremplin_delete
+            if (0 === strpos($pathinfo, '/admin/tperroin/tremplinfoyer/tremplin') && preg_match('#^/admin/tperroin/tremplinfoyer/tremplin/(?<id>[^/]+)/delete$#s', $pathinfo, $matches)) {
+                return array_merge($this->mergeDefaults($matches, array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\TremplinAdminController::deleteAction',  '_sonata_admin' => 'tperroin_tremplin_foyer.tremplin',  '_sonata_name' => 'admin_tperroin_tremplinfoyer_tremplin_delete',)), array('_route' => 'admin_tperroin_tremplinfoyer_tremplin_delete'));
+            }
+
+            // admin_tperroin_tremplinfoyer_tremplin_show
+            if (0 === strpos($pathinfo, '/admin/tperroin/tremplinfoyer/tremplin') && preg_match('#^/admin/tperroin/tremplinfoyer/tremplin/(?<id>[^/]+)/show$#s', $pathinfo, $matches)) {
+                return array_merge($this->mergeDefaults($matches, array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\TremplinAdminController::showAction',  '_sonata_admin' => 'tperroin_tremplin_foyer.tremplin',  '_sonata_name' => 'admin_tperroin_tremplinfoyer_tremplin_show',)), array('_route' => 'admin_tperroin_tremplinfoyer_tremplin_show'));
+            }
+
+            // admin_tperroin_tremplinfoyer_tremplin_export
+            if ($pathinfo === '/admin/tperroin/tremplinfoyer/tremplin/export') {
+                return array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\TremplinAdminController::exportAction',  '_sonata_admin' => 'tperroin_tremplin_foyer.tremplin',  '_sonata_name' => 'admin_tperroin_tremplinfoyer_tremplin_export',  '_route' => 'admin_tperroin_tremplinfoyer_tremplin_export',);
+            }
+
         }
 
         // homepage
@@ -844,6 +879,63 @@ class appdevUrlMatcher extends Symfony\Bundle\FrameworkBundle\Routing\Redirectab
             not_association_delete:
 
         }
+
+        // tremplin
+        if (rtrim($pathinfo, '/') === '/tremplin') {
+            if (substr($pathinfo, -1) !== '/') {
+                return $this->redirect($pathinfo.'/', 'tremplin');
+            }
+
+            return array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\TremplinController::indexAction',  '_route' => 'tremplin',);
+        }
+
+        // tremplin_show
+        if (0 === strpos($pathinfo, '/tremplin') && preg_match('#^/tremplin/(?<id>[^/]+)/show$#s', $pathinfo, $matches)) {
+            return array_merge($this->mergeDefaults($matches, array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\TremplinController::showAction',)), array('_route' => 'tremplin_show'));
+        }
+
+        // tremplin_new
+        if ($pathinfo === '/tremplin/new') {
+            return array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\TremplinController::newAction',  '_route' => 'tremplin_new',);
+        }
+
+        // tremplin_create
+        if ($pathinfo === '/tremplin/create') {
+            if ($this->context->getMethod() != 'POST') {
+                $allow[] = 'POST';
+                goto not_tremplin_create;
+            }
+
+            return array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\TremplinController::createAction',  '_route' => 'tremplin_create',);
+        }
+        not_tremplin_create:
+
+        // tremplin_edit
+        if (0 === strpos($pathinfo, '/tremplin') && preg_match('#^/tremplin/(?<id>[^/]+)/edit$#s', $pathinfo, $matches)) {
+            return array_merge($this->mergeDefaults($matches, array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\TremplinController::editAction',)), array('_route' => 'tremplin_edit'));
+        }
+
+        // tremplin_update
+        if (0 === strpos($pathinfo, '/tremplin') && preg_match('#^/tremplin/(?<id>[^/]+)/update$#s', $pathinfo, $matches)) {
+            if ($this->context->getMethod() != 'POST') {
+                $allow[] = 'POST';
+                goto not_tremplin_update;
+            }
+
+            return array_merge($this->mergeDefaults($matches, array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\TremplinController::updateAction',)), array('_route' => 'tremplin_update'));
+        }
+        not_tremplin_update:
+
+        // tremplin_delete
+        if (0 === strpos($pathinfo, '/tremplin') && preg_match('#^/tremplin/(?<id>[^/]+)/delete$#s', $pathinfo, $matches)) {
+            if ($this->context->getMethod() != 'POST') {
+                $allow[] = 'POST';
+                goto not_tremplin_delete;
+            }
+
+            return array_merge($this->mergeDefaults($matches, array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\TremplinController::deleteAction',)), array('_route' => 'tremplin_delete'));
+        }
+        not_tremplin_delete:
 
         throw 0 < count($allow) ? new MethodNotAllowedException(array_unique($allow)) : new ResourceNotFoundException();
     }
