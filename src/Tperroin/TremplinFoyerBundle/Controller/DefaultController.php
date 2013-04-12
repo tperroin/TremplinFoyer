@@ -8,6 +8,10 @@ class DefaultController extends Controller
 {
     public function indexAction()
     {
-        return $this->render('TperroinTremplinFoyerBundle:Default:index.html.twig');
+        $em = $this->getDoctrine()->getManager();
+
+        $entities = $em->getRepository('TperroinTremplinFoyerBundle:Partenaire')->findAll();
+
+        return $this->render('TperroinTremplinFoyerBundle:Default:index.html.twig', array('entities' => $entities));
     }
 }

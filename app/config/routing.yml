@@ -53,6 +53,11 @@ news:
 TperroinTremplinFoyerBundle_association:
         resource: "@TperroinTremplinFoyerBundle/Resources/config/routing/association.yml"
         prefix:   /association
+        
 TperroinTremplinFoyerBundle_tremplin:
+        resource: "@TperroinTremplinFoyerBundle/Controller"
+        type: annotation
+        
+TperroinTremplinFoyerBundle_groupe:
         resource: "@TperroinTremplinFoyerBundle/Controller"
         type: annotation

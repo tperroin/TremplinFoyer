@@ -84,7 +84,7 @@ class __TwigTemplate_c3352d25fea9b151e90ef46bf62369f8 extends Twig_Template
          ";
         // line 77
         $this->displayBlock('partenaires', $context, $blocks);
-        // line 114
+        // line 80
         echo "
        
     </body>
@@ -99,7 +99,7 @@ class __TwigTemplate_c3352d25fea9b151e90ef46bf62369f8 extends Twig_Template
                 <div class=\"large-6 columns\">
                     <ul class=\"link-list right\">
                         <li><a href=\"";
-        // line 127
+        // line 93
         echo twig_escape_filter($this->env, $this->env->getExtension('routing')->getPath("sonata_admin_dashboard"), "html", null, true);
         echo "\">Administration</a></li>
                     </ul>
@@ -182,7 +182,7 @@ class __TwigTemplate_c3352d25fea9b151e90ef46bf62369f8 extends Twig_Template
         echo "\" class=\"button\">Le tremplin</a></li>
                     <li><a href=\"";
         // line 50
-        echo twig_escape_filter($this->env, $this->env->getExtension('routing')->getPath("homepage"), "html", null, true);
+        echo twig_escape_filter($this->env, $this->env->getExtension('routing')->getPath("groupe"), "html", null, true);
         echo "\" class=\"button\">Les groupes</a></li>
                     <li><a href=\"";
         // line 51
@@ -225,47 +225,7 @@ class __TwigTemplate_c3352d25fea9b151e90ef46bf62369f8 extends Twig_Template
     public function block_partenaires($context, array $blocks = array())
     {
         // line 78
-        echo "    <div class=\"row\">
- 
-        <div class=\"row\">
-          <h3>Partenaires</h3>
-        </div>
- 
-          <div class=\"large-3 small-6 columns\">
-            <img src=\"";
-        // line 85
-        echo twig_escape_filter($this->env, $this->env->getExtension('assets')->getAssetUrl("styles/img/partenaireMauges.jpg"), "html", null, true);
-        echo "\">
-            <div class=\"panel\">
-              <p>Partenaire 1</p>
-            </div>
-          </div>
- 
-          <div class=\"large-3 small-6 columns\">
-            <img src=\"";
-        // line 92
-        echo twig_escape_filter($this->env, $this->env->getExtension('assets')->getAssetUrl("styles/img/partenaireOudon.png"), "html", null, true);
-        echo "\">
-            <div class=\"panel\">
-              <p>Partenaire 2</p>
-            </div>
-          </div>
- 
-          <div class=\"large-3 small-6 columns\">
-            <img src=\"http://placehold.it/500x500&text=Thumbnail\">
-            <div class=\"panel\">
-              <p>Partenaire 3</p>
-            </div>
-          </div>
- 
-          <div class=\"large-3 small-6 columns\">
-            <img src=\"http://placehold.it/500x500&text=Thumbnail\">
-            <div class=\"panel\">
-              <p>Partenaire 4</p>
-            </div>
-          </div>
- 
-        </div>
+        echo "        
 ";
     }
 
@@ -281,6 +241,6 @@ class __TwigTemplate_c3352d25fea9b151e90ef46bf62369f8 extends Twig_Template
 
     public function getDebugInfo()
     {
-        return array (  247 => 92,  237 => 85,  228 => 78,  225 => 77,  220 => 75,  202 => 59,  199 => 58,  189 => 51,  185 => 50,  181 => 49,  177 => 48,  170 => 45,  160 => 38,  153 => 35,  147 => 20,  144 => 19,  138 => 16,  134 => 15,  130 => 14,  125 => 13,  122 => 12,  116 => 10,  103 => 127,  88 => 114,  86 => 77,  83 => 76,  81 => 75,  78 => 74,  76 => 58,  73 => 57,  71 => 45,  66 => 42,  64 => 35,  50 => 23,  48 => 19,  45 => 18,  43 => 12,  38 => 10,  27 => 1,);
+        return array (  228 => 78,  225 => 77,  220 => 75,  202 => 59,  199 => 58,  189 => 51,  185 => 50,  181 => 49,  177 => 48,  170 => 45,  160 => 38,  153 => 35,  147 => 20,  144 => 19,  138 => 16,  134 => 15,  130 => 14,  125 => 13,  122 => 12,  116 => 10,  103 => 93,  88 => 80,  86 => 77,  83 => 76,  81 => 75,  78 => 74,  76 => 58,  73 => 57,  71 => 45,  66 => 42,  64 => 35,  50 => 23,  48 => 19,  45 => 18,  43 => 12,  38 => 10,  27 => 1,);
     }
 }

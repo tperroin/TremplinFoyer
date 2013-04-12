@@ -152,7 +152,7 @@ sonata_media:
 
     cdn:
         server:
-            path: /web/uploads/media
+            path: ../../web/uploads/media
 
     filesystem:
         local:

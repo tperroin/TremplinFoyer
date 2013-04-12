@@ -563,6 +563,76 @@ class appdevUrlMatcher extends Symfony\Bundle\FrameworkBundle\Routing\Redirectab
                 return array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\TremplinAdminController::exportAction',  '_sonata_admin' => 'tperroin_tremplin_foyer.tremplin',  '_sonata_name' => 'admin_tperroin_tremplinfoyer_tremplin_export',  '_route' => 'admin_tperroin_tremplinfoyer_tremplin_export',);
             }
 
+            // admin_tperroin_tremplinfoyer_groupe_list
+            if ($pathinfo === '/admin/tperroin/tremplinfoyer/groupe/list') {
+                return array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\GroupeAdminController::listAction',  '_sonata_admin' => 'tperroin_tremplin_foyer.groupe',  '_sonata_name' => 'admin_tperroin_tremplinfoyer_groupe_list',  '_route' => 'admin_tperroin_tremplinfoyer_groupe_list',);
+            }
+
+            // admin_tperroin_tremplinfoyer_groupe_create
+            if ($pathinfo === '/admin/tperroin/tremplinfoyer/groupe/create') {
+                return array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\GroupeAdminController::createAction',  '_sonata_admin' => 'tperroin_tremplin_foyer.groupe',  '_sonata_name' => 'admin_tperroin_tremplinfoyer_groupe_create',  '_route' => 'admin_tperroin_tremplinfoyer_groupe_create',);
+            }
+
+            // admin_tperroin_tremplinfoyer_groupe_batch
+            if ($pathinfo === '/admin/tperroin/tremplinfoyer/groupe/batch') {
+                return array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\GroupeAdminController::batchAction',  '_sonata_admin' => 'tperroin_tremplin_foyer.groupe',  '_sonata_name' => 'admin_tperroin_tremplinfoyer_groupe_batch',  '_route' => 'admin_tperroin_tremplinfoyer_groupe_batch',);
+            }
+
+            // admin_tperroin_tremplinfoyer_groupe_edit
+            if (0 === strpos($pathinfo, '/admin/tperroin/tremplinfoyer/groupe') && preg_match('#^/admin/tperroin/tremplinfoyer/groupe/(?<id>[^/]+)/edit$#s', $pathinfo, $matches)) {
+                return array_merge($this->mergeDefaults($matches, array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\GroupeAdminController::editAction',  '_sonata_admin' => 'tperroin_tremplin_foyer.groupe',  '_sonata_name' => 'admin_tperroin_tremplinfoyer_groupe_edit',)), array('_route' => 'admin_tperroin_tremplinfoyer_groupe_edit'));
+            }
+
+            // admin_tperroin_tremplinfoyer_groupe_delete
+            if (0 === strpos($pathinfo, '/admin/tperroin/tremplinfoyer/groupe') && preg_match('#^/admin/tperroin/tremplinfoyer/groupe/(?<id>[^/]+)/delete$#s', $pathinfo, $matches)) {
+                return array_merge($this->mergeDefaults($matches, array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\GroupeAdminController::deleteAction',  '_sonata_admin' => 'tperroin_tremplin_foyer.groupe',  '_sonata_name' => 'admin_tperroin_tremplinfoyer_groupe_delete',)), array('_route' => 'admin_tperroin_tremplinfoyer_groupe_delete'));
+            }
+
+            // admin_tperroin_tremplinfoyer_groupe_show
+            if (0 === strpos($pathinfo, '/admin/tperroin/tremplinfoyer/groupe') && preg_match('#^/admin/tperroin/tremplinfoyer/groupe/(?<id>[^/]+)/show$#s', $pathinfo, $matches)) {
+                return array_merge($this->mergeDefaults($matches, array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\GroupeAdminController::showAction',  '_sonata_admin' => 'tperroin_tremplin_foyer.groupe',  '_sonata_name' => 'admin_tperroin_tremplinfoyer_groupe_show',)), array('_route' => 'admin_tperroin_tremplinfoyer_groupe_show'));
+            }
+
+            // admin_tperroin_tremplinfoyer_groupe_export
+            if ($pathinfo === '/admin/tperroin/tremplinfoyer/groupe/export') {
+                return array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\GroupeAdminController::exportAction',  '_sonata_admin' => 'tperroin_tremplin_foyer.groupe',  '_sonata_name' => 'admin_tperroin_tremplinfoyer_groupe_export',  '_route' => 'admin_tperroin_tremplinfoyer_groupe_export',);
+            }
+
+            // admin_tperroin_tremplinfoyer_partenaire_list
+            if ($pathinfo === '/admin/tperroin/tremplinfoyer/partenaire/list') {
+                return array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\PartenaireAdminController::listAction',  '_sonata_admin' => 'tperroin_tremplin_foyer.partenaire',  '_sonata_name' => 'admin_tperroin_tremplinfoyer_partenaire_list',  '_route' => 'admin_tperroin_tremplinfoyer_partenaire_list',);
+            }
+
+            // admin_tperroin_tremplinfoyer_partenaire_create
+            if ($pathinfo === '/admin/tperroin/tremplinfoyer/partenaire/create') {
+                return array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\PartenaireAdminController::createAction',  '_sonata_admin' => 'tperroin_tremplin_foyer.partenaire',  '_sonata_name' => 'admin_tperroin_tremplinfoyer_partenaire_create',  '_route' => 'admin_tperroin_tremplinfoyer_partenaire_create',);
+            }
+
+            // admin_tperroin_tremplinfoyer_partenaire_batch
+            if ($pathinfo === '/admin/tperroin/tremplinfoyer/partenaire/batch') {
+                return array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\PartenaireAdminController::batchAction',  '_sonata_admin' => 'tperroin_tremplin_foyer.partenaire',  '_sonata_name' => 'admin_tperroin_tremplinfoyer_partenaire_batch',  '_route' => 'admin_tperroin_tremplinfoyer_partenaire_batch',);
+            }
+
+            // admin_tperroin_tremplinfoyer_partenaire_edit
+            if (0 === strpos($pathinfo, '/admin/tperroin/tremplinfoyer/partenaire') && preg_match('#^/admin/tperroin/tremplinfoyer/partenaire/(?<id>[^/]+)/edit$#s', $pathinfo, $matches)) {
+                return array_merge($this->mergeDefaults($matches, array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\PartenaireAdminController::editAction',  '_sonata_admin' => 'tperroin_tremplin_foyer.partenaire',  '_sonata_name' => 'admin_tperroin_tremplinfoyer_partenaire_edit',)), array('_route' => 'admin_tperroin_tremplinfoyer_partenaire_edit'));
+            }
+
+            // admin_tperroin_tremplinfoyer_partenaire_delete
+            if (0 === strpos($pathinfo, '/admin/tperroin/tremplinfoyer/partenaire') && preg_match('#^/admin/tperroin/tremplinfoyer/partenaire/(?<id>[^/]+)/delete$#s', $pathinfo, $matches)) {
+                return array_merge($this->mergeDefaults($matches, array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\PartenaireAdminController::deleteAction',  '_sonata_admin' => 'tperroin_tremplin_foyer.partenaire',  '_sonata_name' => 'admin_tperroin_tremplinfoyer_partenaire_delete',)), array('_route' => 'admin_tperroin_tremplinfoyer_partenaire_delete'));
+            }
+
+            // admin_tperroin_tremplinfoyer_partenaire_show
+            if (0 === strpos($pathinfo, '/admin/tperroin/tremplinfoyer/partenaire') && preg_match('#^/admin/tperroin/tremplinfoyer/partenaire/(?<id>[^/]+)/show$#s', $pathinfo, $matches)) {
+                return array_merge($this->mergeDefaults($matches, array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\PartenaireAdminController::showAction',  '_sonata_admin' => 'tperroin_tremplin_foyer.partenaire',  '_sonata_name' => 'admin_tperroin_tremplinfoyer_partenaire_show',)), array('_route' => 'admin_tperroin_tremplinfoyer_partenaire_show'));
+            }
+
+            // admin_tperroin_tremplinfoyer_partenaire_export
+            if ($pathinfo === '/admin/tperroin/tremplinfoyer/partenaire/export') {
+                return array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\PartenaireAdminController::exportAction',  '_sonata_admin' => 'tperroin_tremplin_foyer.partenaire',  '_sonata_name' => 'admin_tperroin_tremplinfoyer_partenaire_export',  '_route' => 'admin_tperroin_tremplinfoyer_partenaire_export',);
+            }
+
         }
 
         // homepage
@@ -879,6 +949,120 @@ class appdevUrlMatcher extends Symfony\Bundle\FrameworkBundle\Routing\Redirectab
             not_association_delete:
 
         }
+
+        // groupe
+        if (rtrim($pathinfo, '/') === '/groupe') {
+            if (substr($pathinfo, -1) !== '/') {
+                return $this->redirect($pathinfo.'/', 'groupe');
+            }
+
+            return array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\GroupeController::indexAction',  '_route' => 'groupe',);
+        }
+
+        // groupe_show
+        if (0 === strpos($pathinfo, '/groupe') && preg_match('#^/groupe/(?<id>[^/]+)/show$#s', $pathinfo, $matches)) {
+            return array_merge($this->mergeDefaults($matches, array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\GroupeController::showAction',)), array('_route' => 'groupe_show'));
+        }
+
+        // groupe_new
+        if ($pathinfo === '/groupe/new') {
+            return array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\GroupeController::newAction',  '_route' => 'groupe_new',);
+        }
+
+        // groupe_create
+        if ($pathinfo === '/groupe/create') {
+            if ($this->context->getMethod() != 'POST') {
+                $allow[] = 'POST';
+                goto not_groupe_create;
+            }
+
+            return array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\GroupeController::createAction',  '_route' => 'groupe_create',);
+        }
+        not_groupe_create:
+
+        // groupe_edit
+        if (0 === strpos($pathinfo, '/groupe') && preg_match('#^/groupe/(?<id>[^/]+)/edit$#s', $pathinfo, $matches)) {
+            return array_merge($this->mergeDefaults($matches, array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\GroupeController::editAction',)), array('_route' => 'groupe_edit'));
+        }
+
+        // groupe_update
+        if (0 === strpos($pathinfo, '/groupe') && preg_match('#^/groupe/(?<id>[^/]+)/update$#s', $pathinfo, $matches)) {
+            if ($this->context->getMethod() != 'POST') {
+                $allow[] = 'POST';
+                goto not_groupe_update;
+            }
+
+            return array_merge($this->mergeDefaults($matches, array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\GroupeController::updateAction',)), array('_route' => 'groupe_update'));
+        }
+        not_groupe_update:
+
+        // groupe_delete
+        if (0 === strpos($pathinfo, '/groupe') && preg_match('#^/groupe/(?<id>[^/]+)/delete$#s', $pathinfo, $matches)) {
+            if ($this->context->getMethod() != 'POST') {
+                $allow[] = 'POST';
+                goto not_groupe_delete;
+            }
+
+            return array_merge($this->mergeDefaults($matches, array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\GroupeController::deleteAction',)), array('_route' => 'groupe_delete'));
+        }
+        not_groupe_delete:
+
+        // partenaire
+        if (rtrim($pathinfo, '/') === '/partenaire') {
+            if (substr($pathinfo, -1) !== '/') {
+                return $this->redirect($pathinfo.'/', 'partenaire');
+            }
+
+            return array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\PartenaireController::indexAction',  '_route' => 'partenaire',);
+        }
+
+        // partenaire_show
+        if (0 === strpos($pathinfo, '/partenaire') && preg_match('#^/partenaire/(?<id>[^/]+)/show$#s', $pathinfo, $matches)) {
+            return array_merge($this->mergeDefaults($matches, array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\PartenaireController::showAction',)), array('_route' => 'partenaire_show'));
+        }
+
+        // partenaire_new
+        if ($pathinfo === '/partenaire/new') {
+            return array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\PartenaireController::newAction',  '_route' => 'partenaire_new',);
+        }
+
+        // partenaire_create
+        if ($pathinfo === '/partenaire/create') {
+            if ($this->context->getMethod() != 'POST') {
+                $allow[] = 'POST';
+                goto not_partenaire_create;
+            }
+
+            return array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\PartenaireController::createAction',  '_route' => 'partenaire_create',);
+        }
+        not_partenaire_create:
+
+        // partenaire_edit
+        if (0 === strpos($pathinfo, '/partenaire') && preg_match('#^/partenaire/(?<id>[^/]+)/edit$#s', $pathinfo, $matches)) {
+            return array_merge($this->mergeDefaults($matches, array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\PartenaireController::editAction',)), array('_route' => 'partenaire_edit'));
+        }
+
+        // partenaire_update
+        if (0 === strpos($pathinfo, '/partenaire') && preg_match('#^/partenaire/(?<id>[^/]+)/update$#s', $pathinfo, $matches)) {
+            if ($this->context->getMethod() != 'POST') {
+                $allow[] = 'POST';
+                goto not_partenaire_update;
+            }
+
+            return array_merge($this->mergeDefaults($matches, array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\PartenaireController::updateAction',)), array('_route' => 'partenaire_update'));
+        }
+        not_partenaire_update:
+
+        // partenaire_delete
+        if (0 === strpos($pathinfo, '/partenaire') && preg_match('#^/partenaire/(?<id>[^/]+)/delete$#s', $pathinfo, $matches)) {
+            if ($this->context->getMethod() != 'POST') {
+                $allow[] = 'POST';
+                goto not_partenaire_delete;
+            }
+
+            return array_merge($this->mergeDefaults($matches, array (  '_controller' => 'Tperroin\\TremplinFoyerBundle\\Controller\\PartenaireController::deleteAction',)), array('_route' => 'partenaire_delete'));
+        }
+        not_partenaire_delete:
 
         // tremplin
         if (rtrim($pathinfo, '/') === '/tremplin') {

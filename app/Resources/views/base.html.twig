@@ -47,7 +47,7 @@
                 <ul class="button-group right">
                     <li><a href="{{ path('association')}}" class="button">L'association</a></li>
                     <li><a href="{{ path('tremplin')}}" class="button">Le tremplin</a></li>
-                    <li><a href="{{ path('homepage')}}" class="button">Les groupes</a></li>
+                    <li><a href="{{ path('groupe')}}" class="button">Les groupes</a></li>
                     <li><a href="{{ path('sonata_news_home') }}" class="button">Blog</a></li>
                     
                 </ul>
@@ -75,41 +75,7 @@
         {% block corps %}{% endblock %}
         
          {% block partenaires %}
-    <div class="row">
- 
-        <div class="row">
-          <h3>Partenaires</h3>
-        </div>
- 
-          <div class="large-3 small-6 columns">
-            <img src="{{ asset('styles/img/partenaireMauges.jpg') }}">
-            <div class="panel">
-              <p>Partenaire 1</p>
-            </div>
-          </div>
- 
-          <div class="large-3 small-6 columns">
-            <img src="{{ asset('styles/img/partenaireOudon.png') }}">
-            <div class="panel">
-              <p>Partenaire 2</p>
-            </div>
-          </div>
- 
-          <div class="large-3 small-6 columns">
-            <img src="http://placehold.it/500x500&text=Thumbnail">
-            <div class="panel">
-              <p>Partenaire 3</p>
-            </div>
-          </div>
- 
-          <div class="large-3 small-6 columns">
-            <img src="http://placehold.it/500x500&text=Thumbnail">
-            <div class="panel">
-              <p>Partenaire 4</p>
-            </div>
-          </div>
- 
-        </div>
+        
 {% endblock %}
 
        

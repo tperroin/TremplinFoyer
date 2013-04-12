@@ -492,8 +492,8 @@
     <parameter key="jms_di_extra.directories" type="collection"/>
     <parameter key="jms_di_extra.cache_dir">/var/www/sites/TremplinFoyerV1/app/cache/dev/jms_diextra</parameter>
     <parameter key="jms_di_extra.doctrine_integration">true</parameter>
-    <parameter key="jms_di_extra.doctrine_integration.entity_manager.file">/var/www/sites/TremplinFoyerV1/app/cache/dev/jms_diextra/doctrine/EntityManager_5167f40acf5a4.php</parameter>
-    <parameter key="jms_di_extra.doctrine_integration.entity_manager.class">EntityManager5167f40acf5a4_546a8d27f194334ee012bfe64f629947b07e4919\__CG__\Doctrine\ORM\EntityManager</parameter>
+    <parameter key="jms_di_extra.doctrine_integration.entity_manager.file">/var/www/sites/TremplinFoyerV1/app/cache/dev/jms_diextra/doctrine/EntityManager_516811f622247.php</parameter>
+    <parameter key="jms_di_extra.doctrine_integration.entity_manager.class">EntityManager516811f622247_546a8d27f194334ee012bfe64f629947b07e4919\__CG__\Doctrine\ORM\EntityManager</parameter>
     <parameter key="fos_user.validator.password.class">FOS\UserBundle\Validator\PasswordValidator</parameter>
     <parameter key="fos_user.validator.unique.class">FOS\UserBundle\Validator\UniqueValidator</parameter>
     <parameter key="fos_user.security.interactive_login_listener.class">FOS\UserBundle\Security\InteractiveLoginListener</parameter>
@@ -2974,7 +2974,7 @@
         </argument>
         <argument type="service">
           <service class="Symfony\Component\Security\Core\Authentication\Provider\AnonymousAuthenticationProvider" public="false">
-            <argument>5167f40a94896</argument>
+            <argument>516811f5dd713</argument>
           </service>
         </argument>
         <argument type="service">
@@ -2988,7 +2988,7 @@
         </argument>
         <argument type="service">
           <service class="Symfony\Component\Security\Core\Authentication\Provider\AnonymousAuthenticationProvider" public="false">
-            <argument>5167f40a94896</argument>
+            <argument>516811f5dd713</argument>
           </service>
         </argument>
       </argument>
@@ -3315,7 +3315,7 @@
         <argument type="service">
           <service class="Symfony\Component\Security\Http\Firewall\AnonymousAuthenticationListener" public="false">
             <argument type="service" id="security.context"/>
-            <argument>5167f40a94896</argument>
+            <argument>516811f5dd713</argument>
             <argument type="service" id="monolog.logger.security"/>
           </service>
         </argument>
@@ -3426,7 +3426,7 @@
         <argument type="service">
           <service class="Symfony\Component\Security\Http\Firewall\AnonymousAuthenticationListener" public="false">
             <argument type="service" id="security.context"/>
-            <argument>5167f40a94896</argument>
+            <argument>516811f5dd713</argument>
             <argument type="service" id="monolog.logger.security"/>
           </service>
         </argument>
@@ -3925,8 +3925,8 @@
     <service id="doctrine.orm.default_manager_configurator" class="Doctrine\Bundle\DoctrineBundle\ManagerConfigurator">
       <argument type="collection"/>
     </service>
-    <service id="doctrine.orm.default_entity_manager" class="EntityManager5167f40acf5a4_546a8d27f194334ee012bfe64f629947b07e4919\__CG__\Doctrine\ORM\EntityManager">
-      <file>/var/www/sites/TremplinFoyerV1/app/cache/dev/jms_diextra/doctrine/EntityManager_5167f40acf5a4.php</file>
+    <service id="doctrine.orm.default_entity_manager" class="EntityManager516811f622247_546a8d27f194334ee012bfe64f629947b07e4919\__CG__\Doctrine\ORM\EntityManager">
+      <file>/var/www/sites/TremplinFoyerV1/app/cache/dev/jms_diextra/doctrine/EntityManager_516811f622247.php</file>
       <argument type="service">
         <service class="Doctrine\ORM\EntityManager" factory-method="create" public="false">
           <argument type="service" id="doctrine.dbal.default_connection"/>
@@ -4333,6 +4333,8 @@
           <argument>sonata.media.admin.gallery_has_media</argument>
           <argument>tperroin_tremplin_foyer.association</argument>
           <argument>tperroin_tremplin_foyer.tremplin</argument>
+          <argument>tperroin_tremplin_foyer.groupe</argument>
+          <argument>tperroin_tremplin_foyer.partenaire</argument>
         </argument>
       </call>
       <call method="setAdminGroups">
@@ -4369,6 +4371,8 @@
             <argument key="items" type="collection">
               <argument>tperroin_tremplin_foyer.association</argument>
               <argument>tperroin_tremplin_foyer.tremplin</argument>
+              <argument>tperroin_tremplin_foyer.groupe</argument>
+              <argument>tperroin_tremplin_foyer.partenaire</argument>
             </argument>
           </argument>
         </argument>
@@ -4386,6 +4390,8 @@
           <argument key="Application\Sonata\MediaBundle\Entity\GalleryHasMedia">sonata.media.admin.gallery_has_media</argument>
           <argument key="Tperroin\TremplinFoyerBundle\Entity\Association">tperroin_tremplin_foyer.association</argument>
           <argument key="Tperroin\TremplinFoyerBundle\Entity\Tremplin">tperroin_tremplin_foyer.tremplin</argument>
+          <argument key="Tperroin\TremplinFoyerBundle\Entity\Groupe">tperroin_tremplin_foyer.groupe</argument>
+          <argument key="Tperroin\TremplinFoyerBundle\Entity\Partenaire">tperroin_tremplin_foyer.partenaire</argument>
         </argument>
       </call>
     </service>
@@ -4404,6 +4410,8 @@
         <argument>sonata.media.admin.gallery_has_media</argument>
         <argument>tperroin_tremplin_foyer.association</argument>
         <argument>tperroin_tremplin_foyer.tremplin</argument>
+        <argument>tperroin_tremplin_foyer.groupe</argument>
+        <argument>tperroin_tremplin_foyer.partenaire</argument>
       </argument>
       <argument type="service" id="service_container"/>
     </service>
@@ -6117,7 +6125,7 @@
       <argument type="service" id="sonata.media.metadata.proxy"/>
     </service>
     <service id="sonata.media.cdn.server" class="Sonata\MediaBundle\CDN\Server">
-      <argument>/web/uploads/media</argument>
+      <argument>../../web/uploads/media</argument>
     </service>
     <service id="sonata.media.twig.extension" class="Sonata\MediaBundle\Twig\Extension\MediaExtension">
       <tag name="twig.extension"/>
@@ -6965,7 +6973,7 @@
         </argument>
       </call>
     </service>
-    <service id="tperroin_tremplin_foyer.tremplin" class="Tperroin\TremplinFoyerBundle\Admin\AssociationAdmin" scope="prototype">
+    <service id="tperroin_tremplin_foyer.tremplin" class="Tperroin\TremplinFoyerBundle\Admin\TremplinAdmin" scope="prototype">
       <tag name="sonata.admin" manager_type="orm" group="Foyer" label="Posts menu &quot;Tremplin&quot;"/>
       <argument>tperroin_tremplin_foyer.tremplin</argument>
       <argument>Tperroin\TremplinFoyerBundle\Entity\Tremplin</argument>
@@ -7014,6 +7022,182 @@
       </call>
       <call method="setLabel">
         <argument>Posts menu "Tremplin"</argument>
+      </call>
+      <call method="setPersistFilters">
+        <argument>false</argument>
+      </call>
+      <call method="setTemplates">
+        <argument type="collection">
+          <argument key="user_block">SonataUserBundle:Admin/Core:user_block.html.twig</argument>
+          <argument key="layout">SonataAdminBundle::standard_layout.html.twig</argument>
+          <argument key="ajax">SonataAdminBundle::ajax_layout.html.twig</argument>
+          <argument key="dashboard">SonataAdminBundle:Core:dashboard.html.twig</argument>
+          <argument key="list">SonataAdminBundle:CRUD:list.html.twig</argument>
+          <argument key="show">SonataAdminBundle:CRUD:show.html.twig</argument>
+          <argument key="edit">SonataAdminBundle:CRUD:edit.html.twig</argument>
+          <argument key="history">SonataAdminBundle:CRUD:history.html.twig</argument>
+          <argument key="history_revision">SonataAdminBundle:CRUD:history_revision.html.twig</argument>
+          <argument key="action">SonataAdminBundle:CRUD:action.html.twig</argument>
+          <argument key="short_object_description">SonataAdminBundle:Helper:short-object-description.html.twig</argument>
+          <argument key="preview">SonataAdminBundle:CRUD:preview.html.twig</argument>
+          <argument key="list_block">SonataAdminBundle:Block:block_admin_list.html.twig</argument>
+          <argument key="delete">SonataAdminBundle:CRUD:delete.html.twig</argument>
+          <argument key="batch">SonataAdminBundle:CRUD:list__batch.html.twig</argument>
+          <argument key="batch_confirmation">SonataAdminBundle:CRUD:batch_confirmation.html.twig</argument>
+        </argument>
+      </call>
+      <call method="setSecurityInformation">
+        <argument type="collection"/>
+      </call>
+      <call method="initialize"/>
+      <call method="setFormTheme">
+        <argument type="collection">
+          <argument>SonataDoctrineORMAdminBundle:Form:form_admin_fields.html.twig</argument>
+        </argument>
+      </call>
+      <call method="setFilterTheme">
+        <argument type="collection">
+          <argument>SonataDoctrineORMAdminBundle:Form:filter_admin_fields.html.twig</argument>
+        </argument>
+      </call>
+    </service>
+    <service id="tperroin_tremplin_foyer.groupe" class="Tperroin\TremplinFoyerBundle\Admin\GroupeAdmin" scope="prototype">
+      <tag name="sonata.admin" manager_type="orm" group="Foyer" label="Posts menu &quot;Groupe&quot;"/>
+      <argument>tperroin_tremplin_foyer.groupe</argument>
+      <argument>Tperroin\TremplinFoyerBundle\Entity\Groupe</argument>
+      <argument>TperroinTremplinFoyerBundle:GroupeAdmin</argument>
+      <call method="setManagerType">
+        <argument>orm</argument>
+      </call>
+      <call method="setModelManager">
+        <argument type="service" id="sonata.admin.manager.orm"/>
+      </call>
+      <call method="setFormContractor">
+        <argument type="service" id="sonata.admin.builder.orm_form"/>
+      </call>
+      <call method="setShowBuilder">
+        <argument type="service" id="sonata.admin.builder.orm_show"/>
+      </call>
+      <call method="setListBuilder">
+        <argument type="service" id="sonata.admin.builder.orm_list"/>
+      </call>
+      <call method="setDatagridBuilder">
+        <argument type="service" id="sonata.admin.builder.orm_datagrid"/>
+      </call>
+      <call method="setTranslator">
+        <argument type="service" id="translator.default"/>
+      </call>
+      <call method="setConfigurationPool">
+        <argument type="service" id="sonata.admin.pool"/>
+      </call>
+      <call method="setRouteGenerator">
+        <argument type="service" id="sonata.admin.route.default_generator"/>
+      </call>
+      <call method="setValidator">
+        <argument type="service" id="validator"/>
+      </call>
+      <call method="setSecurityHandler">
+        <argument type="service" id="sonata.admin.security.handler"/>
+      </call>
+      <call method="setMenuFactory">
+        <argument type="service" id="knp_menu.factory"/>
+      </call>
+      <call method="setRouteBuilder">
+        <argument type="service" id="sonata.admin.route.path_info"/>
+      </call>
+      <call method="setLabelTranslatorStrategy">
+        <argument type="service" id="sonata.admin.label.strategy.native"/>
+      </call>
+      <call method="setLabel">
+        <argument>Posts menu "Groupe"</argument>
+      </call>
+      <call method="setPersistFilters">
+        <argument>false</argument>
+      </call>
+      <call method="setTemplates">
+        <argument type="collection">
+          <argument key="user_block">SonataUserBundle:Admin/Core:user_block.html.twig</argument>
+          <argument key="layout">SonataAdminBundle::standard_layout.html.twig</argument>
+          <argument key="ajax">SonataAdminBundle::ajax_layout.html.twig</argument>
+          <argument key="dashboard">SonataAdminBundle:Core:dashboard.html.twig</argument>
+          <argument key="list">SonataAdminBundle:CRUD:list.html.twig</argument>
+          <argument key="show">SonataAdminBundle:CRUD:show.html.twig</argument>
+          <argument key="edit">SonataAdminBundle:CRUD:edit.html.twig</argument>
+          <argument key="history">SonataAdminBundle:CRUD:history.html.twig</argument>
+          <argument key="history_revision">SonataAdminBundle:CRUD:history_revision.html.twig</argument>
+          <argument key="action">SonataAdminBundle:CRUD:action.html.twig</argument>
+          <argument key="short_object_description">SonataAdminBundle:Helper:short-object-description.html.twig</argument>
+          <argument key="preview">SonataAdminBundle:CRUD:preview.html.twig</argument>
+          <argument key="list_block">SonataAdminBundle:Block:block_admin_list.html.twig</argument>
+          <argument key="delete">SonataAdminBundle:CRUD:delete.html.twig</argument>
+          <argument key="batch">SonataAdminBundle:CRUD:list__batch.html.twig</argument>
+          <argument key="batch_confirmation">SonataAdminBundle:CRUD:batch_confirmation.html.twig</argument>
+        </argument>
+      </call>
+      <call method="setSecurityInformation">
+        <argument type="collection"/>
+      </call>
+      <call method="initialize"/>
+      <call method="setFormTheme">
+        <argument type="collection">
+          <argument>SonataDoctrineORMAdminBundle:Form:form_admin_fields.html.twig</argument>
+        </argument>
+      </call>
+      <call method="setFilterTheme">
+        <argument type="collection">
+          <argument>SonataDoctrineORMAdminBundle:Form:filter_admin_fields.html.twig</argument>
+        </argument>
+      </call>
+    </service>
+    <service id="tperroin_tremplin_foyer.partenaire" class="Tperroin\TremplinFoyerBundle\Admin\PartenaireAdmin" scope="prototype">
+      <tag name="sonata.admin" manager_type="orm" group="Foyer" label="Ajouter un partenaire"/>
+      <argument>tperroin_tremplin_foyer.partenaire</argument>
+      <argument>Tperroin\TremplinFoyerBundle\Entity\Partenaire</argument>
+      <argument>TperroinTremplinFoyerBundle:PartenaireAdmin</argument>
+      <call method="setManagerType">
+        <argument>orm</argument>
+      </call>
+      <call method="setModelManager">
+        <argument type="service" id="sonata.admin.manager.orm"/>
+      </call>
+      <call method="setFormContractor">
+        <argument type="service" id="sonata.admin.builder.orm_form"/>
+      </call>
+      <call method="setShowBuilder">
+        <argument type="service" id="sonata.admin.builder.orm_show"/>
+      </call>
+      <call method="setListBuilder">
+        <argument type="service" id="sonata.admin.builder.orm_list"/>
+      </call>
+      <call method="setDatagridBuilder">
+        <argument type="service" id="sonata.admin.builder.orm_datagrid"/>
+      </call>
+      <call method="setTranslator">
+        <argument type="service" id="translator.default"/>
+      </call>
+      <call method="setConfigurationPool">
+        <argument type="service" id="sonata.admin.pool"/>
+      </call>
+      <call method="setRouteGenerator">
+        <argument type="service" id="sonata.admin.route.default_generator"/>
+      </call>
+      <call method="setValidator">
+        <argument type="service" id="validator"/>
+      </call>
+      <call method="setSecurityHandler">
+        <argument type="service" id="sonata.admin.security.handler"/>
+      </call>
+      <call method="setMenuFactory">
+        <argument type="service" id="knp_menu.factory"/>
+      </call>
+      <call method="setRouteBuilder">
+        <argument type="service" id="sonata.admin.route.path_info"/>
+      </call>
+      <call method="setLabelTranslatorStrategy">
+        <argument type="service" id="sonata.admin.label.strategy.native"/>
+      </call>
+      <call method="setLabel">
+        <argument>Ajouter un partenaire</argument>
       </call>
       <call method="setPersistFilters">
         <argument>false</argument>
