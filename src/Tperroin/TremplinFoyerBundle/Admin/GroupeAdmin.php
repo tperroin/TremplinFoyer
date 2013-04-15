@@ -21,6 +21,7 @@ class GroupeAdmin extends Admin
     protected function configureShowField(ShowMapper $showMapper)
     {
         $showMapper
+            ->add('active')
             ->add('titre')
             ->add('image')
             ->add('teaser')
@@ -37,6 +38,7 @@ class GroupeAdmin extends Admin
     {
         $formMapper
             ->with('General')
+                ->add('active', 'checkbox', array('required' => false))
                 ->add('titre')
                 ->add('image', 'sonata_type_model') 
                 ->add('teaser', 'textarea', array('required' => false,'attr' => array('class' => 'ckeditor')))
@@ -54,6 +56,7 @@ class GroupeAdmin extends Admin
     {
         $listMapper
             ->addIdentifier('titre')
+            ->add('active')
             ->add('image')
             ->add('teaser')
             ->add('contenu')

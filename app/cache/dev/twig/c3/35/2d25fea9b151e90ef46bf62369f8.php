@@ -17,7 +17,6 @@ class __TwigTemplate_c3352d25fea9b151e90ef46bf62369f8 extends Twig_Template
             'navbar' => array($this, 'block_navbar'),
             'annonce' => array($this, 'block_annonce'),
             'corps' => array($this, 'block_corps'),
-            'partenaires' => array($this, 'block_partenaires'),
         );
     }
 
@@ -30,23 +29,22 @@ class __TwigTemplate_c3352d25fea9b151e90ef46bf62369f8 extends Twig_Template
 
         <meta charset=\"utf-8\" />
 
-        <!-- Set the viewport width to device width for mobile -->
         <meta name=\"viewport\" content=\"width=device-width\" />
 
         <title>";
-        // line 10
+        // line 9
         $this->displayBlock('title', $context, $blocks);
         echo "</title>
 
         ";
-        // line 12
+        // line 11
         $this->displayBlock('stylesheets', $context, $blocks);
-        // line 18
+        // line 17
         echo "            
         ";
-        // line 19
+        // line 18
         $this->displayBlock('javascripts', $context, $blocks);
-        // line 23
+        // line 24
         echo "            
 
 
@@ -54,39 +52,35 @@ class __TwigTemplate_c3352d25fea9b151e90ef46bf62369f8 extends Twig_Template
 
     <body>
 
-        <!-- Header and Nav -->
-        
-        
-        
-            
         ";
-        // line 35
+        // line 31
         $this->displayBlock('logo', $context, $blocks);
-        // line 42
+        // line 38
         echo "
 
 
         ";
-        // line 45
+        // line 41
         $this->displayBlock('navbar', $context, $blocks);
-        // line 57
+        // line 53
         echo "        
         ";
-        // line 58
+        // line 54
         $this->displayBlock('annonce', $context, $blocks);
-        // line 74
-        echo "        
-        ";
-        // line 75
+        // line 70
+        echo "        <div class=\"row\">
+
+            ";
+        // line 72
         $this->displayBlock('corps', $context, $blocks);
-        // line 76
-        echo "        
-         ";
-        // line 77
-        $this->displayBlock('partenaires', $context, $blocks);
-        // line 80
+        // line 73
         echo "
-       
+
+         
+
+        
+        </div>
+        
     </body>
 
     <footer class=\"row\">
@@ -99,7 +93,7 @@ class __TwigTemplate_c3352d25fea9b151e90ef46bf62369f8 extends Twig_Template
                 <div class=\"large-6 columns\">
                     <ul class=\"link-list right\">
                         <li><a href=\"";
-        // line 93
+        // line 91
         echo twig_escape_filter($this->env, $this->env->getExtension('routing')->getPath("sonata_admin_dashboard"), "html", null, true);
         echo "\">Administration</a></li>
                     </ul>
@@ -112,51 +106,61 @@ class __TwigTemplate_c3352d25fea9b151e90ef46bf62369f8 extends Twig_Template
 </html>";
     }
 
-    // line 10
+    // line 9
     public function block_title($context, array $blocks = array())
     {
-        echo "Tremplin musicale : Ô tour du son";
+        echo "Ô tour du globe";
     }
 
-    // line 12
+    // line 11
     public function block_stylesheets($context, array $blocks = array())
     {
-        // line 13
+        // line 12
         echo "            <link rel=\"stylesheet\" href=\"";
         echo twig_escape_filter($this->env, $this->env->getExtension('assets')->getAssetUrl("styles/css/foundation.css"), "html", null, true);
         echo "\" type=\"text/css\" />
             <link rel=\"stylesheet\" href=\"";
-        // line 14
+        // line 13
         echo twig_escape_filter($this->env, $this->env->getExtension('assets')->getAssetUrl("styles/css/normalize.css"), "html", null, true);
         echo "\" type=\"text/css\" />
             <link rel=\"stylesheet\" href=\"";
-        // line 15
+        // line 14
         echo twig_escape_filter($this->env, $this->env->getExtension('assets')->getAssetUrl("styles/css/app.css"), "html", null, true);
         echo "\" type=\"text/css\" />
             <link rel=\"stylesheet\" href=\"";
-        // line 16
+        // line 15
         echo twig_escape_filter($this->env, $this->env->getExtension('assets')->getAssetUrl("styles/css/foundation.min.css"), "html", null, true);
         echo "\" type=\"text/css\" />
         ";
     }
 
-    // line 19
+    // line 18
     public function block_javascripts($context, array $blocks = array())
     {
+        // line 19
+        echo "            <script src=\"";
+        echo twig_escape_filter($this->env, $this->env->getExtension('assets')->getAssetUrl("styles/js/vendor/jquery.js"), "html", null, true);
+        echo "\" type=\"text/javascript\"></script>
+            <script src=\"";
         // line 20
-        echo "            
+        echo twig_escape_filter($this->env, $this->env->getExtension('assets')->getAssetUrl("styles/js/vendor/zepto.js"), "html", null, true);
+        echo "\" type=\"text/javascript\"></script>
+            <script src=\"";
+        // line 21
+        echo twig_escape_filter($this->env, $this->env->getExtension('assets')->getAssetUrl("styles/js/foundation/foundation.js"), "html", null, true);
+        echo "\" type=\"text/javascript\"></script>
 
         ";
     }
 
-    // line 35
+    // line 31
     public function block_logo($context, array $blocks = array())
     {
         echo " 
         <div class=\"row head\">
             <div class=\"large-3 columns\">
                 <a href=\"";
-        // line 38
+        // line 34
         echo twig_escape_filter($this->env, $this->env->getExtension('routing')->getPath("homepage"), "html", null, true);
         echo "\"><img src=\"";
         echo twig_escape_filter($this->env, $this->env->getExtension('assets')->getAssetUrl("styles/img/logo.jpg"), "html", null, true);
@@ -166,26 +170,26 @@ class __TwigTemplate_c3352d25fea9b151e90ef46bf62369f8 extends Twig_Template
         ";
     }
 
-    // line 45
+    // line 41
     public function block_navbar($context, array $blocks = array())
     {
         echo " 
             <div class=\"large-9 columns\">
                 <ul class=\"button-group right\">
                     <li><a href=\"";
-        // line 48
+        // line 44
         echo twig_escape_filter($this->env, $this->env->getExtension('routing')->getPath("association"), "html", null, true);
         echo "\" class=\"button\">L'association</a></li>
                     <li><a href=\"";
-        // line 49
+        // line 45
         echo twig_escape_filter($this->env, $this->env->getExtension('routing')->getPath("tremplin"), "html", null, true);
         echo "\" class=\"button\">Le tremplin</a></li>
                     <li><a href=\"";
-        // line 50
+        // line 46
         echo twig_escape_filter($this->env, $this->env->getExtension('routing')->getPath("groupe"), "html", null, true);
         echo "\" class=\"button\">Les groupes</a></li>
                     <li><a href=\"";
-        // line 51
+        // line 47
         echo twig_escape_filter($this->env, $this->env->getExtension('routing')->getPath("sonata_news_home"), "html", null, true);
         echo "\" class=\"button\">Blog</a></li>
                     
@@ -195,10 +199,10 @@ class __TwigTemplate_c3352d25fea9b151e90ef46bf62369f8 extends Twig_Template
         ";
     }
 
-    // line 58
+    // line 54
     public function block_annonce($context, array $blocks = array())
     {
-        // line 59
+        // line 55
         echo "            <div class=\"row\">
                 <div class=\"large-4\"
                     <hr />
@@ -216,17 +220,9 @@ class __TwigTemplate_c3352d25fea9b151e90ef46bf62369f8 extends Twig_Template
         ";
     }
 
-    // line 75
+    // line 72
     public function block_corps($context, array $blocks = array())
     {
-    }
-
-    // line 77
-    public function block_partenaires($context, array $blocks = array())
-    {
-        // line 78
-        echo "        
-";
     }
 
     public function getTemplateName()
@@ -241,6 +237,6 @@ class __TwigTemplate_c3352d25fea9b151e90ef46bf62369f8 extends Twig_Template
 
     public function getDebugInfo()
     {
-        return array (  228 => 78,  225 => 77,  220 => 75,  202 => 59,  199 => 58,  189 => 51,  185 => 50,  181 => 49,  177 => 48,  170 => 45,  160 => 38,  153 => 35,  147 => 20,  144 => 19,  138 => 16,  134 => 15,  130 => 14,  125 => 13,  122 => 12,  116 => 10,  103 => 93,  88 => 80,  86 => 77,  83 => 76,  81 => 75,  78 => 74,  76 => 58,  73 => 57,  71 => 45,  66 => 42,  64 => 35,  50 => 23,  48 => 19,  45 => 18,  43 => 12,  38 => 10,  27 => 1,);
+        return array (  224 => 72,  206 => 55,  203 => 54,  193 => 47,  189 => 46,  185 => 45,  181 => 44,  174 => 41,  164 => 34,  157 => 31,  150 => 21,  146 => 20,  141 => 19,  138 => 18,  132 => 15,  128 => 14,  124 => 13,  119 => 12,  116 => 11,  110 => 9,  97 => 91,  77 => 73,  75 => 72,  71 => 70,  69 => 54,  66 => 53,  64 => 41,  59 => 38,  57 => 31,  48 => 24,  46 => 18,  41 => 11,  36 => 9,  26 => 1,  80 => 31,  67 => 24,  60 => 19,  58 => 18,  51 => 16,  43 => 17,  39 => 9,  31 => 3,  28 => 2,);
     }
 }

@@ -24,7 +24,6 @@ class PartenaireAdmin extends Admin
             ->add('nom')
             ->add('image')
             ->add('site')
-            ->add('contact')
         ;
     }
 
@@ -40,7 +39,6 @@ class PartenaireAdmin extends Admin
                 ->add('nom')
                 ->add('image', 'sonata_type_model') 
                 ->add('site')
-                ->add('contact', 'textarea')
             ->end()
         ;
     }
@@ -56,7 +54,6 @@ class PartenaireAdmin extends Admin
             ->addIdentifier('nom')
             ->add('image')
             ->add('site')
-            ->add('contact')
             ->add('_action', 'actions', array(
                 'actions' => array(
                     'view' => array(),

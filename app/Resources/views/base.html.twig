@@ -4,10 +4,9 @@
 
         <meta charset="utf-8" />
 
-        <!-- Set the viewport width to device width for mobile -->
         <meta name="viewport" content="width=device-width" />
 
-        <title>{% block title %}Tremplin musicale : Ô tour du son{% endblock %}</title>
+        <title>{% block title %}Ô tour du globe{% endblock %}</title>
 
         {% block stylesheets %}
             <link rel="stylesheet" href="{{ asset('styles/css/foundation.css') }}" type="text/css" />
@@ -17,7 +16,9 @@
         {% endblock %}
             
         {% block javascripts %}
-            
+            <script src="{{ asset('styles/js/vendor/jquery.js') }}" type="text/javascript"></script>
+            <script src="{{ asset('styles/js/vendor/zepto.js') }}" type="text/javascript"></script>
+            <script src="{{ asset('styles/js/foundation/foundation.js') }}" type="text/javascript"></script>
 
         {% endblock %}
             
@@ -27,11 +28,6 @@
 
     <body>
 
-        <!-- Header and Nav -->
-        
-        
-        
-            
         {% block logo %} 
         <div class="row head">
             <div class="large-3 columns">
@@ -71,14 +67,16 @@
                 </div>
             </header>
         {% endblock %}
-        
-        {% block corps %}{% endblock %}
-        
-         {% block partenaires %}
-        
-{% endblock %}
+        <div class="row">
 
-       
+            {% block corps %}{% endblock %}
+
+
+         
+
+        
+        </div>
+        
     </body>
 
     <footer class="row">

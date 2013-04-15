@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+    <head>
+
+        <meta charset="utf-8" />
+
+        <meta name="viewport" content="width=device-width" />
+
+        <title>{% block title %}Ô tour du globe{% endblock %}</title>
+
+        {% block stylesheets %}
+            <link rel="stylesheet" href="{{ asset('styles/css/foundation.css') }}" type="text/css" />
+            <link rel="stylesheet" href="{{ asset('styles/css/normalize.css') }}" type="text/css" />
+            <link rel="stylesheet" href="{{ asset('styles/css/app.css') }}" type="text/css" />
+            <link rel="stylesheet" href="{{ asset('styles/css/foundation.min.css') }}" type="text/css" />
+        {% endblock %}
+            
+        {% block javascripts %}
+            <script src="{{ asset('styles/js/vendor/jquery.js') }}" type="text/javascript"></script>
+            <script src="{{ asset('styles/js/vendor/zepto.js') }}" type="text/javascript"></script>
+            <script src="{{ asset('styles/js/foundation/foundation.js') }}" type="text/javascript"></script>
+
+        {% endblock %}
+            
+
+
+    </head>
+
+    <body>
+
+        {% block logo %} 
+        <div class="row head">
+            <div class="large-3 columns">
+                <a href="{{ path('homepage')}}"><img src="{{ asset('styles/img/logo.jpg') }}" /></a>
+            </div>
+           
+        {% endblock %}
+
+
+
+        {% block navbar %} 
+            <div class="large-9 columns">
+                <ul class="button-group right">
+                    <li><a href="{{ path('association')}}" class="button">L'association</a></li>
+                    <li><a href="{{ path('tremplin')}}" class="button">Le tremplin</a></li>
+                    <li><a href="{{ path('groupe')}}" class="button">Les groupes</a></li>
+                    <li><a href="{{ path('sonata_news_home') }}" class="button">Blog</a></li>
+                    
+                </ul>
+            </div>
+        </div>
+        {% endblock %}
+        
+        {% block annonce %}
+            <div class="row">
+                <div class="large-4"
+                    <hr />
+                </div>
+            </div>
+            <header>
+                <div class="row">
+                    <div class="twelve columns">
+                        <h1>Ô tour du son !</h1>
+                        <h2>Edition #3 le 14 Septembre 2013</h2>
+                        <h4>Au local du foyer des jeunes à Oudon</h4>
+                    </div>
+                </div>
+            </header>
+        {% endblock %}
+        <div class="row">
+            
+        <div class="large-9 columns">
+            {% block corps %}{% endblock %}
+        </div>
+        <script>
+            $("#partenaire > div:gt(0)").hide();
+            
+            setInterval(function() { 
+              $('#partenaire > div:first')
+                .fadeOut(1000)
+                .next('div')
+                .fadeIn(1000)
+                .end()
+                .appendTo('#partenaire');
+            },  3000);
+            
+            </script>
+         
+        <aside class="large-3 columns" >
+            
+            <div class="blocBlanc">
+                <h3>Contact</h3>
+                
+                <div class="centrer">
+                    {% block contact %}
+                        <a href="https://www.facebook.com/foyer.desjeunesdoudon"><img src="{{ asset('styles/img/facebook.png') }}"/></a>
+                        <a href="mailto:valougb44@hotmail.fr"><img src="{{ asset('styles/img/email.png') }}"/></a>
+{% endblock %}
+                </div>
+                
+            </div>
+            <div class="blocBlanc">
+                <h3>Partenaires</h3>
+                
+                <div id="partenaire">
+                    {% block partenaires %}{% endblock %}
+                </div>
+                
+            </div>
+        </aside>
+        
+        </div>
+        
+    </body>
+
+    <footer class="row">
+        <div class="large-12 columns">
+            <hr />
+            <div class="row">
+                <div class="large-6 columns">
+                    <p>&copy; Copyright Ô tour du globe</p>
+                </div>
+                <div class="large-6 columns">
+                    <ul class="link-list right">
+                        <li><a href="{{ path('sonata_admin_dashboard')}}">Administration</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div> 
+    </footer>
+
+    
+</html>

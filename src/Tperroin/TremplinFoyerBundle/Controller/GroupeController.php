@@ -9,6 +9,7 @@ use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Template;
 use Tperroin\TremplinFoyerBundle\Entity\Groupe;
 use Tperroin\TremplinFoyerBundle\Form\GroupeType;
+use Tperroin\TremplinFoyerBundle\Entity\GroupeRepository;
 
 /**
  * Groupe controller.
@@ -17,6 +18,8 @@ use Tperroin\TremplinFoyerBundle\Form\GroupeType;
  */
 class GroupeController extends Controller
 {
+    
+    
     /**
      * Lists all Groupe entities.
      *
@@ -25,9 +28,10 @@ class GroupeController extends Controller
      */
     public function indexAction()
     {
-        $em = $this->getDoctrine()->getManager();
+        $em = $this->getDoctrine()->getEntityManager();
 
-        $entities = $em->getRepository('TperroinTremplinFoyerBundle:Groupe')->findAll();
+        $entities = $em->getRepository('TperroinTremplinFoyerBundle:Groupe')->getActiveGroupes();
+        
 
         return array(
             'entities' => $entities,

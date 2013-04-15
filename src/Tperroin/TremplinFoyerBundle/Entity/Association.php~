@@ -12,13 +12,13 @@ use Symfony\Component\Validator\Constraints as Assert;
 class Association
 {
     /**
-     * @var integer
+     * @ORM\Id
+     * @ORM\Column(type="integer")
+     * @ORM\GeneratedValue(strategy="AUTO")
      */
     private $id;
 
-    /**
-     * @var string
-     */
+    /** @ORM\Column(type="string") **/
     private $titre;
 
     /** 
@@ -26,14 +26,10 @@ class Association
      */ 
     private $image;
 
-    /**
-     * @var string
-     */
+    /** @ORM\Column(type="string") **/
     private $teaser;
 
-    /**
-     * @var string
-     */
+    /** @ORM\Column(type="string") **/
     private $contenu;
 
 

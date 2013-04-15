@@ -1,4 +1,4 @@
-{% extends "::base.html.twig" %}
+{% extends "::baseIndex.html.twig" %}
 
 {% block corps %}
 
@@ -21,30 +21,22 @@
   </div>
 
 
-<div class="row">
- 
-        <div class="row">
-          <h3>Partenaires</h3>
-        </div>
 {% endblock %}
 
 {% block partenaires %}
 
-{% for entity in entities %}
+    {% for entity in entities %}
 
-
-    
- 
-          <div class="large-3 small-6 columns">
-            {% media entity.image, 'big' %}
-            <div class="panel">
-              <p>{{ entity.nom }}</p>
+        
+            <div>
+                <a href="{{ entity.site }}" target="_blank">
+                    {% media entity.image, 'big' %}
+                <div class="fondBlanc">
+                    {{ entity.nom }}
+                </div></a>
             </div>
-          </div>
+        
 
- 
-
-
-{% endfor %}
+    {% endfor %}
 {% endblock %}
     

@@ -7,7 +7,7 @@ class __TwigTemplate_2a46e265a3075eea4e726fbef558d9ea extends Twig_Template
     {
         parent::__construct($env);
 
-        $this->parent = $this->env->loadTemplate("::base.html.twig");
+        $this->parent = $this->env->loadTemplate("::baseIndex.html.twig");
 
         $this->blocks = array(
             'corps' => array($this, 'block_corps'),
@@ -17,7 +17,7 @@ class __TwigTemplate_2a46e265a3075eea4e726fbef558d9ea extends Twig_Template
 
     protected function doGetParent(array $context)
     {
-        return "::base.html.twig";
+        return "::baseIndex.html.twig";
     }
 
     protected function doDisplay(array $context, array $blocks = array())
@@ -52,46 +52,41 @@ class __TwigTemplate_2a46e265a3075eea4e726fbef558d9ea extends Twig_Template
   </div>
 
 
-<div class=\"row\">
- 
-        <div class=\"row\">
-          <h3>Partenaires</h3>
-        </div>
 ";
     }
 
-    // line 31
+    // line 26
     public function block_partenaires($context, array $blocks = array())
     {
-        // line 32
+        // line 27
         echo "
-";
-        // line 33
+    ";
+        // line 28
         $context['_parent'] = (array) $context;
         $context['_seq'] = twig_ensure_traversable($this->getContext($context, "entities"));
         foreach ($context['_seq'] as $context["_key"] => $context["entity"]) {
-            // line 34
+            // line 29
             echo "
-
-    
- 
-          <div class=\"large-3 small-6 columns\">
-            ";
-            // line 39
+        
+            <div>
+                <a href=\"";
+            // line 32
+            echo twig_escape_filter($this->env, $this->getAttribute($this->getContext($context, "entity"), "site"), "html", null, true);
+            echo "\" target=\"_blank\">
+                    ";
+            // line 33
             echo $this->env->getExtension('sonata_media')->media($this->getAttribute($this->getContext($context, "entity"), "image"), "big", array());
-            // line 40
-            echo "            <div class=\"panel\">
-              <p>";
-            // line 41
+            // line 34
+            echo "                <div class=\"fondBlanc\">
+                    ";
+            // line 35
             echo twig_escape_filter($this->env, $this->getAttribute($this->getContext($context, "entity"), "nom"), "html", null, true);
-            echo "</p>
+            echo "
+                </div></a>
             </div>
-          </div>
+        
 
- 
-
-
-";
+    ";
         }
         $_parent = $context['_parent'];
         unset($context['_seq'], $context['_iterated'], $context['_key'], $context['entity'], $context['_parent'], $context['loop']);
@@ -110,6 +105,6 @@ class __TwigTemplate_2a46e265a3075eea4e726fbef558d9ea extends Twig_Template
 
     public function getDebugInfo()
     {
-        return array (  86 => 41,  83 => 40,  81 => 39,  74 => 34,  70 => 33,  67 => 32,  64 => 31,  38 => 8,  32 => 4,  29 => 3,);
+        return array (  83 => 35,  80 => 34,  78 => 33,  74 => 32,  69 => 29,  65 => 28,  62 => 27,  59 => 26,  38 => 8,  32 => 4,  29 => 3,);
     }
 }
