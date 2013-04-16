@@ -6,8 +6,8 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
- * @ORM\Entity
- * @ORM\Table(name="Association")
+ * @ORM\Entity(repositoryClass="Tperroin\TremplinFoyerBundle\Entity\AssociationRepository")
+ * @ORM\Table()
  */
 class Association
 {
@@ -31,6 +31,13 @@ class Association
 
     /** @ORM\Column(type="string") **/
     private $contenu;
+    
+    /**
+     * @var boolean
+     *
+     * @ORM\Column(name="active", type="boolean")
+     */
+    private $active;
 
 
     /**
@@ -135,5 +142,13 @@ class Association
         return $this->contenu;
     }
     
+    public function getActive() {
+        return $this->active;
+    }
+
+    public function setActive($active) {
+        $this->active = $active;
+    }
+
 
 }

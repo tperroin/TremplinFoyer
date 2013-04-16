@@ -258,11 +258,11 @@ class appDevDebugProjectContainer extends Container
      * This service is shared.
      * This method always returns the same instance of the service.
      *
-     * @return EntityManager516c048db6446_546a8d27f194334ee012bfe64f629947b07e4919\__CG__\Doctrine\ORM\EntityManager A EntityManager516c048db6446_546a8d27f194334ee012bfe64f629947b07e4919\__CG__\Doctrine\ORM\EntityManager instance.
+     * @return EntityManager516c1d02766db_546a8d27f194334ee012bfe64f629947b07e4919\__CG__\Doctrine\ORM\EntityManager A EntityManager516c1d02766db_546a8d27f194334ee012bfe64f629947b07e4919\__CG__\Doctrine\ORM\EntityManager instance.
      */
     protected function getDoctrine_Orm_DefaultEntityManagerService()
     {
-        require_once '/var/www/sites/TremplinFoyerV1/app/cache/dev/jms_diextra/doctrine/EntityManager_516c048db6446.php';
+        require_once '/var/www/sites/TremplinFoyerV1/app/cache/dev/jms_diextra/doctrine/EntityManager_516c1d02766db.php';
 
         $a = new \Doctrine\Common\Cache\ArrayCache();
         $a->setNamespace('sf2orm_default_e419d7037a9a2d7c298aeebf8a7a5c68');
@@ -302,7 +302,7 @@ class appDevDebugProjectContainer extends Container
         $g = call_user_func(array('Doctrine\\ORM\\EntityManager', 'create'), $this->get('doctrine.dbal.default_connection'), $f);
         $this->get('doctrine.orm.default_manager_configurator')->configure($g);
 
-        return $this->services['doctrine.orm.default_entity_manager'] = new \EntityManager516c048db6446_546a8d27f194334ee012bfe64f629947b07e4919\__CG__\Doctrine\ORM\EntityManager($g, $this);
+        return $this->services['doctrine.orm.default_entity_manager'] = new \EntityManager516c1d02766db_546a8d27f194334ee012bfe64f629947b07e4919\__CG__\Doctrine\ORM\EntityManager($g, $this);
     }
 
     /**
@@ -1903,7 +1903,7 @@ class appDevDebugProjectContainer extends Container
         $g = new \Symfony\Component\Security\Http\Authentication\DefaultAuthenticationSuccessHandler($d, array('login_path' => '/admin/login', 'always_use_default_target_path' => false, 'default_target_path' => '/', 'target_path_parameter' => '_target_path', 'use_referer' => false));
         $g->setProviderKey('admin');
 
-        return $this->services['security.firewall.map.context.admin'] = new \Symfony\Bundle\SecurityBundle\Security\FirewallContext(array(0 => $this->get('security.channel_listener'), 1 => new \Symfony\Component\Security\Http\Firewall\ContextListener($a, array(0 => $this->get('fos_user.user_manager')), 'admin', $b, $c), 2 => $f, 3 => new \Symfony\Component\Security\Http\Firewall\UsernamePasswordFormAuthenticationListener($a, $this->get('security.authentication.manager'), $this->get('security.authentication.session_strategy'), $d, 'admin', $g, new \Symfony\Component\Security\Http\Authentication\DefaultAuthenticationFailureHandler($e, $d, array('login_path' => '/admin/login', 'failure_path' => NULL, 'failure_forward' => false), $b), array('check_path' => '/admin/login_check', 'use_forward' => false, 'username_parameter' => '_username', 'password_parameter' => '_password', 'csrf_parameter' => '_csrf_token', 'intention' => 'authenticate', 'post_only' => true), $b, $c), 4 => new \Symfony\Component\Security\Http\Firewall\AnonymousAuthenticationListener($a, '516c048d7dd3d', $b), 5 => $this->get('security.access_listener')), new \Symfony\Component\Security\Http\Firewall\ExceptionListener($a, $this->get('security.authentication.trust_resolver'), $d, 'admin', new \Symfony\Component\Security\Http\EntryPoint\FormAuthenticationEntryPoint($e, $d, '/admin/login', false), NULL, NULL, $b));
+        return $this->services['security.firewall.map.context.admin'] = new \Symfony\Bundle\SecurityBundle\Security\FirewallContext(array(0 => $this->get('security.channel_listener'), 1 => new \Symfony\Component\Security\Http\Firewall\ContextListener($a, array(0 => $this->get('fos_user.user_manager')), 'admin', $b, $c), 2 => $f, 3 => new \Symfony\Component\Security\Http\Firewall\UsernamePasswordFormAuthenticationListener($a, $this->get('security.authentication.manager'), $this->get('security.authentication.session_strategy'), $d, 'admin', $g, new \Symfony\Component\Security\Http\Authentication\DefaultAuthenticationFailureHandler($e, $d, array('login_path' => '/admin/login', 'failure_path' => NULL, 'failure_forward' => false), $b), array('check_path' => '/admin/login_check', 'use_forward' => false, 'username_parameter' => '_username', 'password_parameter' => '_password', 'csrf_parameter' => '_csrf_token', 'intention' => 'authenticate', 'post_only' => true), $b, $c), 4 => new \Symfony\Component\Security\Http\Firewall\AnonymousAuthenticationListener($a, '516c1d01625d1', $b), 5 => $this->get('security.access_listener')), new \Symfony\Component\Security\Http\Firewall\ExceptionListener($a, $this->get('security.authentication.trust_resolver'), $d, 'admin', new \Symfony\Component\Security\Http\EntryPoint\FormAuthenticationEntryPoint($e, $d, '/admin/login', false), NULL, NULL, $b));
     }
 
     /**
@@ -1928,7 +1928,7 @@ class appDevDebugProjectContainer extends Container
         $g = new \Symfony\Component\Security\Http\Authentication\DefaultAuthenticationSuccessHandler($d, array('login_path' => '/login', 'always_use_default_target_path' => false, 'default_target_path' => '/', 'target_path_parameter' => '_target_path', 'use_referer' => false));
         $g->setProviderKey('main');
 
-        return $this->services['security.firewall.map.context.main'] = new \Symfony\Bundle\SecurityBundle\Security\FirewallContext(array(0 => $this->get('security.channel_listener'), 1 => new \Symfony\Component\Security\Http\Firewall\ContextListener($a, array(0 => $this->get('fos_user.user_manager')), 'main', $b, $c), 2 => $f, 3 => new \Symfony\Component\Security\Http\Firewall\UsernamePasswordFormAuthenticationListener($a, $this->get('security.authentication.manager'), $this->get('security.authentication.session_strategy'), $d, 'main', $g, new \Symfony\Component\Security\Http\Authentication\DefaultAuthenticationFailureHandler($e, $d, array('login_path' => '/login', 'failure_path' => NULL, 'failure_forward' => false), $b), array('check_path' => '/login_check', 'use_forward' => false, 'username_parameter' => '_username', 'password_parameter' => '_password', 'csrf_parameter' => '_csrf_token', 'intention' => 'authenticate', 'post_only' => true), $b, $c), 4 => new \Symfony\Component\Security\Http\Firewall\AnonymousAuthenticationListener($a, '516c048d7dd3d', $b), 5 => $this->get('security.access_listener')), new \Symfony\Component\Security\Http\Firewall\ExceptionListener($a, $this->get('security.authentication.trust_resolver'), $d, 'main', new \Symfony\Component\Security\Http\EntryPoint\FormAuthenticationEntryPoint($e, $d, '/login', false), NULL, NULL, $b));
+        return $this->services['security.firewall.map.context.main'] = new \Symfony\Bundle\SecurityBundle\Security\FirewallContext(array(0 => $this->get('security.channel_listener'), 1 => new \Symfony\Component\Security\Http\Firewall\ContextListener($a, array(0 => $this->get('fos_user.user_manager')), 'main', $b, $c), 2 => $f, 3 => new \Symfony\Component\Security\Http\Firewall\UsernamePasswordFormAuthenticationListener($a, $this->get('security.authentication.manager'), $this->get('security.authentication.session_strategy'), $d, 'main', $g, new \Symfony\Component\Security\Http\Authentication\DefaultAuthenticationFailureHandler($e, $d, array('login_path' => '/login', 'failure_path' => NULL, 'failure_forward' => false), $b), array('check_path' => '/login_check', 'use_forward' => false, 'username_parameter' => '_username', 'password_parameter' => '_password', 'csrf_parameter' => '_csrf_token', 'intention' => 'authenticate', 'post_only' => true), $b, $c), 4 => new \Symfony\Component\Security\Http\Firewall\AnonymousAuthenticationListener($a, '516c1d01625d1', $b), 5 => $this->get('security.access_listener')), new \Symfony\Component\Security\Http\Firewall\ExceptionListener($a, $this->get('security.authentication.trust_resolver'), $d, 'main', new \Symfony\Component\Security\Http\EntryPoint\FormAuthenticationEntryPoint($e, $d, '/login', false), NULL, NULL, $b));
     }
 
     /**
@@ -4886,6 +4886,19 @@ class appDevDebugProjectContainer extends Container
     }
 
     /**
+     * Gets the 'tperroin.socialbarhelper' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Tperroin\TremplinFoyerBundle\Templating\Helper\SocialBarHelper A Tperroin\TremplinFoyerBundle\Templating\Helper\SocialBarHelper instance.
+     */
+    protected function getTperroin_SocialbarhelperService()
+    {
+        return $this->services['tperroin.socialbarhelper'] = new \Tperroin\TremplinFoyerBundle\Templating\Helper\SocialBarHelper($this->get('templating'));
+    }
+
+    /**
      * Gets the 'tperroin_tremplin_foyer.association' service.
      *
      * @return Tperroin\TremplinFoyerBundle\Admin\AssociationAdmin A Tperroin\TremplinFoyerBundle\Admin\AssociationAdmin instance.
@@ -5596,6 +5609,7 @@ class appDevDebugProjectContainer extends Container
         $instance->addExtension(new \Knp\Bundle\MarkdownBundle\Twig\Extension\MarkdownTwigExtension($c));
         $instance->addExtension(new \Knp\Menu\Twig\MenuExtension(new \Knp\Menu\Twig\Helper($this->get('knp_menu.renderer_provider'), $this->get('knp_menu.menu_provider'))));
         $instance->addExtension($this->get('knp_paginator.twig.extension.pagination'));
+        $instance->addExtension($this->get('twig.extension.tperroin_social_bar'));
         $instance->addGlobal('sonata_block', $this->get('sonata.block.twig.global'));
         $instance->addGlobal('sonata_user', $this->get('sonata.user.twig.global'));
 
@@ -5613,6 +5627,19 @@ class appDevDebugProjectContainer extends Container
     protected function getTwig_ExceptionListenerService()
     {
         return $this->services['twig.exception_listener'] = new \Symfony\Component\HttpKernel\EventListener\ExceptionListener('Symfony\\Bundle\\TwigBundle\\Controller\\ExceptionController::showAction', $this->get('monolog.logger.request'));
+    }
+
+    /**
+     * Gets the 'twig.extension.tperroin_social_bar' service.
+     *
+     * This service is shared.
+     * This method always returns the same instance of the service.
+     *
+     * @return Tperroin\TremplinFoyerBundle\Twig\Extensions\TperroinTwigSocialBar A Tperroin\TremplinFoyerBundle\Twig\Extensions\TperroinTwigSocialBar instance.
+     */
+    protected function getTwig_Extension_TperroinSocialBarService()
+    {
+        return $this->services['twig.extension.tperroin_social_bar'] = new \Tperroin\TremplinFoyerBundle\Twig\Extensions\TperroinTwigSocialBar($this);
     }
 
     /**
@@ -5705,7 +5732,7 @@ class appDevDebugProjectContainer extends Container
     /**
      * Gets the doctrine.orm.entity_manager service alias.
      *
-     * @return EntityManager516c048db6446_546a8d27f194334ee012bfe64f629947b07e4919\__CG__\Doctrine\ORM\EntityManager An instance of the doctrine.orm.default_entity_manager service
+     * @return EntityManager516c1d02766db_546a8d27f194334ee012bfe64f629947b07e4919\__CG__\Doctrine\ORM\EntityManager An instance of the doctrine.orm.default_entity_manager service
      */
     protected function getDoctrine_Orm_EntityManagerService()
     {
@@ -5775,7 +5802,7 @@ class appDevDebugProjectContainer extends Container
     /**
      * Gets the sonata.media.entity_manager service alias.
      *
-     * @return EntityManager516c048db6446_546a8d27f194334ee012bfe64f629947b07e4919\__CG__\Doctrine\ORM\EntityManager An instance of the doctrine.orm.default_entity_manager service
+     * @return EntityManager516c1d02766db_546a8d27f194334ee012bfe64f629947b07e4919\__CG__\Doctrine\ORM\EntityManager An instance of the doctrine.orm.default_entity_manager service
      */
     protected function getSonata_Media_EntityManagerService()
     {
@@ -5785,7 +5812,7 @@ class appDevDebugProjectContainer extends Container
     /**
      * Gets the sonata.news.entity_manager service alias.
      *
-     * @return EntityManager516c048db6446_546a8d27f194334ee012bfe64f629947b07e4919\__CG__\Doctrine\ORM\EntityManager An instance of the doctrine.orm.default_entity_manager service
+     * @return EntityManager516c1d02766db_546a8d27f194334ee012bfe64f629947b07e4919\__CG__\Doctrine\ORM\EntityManager An instance of the doctrine.orm.default_entity_manager service
      */
     protected function getSonata_News_EntityManagerService()
     {
@@ -6020,7 +6047,7 @@ class appDevDebugProjectContainer extends Container
         $b = $this->get('security.user_checker');
         $c = $this->get('security.encoder_factory');
 
-        $this->services['security.authentication.manager'] = $instance = new \Symfony\Component\Security\Core\Authentication\AuthenticationProviderManager(array(0 => new \Symfony\Component\Security\Core\Authentication\Provider\DaoAuthenticationProvider($a, $b, 'admin', $c, true), 1 => new \Symfony\Component\Security\Core\Authentication\Provider\AnonymousAuthenticationProvider('516c048d7dd3d'), 2 => new \Symfony\Component\Security\Core\Authentication\Provider\DaoAuthenticationProvider($a, $b, 'main', $c, true), 3 => new \Symfony\Component\Security\Core\Authentication\Provider\AnonymousAuthenticationProvider('516c048d7dd3d')), true);
+        $this->services['security.authentication.manager'] = $instance = new \Symfony\Component\Security\Core\Authentication\AuthenticationProviderManager(array(0 => new \Symfony\Component\Security\Core\Authentication\Provider\DaoAuthenticationProvider($a, $b, 'admin', $c, true), 1 => new \Symfony\Component\Security\Core\Authentication\Provider\AnonymousAuthenticationProvider('516c1d01625d1'), 2 => new \Symfony\Component\Security\Core\Authentication\Provider\DaoAuthenticationProvider($a, $b, 'main', $c, true), 3 => new \Symfony\Component\Security\Core\Authentication\Provider\AnonymousAuthenticationProvider('516c1d01625d1')), true);
 
         $instance->setEventDispatcher($this->get('event_dispatcher'));
 
@@ -6294,7 +6321,7 @@ class appDevDebugProjectContainer extends Container
         $this->services['templating.engine.php'] = $instance = new \Symfony\Bundle\FrameworkBundle\Templating\PhpEngine($this->get('templating.name_parser'), $this, $this->get('templating.loader'), $this->get('templating.globals'));
 
         $instance->setCharset('UTF-8');
-        $instance->setHelpers(array('slots' => 'templating.helper.slots', 'assets' => 'templating.helper.assets', 'request' => 'templating.helper.request', 'session' => 'templating.helper.session', 'router' => 'templating.helper.router', 'actions' => 'templating.helper.actions', 'code' => 'templating.helper.code', 'translator' => 'templating.helper.translator', 'form' => 'templating.helper.form', 'logout_url' => 'templating.helper.logout_url', 'security' => 'templating.helper.security', 'assetic' => 'assetic.helper.dynamic', 'locale' => 'sonata.intl.templating.helper.locale', 'number' => 'sonata.intl.templating.helper.number', 'datetime' => 'sonata.intl.templating.helper.datetime', 'markdown' => 'templating.helper.markdown', 'knp_pagination' => 'knp_paginator.templating.helper.pagination'));
+        $instance->setHelpers(array('slots' => 'templating.helper.slots', 'assets' => 'templating.helper.assets', 'request' => 'templating.helper.request', 'session' => 'templating.helper.session', 'router' => 'templating.helper.router', 'actions' => 'templating.helper.actions', 'code' => 'templating.helper.code', 'translator' => 'templating.helper.translator', 'form' => 'templating.helper.form', 'logout_url' => 'templating.helper.logout_url', 'security' => 'templating.helper.security', 'assetic' => 'assetic.helper.dynamic', 'locale' => 'sonata.intl.templating.helper.locale', 'number' => 'sonata.intl.templating.helper.number', 'datetime' => 'sonata.intl.templating.helper.datetime', 'markdown' => 'templating.helper.markdown', 'knp_pagination' => 'knp_paginator.templating.helper.pagination', 'social-buttons' => 'tperroin.socialbarhelper'));
 
         return $instance;
     }
@@ -6910,8 +6937,8 @@ class appDevDebugProjectContainer extends Container
             ),
             'jms_di_extra.cache_dir' => '/var/www/sites/TremplinFoyerV1/app/cache/dev/jms_diextra',
             'jms_di_extra.doctrine_integration' => true,
-            'jms_di_extra.doctrine_integration.entity_manager.file' => '/var/www/sites/TremplinFoyerV1/app/cache/dev/jms_diextra/doctrine/EntityManager_516c048db6446.php',
-            'jms_di_extra.doctrine_integration.entity_manager.class' => 'EntityManager516c048db6446_546a8d27f194334ee012bfe64f629947b07e4919\\__CG__\\Doctrine\\ORM\\EntityManager',
+            'jms_di_extra.doctrine_integration.entity_manager.file' => '/var/www/sites/TremplinFoyerV1/app/cache/dev/jms_diextra/doctrine/EntityManager_516c1d02766db.php',
+            'jms_di_extra.doctrine_integration.entity_manager.class' => 'EntityManager516c1d02766db_546a8d27f194334ee012bfe64f629947b07e4919\\__CG__\\Doctrine\\ORM\\EntityManager',
             'fos_user.validator.password.class' => 'FOS\\UserBundle\\Validator\\PasswordValidator',
             'fos_user.validator.unique.class' => 'FOS\\UserBundle\\Validator\\UniqueValidator',
             'fos_user.security.interactive_login_listener.class' => 'FOS\\UserBundle\\Security\\InteractiveLoginListener',

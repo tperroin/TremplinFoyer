@@ -492,8 +492,8 @@
     <parameter key="jms_di_extra.directories" type="collection"/>
     <parameter key="jms_di_extra.cache_dir">/var/www/sites/TremplinFoyerV1/app/cache/dev/jms_diextra</parameter>
     <parameter key="jms_di_extra.doctrine_integration">true</parameter>
-    <parameter key="jms_di_extra.doctrine_integration.entity_manager.file">/var/www/sites/TremplinFoyerV1/app/cache/dev/jms_diextra/doctrine/EntityManager_516c048db6446.php</parameter>
-    <parameter key="jms_di_extra.doctrine_integration.entity_manager.class">EntityManager516c048db6446_546a8d27f194334ee012bfe64f629947b07e4919\__CG__\Doctrine\ORM\EntityManager</parameter>
+    <parameter key="jms_di_extra.doctrine_integration.entity_manager.file">/var/www/sites/TremplinFoyerV1/app/cache/dev/jms_diextra/doctrine/EntityManager_516c1d02766db.php</parameter>
+    <parameter key="jms_di_extra.doctrine_integration.entity_manager.class">EntityManager516c1d02766db_546a8d27f194334ee012bfe64f629947b07e4919\__CG__\Doctrine\ORM\EntityManager</parameter>
     <parameter key="fos_user.validator.password.class">FOS\UserBundle\Validator\PasswordValidator</parameter>
     <parameter key="fos_user.validator.unique.class">FOS\UserBundle\Validator\UniqueValidator</parameter>
     <parameter key="fos_user.security.interactive_login_listener.class">FOS\UserBundle\Security\InteractiveLoginListener</parameter>
@@ -2891,6 +2891,7 @@
           <argument key="datetime">sonata.intl.templating.helper.datetime</argument>
           <argument key="markdown">templating.helper.markdown</argument>
           <argument key="knp_pagination">knp_paginator.templating.helper.pagination</argument>
+          <argument key="social-buttons">tperroin.socialbarhelper</argument>
         </argument>
       </call>
     </service>
@@ -2974,7 +2975,7 @@
         </argument>
         <argument type="service">
           <service class="Symfony\Component\Security\Core\Authentication\Provider\AnonymousAuthenticationProvider" public="false">
-            <argument>516c048d7dd3d</argument>
+            <argument>516c1d01625d1</argument>
           </service>
         </argument>
         <argument type="service">
@@ -2988,7 +2989,7 @@
         </argument>
         <argument type="service">
           <service class="Symfony\Component\Security\Core\Authentication\Provider\AnonymousAuthenticationProvider" public="false">
-            <argument>516c048d7dd3d</argument>
+            <argument>516c1d01625d1</argument>
           </service>
         </argument>
       </argument>
@@ -3315,7 +3316,7 @@
         <argument type="service">
           <service class="Symfony\Component\Security\Http\Firewall\AnonymousAuthenticationListener" public="false">
             <argument type="service" id="security.context"/>
-            <argument>516c048d7dd3d</argument>
+            <argument>516c1d01625d1</argument>
             <argument type="service" id="monolog.logger.security"/>
           </service>
         </argument>
@@ -3426,7 +3427,7 @@
         <argument type="service">
           <service class="Symfony\Component\Security\Http\Firewall\AnonymousAuthenticationListener" public="false">
             <argument type="service" id="security.context"/>
-            <argument>516c048d7dd3d</argument>
+            <argument>516c1d01625d1</argument>
             <argument type="service" id="monolog.logger.security"/>
           </service>
         </argument>
@@ -3700,6 +3701,9 @@
       <call method="addExtension">
         <argument type="service" id="knp_paginator.twig.extension.pagination"/>
       </call>
+      <call method="addExtension">
+        <argument type="service" id="twig.extension.tperroin_social_bar"/>
+      </call>
       <call method="addGlobal">
         <argument>sonata_block</argument>
         <argument type="service" id="sonata.block.twig.global"/>
@@ -3925,8 +3929,8 @@
     <service id="doctrine.orm.default_manager_configurator" class="Doctrine\Bundle\DoctrineBundle\ManagerConfigurator">
       <argument type="collection"/>
     </service>
-    <service id="doctrine.orm.default_entity_manager" class="EntityManager516c048db6446_546a8d27f194334ee012bfe64f629947b07e4919\__CG__\Doctrine\ORM\EntityManager">
-      <file>/var/www/sites/TremplinFoyerV1/app/cache/dev/jms_diextra/doctrine/EntityManager_516c048db6446.php</file>
+    <service id="doctrine.orm.default_entity_manager" class="EntityManager516c1d02766db_546a8d27f194334ee012bfe64f629947b07e4919\__CG__\Doctrine\ORM\EntityManager">
+      <file>/var/www/sites/TremplinFoyerV1/app/cache/dev/jms_diextra/doctrine/EntityManager_516c1d02766db.php</file>
       <argument type="service">
         <service class="Doctrine\ORM\EntityManager" factory-method="create" public="false">
           <argument type="service" id="doctrine.dbal.default_connection"/>
@@ -7236,6 +7240,14 @@
           <argument>SonataDoctrineORMAdminBundle:Form:filter_admin_fields.html.twig</argument>
         </argument>
       </call>
+    </service>
+    <service id="tperroin.socialbarhelper" class="Tperroin\TremplinFoyerBundle\Templating\Helper\SocialBarHelper">
+      <tag name="templating.helper" alias="social-buttons"/>
+      <argument type="service" id="templating"/>
+    </service>
+    <service id="twig.extension.tperroin_social_bar" class="Tperroin\TremplinFoyerBundle\Twig\Extensions\TperroinTwigSocialBar">
+      <tag name="twig.extension"/>
+      <argument type="service" id="service_container"/>
     </service>
     <service id="web_profiler.debug_toolbar" class="Symfony\Bundle\WebProfilerBundle\EventListener\WebDebugToolbarListener">
       <tag name="kernel.event_subscriber"/>

@@ -197,7 +197,7 @@ class __TwigTemplate_0220359b591a56091a8c3ac18d3c9648 extends Twig_Template
     {
         echo " 
         <div class=\"row head\">
-            <div class=\"large-3 columns\">
+            <div class=\"large-2 columns\">
                 <a href=\"";
         // line 34
         echo twig_escape_filter($this->env, $this->env->getExtension('routing')->getPath("homepage"), "html", null, true);
@@ -213,7 +213,7 @@ class __TwigTemplate_0220359b591a56091a8c3ac18d3c9648 extends Twig_Template
     public function block_navbar($context, array $blocks = array())
     {
         echo " 
-            <div class=\"large-9 columns\">
+            <div class=\"large-7 columns\">
                 <ul class=\"button-group right\">
                     <li><a href=\"";
         // line 44
@@ -295,6 +295,6 @@ class __TwigTemplate_0220359b591a56091a8c3ac18d3c9648 extends Twig_Template
 
     public function getDebugInfo()
     {
-        return array (  282 => 106,  276 => 97,  271 => 96,  268 => 95,  263 => 73,  245 => 55,  242 => 54,  232 => 47,  228 => 46,  224 => 45,  220 => 44,  213 => 41,  203 => 34,  196 => 31,  189 => 21,  185 => 20,  180 => 19,  177 => 18,  171 => 15,  167 => 14,  163 => 13,  158 => 12,  155 => 11,  149 => 9,  136 => 125,  116 => 107,  114 => 106,  105 => 99,  103 => 95,  73 => 70,  71 => 54,  68 => 53,  66 => 41,  61 => 38,  50 => 24,  48 => 18,  45 => 17,  43 => 11,  28 => 1,  83 => 35,  80 => 74,  78 => 73,  74 => 32,  69 => 29,  65 => 28,  62 => 27,  59 => 31,  38 => 9,  32 => 4,  29 => 3,);
+        return array (  282 => 106,  276 => 97,  271 => 96,  268 => 95,  263 => 73,  245 => 55,  242 => 54,  232 => 47,  228 => 46,  224 => 45,  220 => 44,  213 => 41,  203 => 34,  196 => 31,  189 => 21,  185 => 20,  180 => 19,  177 => 18,  171 => 15,  167 => 14,  163 => 13,  158 => 12,  155 => 11,  149 => 9,  136 => 125,  116 => 107,  114 => 106,  105 => 99,  103 => 95,  80 => 74,  78 => 73,  73 => 70,  71 => 54,  68 => 53,  66 => 41,  61 => 38,  59 => 31,  50 => 24,  48 => 18,  45 => 17,  43 => 11,  38 => 9,  28 => 1,);
     }
 }

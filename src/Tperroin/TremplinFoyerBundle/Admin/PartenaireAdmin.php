@@ -21,6 +21,7 @@ class PartenaireAdmin extends Admin
     protected function configureShowField(ShowMapper $showMapper)
     {
         $showMapper
+            ->add('active')
             ->add('nom')
             ->add('image')
             ->add('site')
@@ -36,6 +37,7 @@ class PartenaireAdmin extends Admin
     {
         $formMapper
             ->with('General')
+                ->add('active', 'checkbox', array('required' => false))
                 ->add('nom')
                 ->add('image', 'sonata_type_model') 
                 ->add('site')
@@ -52,6 +54,7 @@ class PartenaireAdmin extends Admin
     {
         $listMapper
             ->addIdentifier('nom')
+            ->add('active')
             ->add('image')
             ->add('site')
             ->add('_action', 'actions', array(

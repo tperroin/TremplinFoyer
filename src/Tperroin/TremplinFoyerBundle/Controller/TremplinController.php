@@ -25,9 +25,10 @@ class TremplinController extends Controller
      */
     public function indexAction()
     {
-        $em = $this->getDoctrine()->getManager();
+        $em = $this->getDoctrine()->getEntityManager();
 
-        $entities = $em->getRepository('TperroinTremplinFoyerBundle:Tremplin')->findAll();
+        $entities = $em->getRepository('TperroinTremplinFoyerBundle:Tremplin')->getActiveTremplins();
+        
 
         return array(
             'entities' => $entities,

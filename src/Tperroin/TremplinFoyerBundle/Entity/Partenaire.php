@@ -8,7 +8,7 @@ use Doctrine\ORM\Mapping as ORM;
  * Partenaire
  *
  * @ORM\Table()
- * @ORM\Entity
+ * @ORM\Entity(repositoryClass="Tperroin\TremplinFoyerBundle\Entity\PartenaireRepository")
  */
 class Partenaire
 {
@@ -39,6 +39,13 @@ class Partenaire
      * @ORM\Column(name="site", type="string", length=255)
      */
     private $site;
+    
+    /**
+     * @var boolean
+     *
+     * @ORM\Column(name="active", type="boolean")
+     */
+    private $active;
 
     /**
      * Get id
@@ -118,5 +125,15 @@ class Partenaire
     {
         return $this->site;
     }
+    
+    public function getActive() {
+        return $this->active;
+    }
+
+    public function setActive($active) {
+        $this->active = $active;
+    }
+
+
 
 }

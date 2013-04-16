@@ -25,3 +25,15 @@ services:
         tags:
             - { name: sonata.admin, manager_type: orm, group: Foyer, label: Ajouter un partenaire }
         arguments: [null, Tperroin\TremplinFoyerBundle\Entity\Partenaire, TperroinTremplinFoyerBundle:PartenaireAdmin]
+        
+    tperroin.socialBarHelper:
+        class : Tperroin\TremplinFoyerBundle\Templating\Helper\SocialBarHelper
+        tags :
+            - { name : 'templating.helper', alias : 'social-buttons' }
+        arguments : [ @templating ]
+
+    twig.extension.tperroin_social_bar:
+        class: Tperroin\TremplinFoyerBundle\Twig\Extensions\TperroinTwigSocialBar
+        tags:
+            - { name: 'twig.extension' }
+        arguments : [ @service_container ]

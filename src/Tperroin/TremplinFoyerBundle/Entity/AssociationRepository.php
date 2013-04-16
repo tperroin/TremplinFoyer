@@ -12,4 +12,21 @@ use Doctrine\ORM\EntityRepository;
  */
 class AssociationRepository extends EntityRepository
 {
+    
+    public function getActiveAssociations()
+    {
+        $em = $this->getEntityManager();
+        $qb = $em->createQueryBuilder(array('a', 'm'))
+                    ->select('a.id, a.titre, a.contenu, a.teaser, IDENTITY(a.image) as image')
+                    ->from('TperroinTremplinFoyerBundle:Association', 'a')
+                    ->innerJoin('ApplicationSonataMediaBundle:Media m', $alias = null) 
+                    ->where('a.active = :activated')
+                    ->andWhere('m.id = IDENTITY(a.image)')
+                   ->setParameter('activated', 1);
+
+        $query = $qb->getQuery();
+
+        return $query->getResult();
+    }
+    
 }

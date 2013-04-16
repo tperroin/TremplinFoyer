@@ -22,7 +22,7 @@ class AssociationController extends Controller
     {
         $em = $this->getDoctrine()->getManager();
 
-        $entities = $em->getRepository('TperroinTremplinFoyerBundle:Association')->findAll();
+        $entities = $em->getRepository('TperroinTremplinFoyerBundle:Association')->getActiveAssociations();
 
         return $this->render('TperroinTremplinFoyerBundle:Association:index.html.twig', array(
             'entities' => $entities,

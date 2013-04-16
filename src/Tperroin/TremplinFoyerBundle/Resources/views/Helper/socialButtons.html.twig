@@ -1,0 +1,14 @@
+<div class="large-7 social" id="socialBar">
+  {% if facebook is not sameas(false) %}
+      {{ facebookButton(facebook) }}
+    
+  {% endif %}
+ 
+  {% if googleplus is not sameas(false) %}
+      {{ googlePlusButton(googleplus) }}
+  {% endif %}
+ 
+  {% if twitter is not sameas(false) %}
+      {{ twitterButton(twitter) }}
+  {% endif %}
+</div>

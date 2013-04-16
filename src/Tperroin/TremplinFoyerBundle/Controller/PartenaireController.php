@@ -27,7 +27,7 @@ class PartenaireController extends Controller
     {
         $em = $this->getDoctrine()->getManager();
 
-        $entities = $em->getRepository('TperroinTremplinFoyerBundle:Partenaire')->findAll();
+        $entities = $em->getRepository('TperroinTremplinFoyerBundle:Partenaire')->getActivePartenaires();
 
         return array(
             'entities' => $entities,

@@ -8,7 +8,7 @@ use Doctrine\ORM\Mapping as ORM;
  * Tremplin
  *
  * @ORM\Table()
- * @ORM\Entity
+ * @ORM\Entity(repositoryClass="Tperroin\TremplinFoyerBundle\Entity\TremplinRepository")
  */
 class Tremplin
 {
@@ -48,6 +48,13 @@ class Tremplin
      * @ORM\Column(name="contenu", type="string", length=255)
      */
     private $contenu;
+    
+    /**
+     * @var boolean
+     *
+     * @ORM\Column(name="active", type="boolean")
+     */
+    private $active;
 
 
     /**
@@ -151,4 +158,14 @@ class Tremplin
     {
         return $this->contenu;
     }
+    
+    public function getActive() {
+        return $this->active;
+    }
+
+    public function setActive($active) {
+        $this->active = $active;
+    }
+
+
 }
